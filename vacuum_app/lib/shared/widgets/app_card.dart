@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+
 class AppCard extends StatefulWidget {
   const AppCard({
     super.key,
@@ -24,6 +26,7 @@ class _AppCardState extends State<AppCard> {
   @override
   Widget build(BuildContext context) {
     final canHover = widget.hover && (widget.onTap != null);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return MouseRegion(
       onEnter: (_) => canHover ? setState(() => _isHovering = true) : null,
@@ -32,16 +35,16 @@ class _AppCardState extends State<AppCard> {
         duration: const Duration(milliseconds: 160),
         transform: Matrix4.translationValues(0.0, _isHovering ? -4.0 : 0.0, 0.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color,
+          color: isDark ? AppColors.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+            color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: _isHovering ? 14 : 4,
-              offset: Offset(0, _isHovering ? 10 : 2),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: _isHovering ? 10 : 8,
+              offset: Offset(0, _isHovering ? 6 : 2),
             ),
           ],
         ),

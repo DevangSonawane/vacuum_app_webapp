@@ -31,6 +31,16 @@ class UsersRepository {
     await _dio.put('/users/$id', data: payload);
   }
 
+  Future<void> createUser(Map<String, dynamic> payload) async {
+    await _dio.post('/users', data: payload);
+  }
+
+  Future<AppUser> fetchById(int id) async {
+    final response = await _dio.get('/users/$id');
+    final data = _asMap(_asMap(response.data)['data'] ?? response.data);
+    return AppUser.fromJson(data);
+  }
+
   Future<void> deactivateUser(int id) async {
     await _dio.delete('/users/$id');
   }
@@ -55,4 +65,3 @@ class UsersPage {
   final int totalPages;
   final int total;
 }
-

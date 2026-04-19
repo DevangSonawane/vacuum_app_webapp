@@ -6,10 +6,14 @@ import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_input.dart';
+import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../application/users_notifier.dart';
+import '../domain/app_user.dart';
 
 class UsersScreen extends ConsumerWidget {
   const UsersScreen({super.key});
@@ -46,7 +50,7 @@ class UsersScreen extends ConsumerWidget {
               action: AppButton(
                 label: '+ Add New User',
                 variant: AppButtonVariant.outline,
-                onPressed: () {},
+                onPressed: () => _openUserSheet(context, ref, null),
               ),
             ),
             const SizedBox(height: 16),
@@ -66,7 +70,7 @@ class UsersScreen extends ConsumerWidget {
                             prefixIcon: Icon(Icons.search),
                             isDense: true,
                           ),
-                          onChanged: (_) {},
+                          onChanged: (query) => ref.read(usersProvider.notifier).search(query),
                         ),
                       ),
                     ],
@@ -149,12 +153,12 @@ class UsersScreen extends ConsumerWidget {
                                   children: [
                                     IconButton(
                                       tooltip: 'Edit',
-                                      onPressed: () {},
+                                      onPressed: () => _openUserSheet(context, ref, u),
                                       icon: const Icon(Icons.edit_outlined, color: AppColors.blue600),
                                     ),
                                     IconButton(
                                       tooltip: 'Deactivate',
-                                      onPressed: u.isActive ? () {} : null,
+                                      onPressed: u.isActive ? () => _confirmDeactivate(context, ref, u) : null,
                                       icon: const Icon(Icons.delete_outline, color: AppColors.red500),
                                     ),
                                   ],
@@ -197,6 +201,292 @@ class UsersScreen extends ConsumerWidget {
   String _titleCase(String value) {
     if (value.isEmpty) return value;
     return value[0].toUpperCase() + value.substring(1);
+  }
+
+  Future<void> _confirmDeactivate(BuildContext context, WidgetRef ref, AppUser user) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Deactivate user',
+      body: 'Deactivate ${user.fullName}? They will not be able to sign in.',
+      confirmLabel: 'Deactivate',
+      confirmVariant: AppButtonVariant.danger,
+    );
+    if (!confirmed || !context.mounted) return;
+    final ok = await ref.read(usersProvider.notifier).deactivate(user.id);
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: ok ? 'User deactivated' : 'Operation failed',
+      type: ok ? AppToastType.success : AppToastType.error,
+    );
+  }
+
+  Future<void> _openUserSheet(BuildContext context, WidgetRef ref, AppUser? existing) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (ctx) => _UserFormSheet(
+        existing: existing,
+        fetchById: existing == null ? null : () => ref.read(usersProvider.notifier).fetchById(existing.id),
+        onSubmit: (payload, isEdit, id) async {
+          final ok = isEdit && id != null
+              ? await ref.read(usersProvider.notifier).updateUserDetails(id, payload)
+              : await ref.read(usersProvider.notifier).createUser(payload);
+          if (!context.mounted) return;
+          Navigator.of(ctx).pop();
+          AppToast.show(
+            context,
+            message: ok ? (isEdit ? 'User updated!' : 'User created!') : 'Operation failed',
+            type: ok ? AppToastType.success : AppToastType.error,
+          );
+        },
+      ),
+    );
+  }
+}
+
+const _roles = ['admin', 'manager', 'engineer', 'technician', 'labour'];
+
+class _UserFormSheet extends StatefulWidget {
+  const _UserFormSheet({
+    required this.existing,
+    required this.fetchById,
+    required this.onSubmit,
+  });
+
+  final AppUser? existing;
+  final Future<AppUser?> Function()? fetchById;
+  final Future<void> Function(Map<String, dynamic> payload, bool isEdit, int? id) onSubmit;
+
+  @override
+  State<_UserFormSheet> createState() => _UserFormSheetState();
+}
+
+class _UserFormSheetState extends State<_UserFormSheet> {
+  final _first = TextEditingController();
+  final _last = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _password = TextEditingController();
+
+  String _role = _roles.first;
+  bool _active = true;
+
+  bool _loading = false;
+  bool _fetching = false;
+
+  bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final u = widget.existing;
+    if (u != null) {
+      _first.text = u.firstName;
+      _last.text = u.lastName;
+      _email.text = u.email;
+      _phone.text = u.phoneNumber ?? '';
+      _role = _roles.contains(u.role) ? u.role : _roles.first;
+      _active = u.isActive;
+      _loadLatest();
+    }
+  }
+
+  @override
+  void dispose() {
+    _first.dispose();
+    _last.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadLatest() async {
+    final fetch = widget.fetchById;
+    if (fetch == null) return;
+    setState(() => _fetching = true);
+    final latest = await fetch();
+    if (!mounted) return;
+    setState(() => _fetching = false);
+    if (latest == null) return;
+    _first.text = latest.firstName;
+    _last.text = latest.lastName;
+    _email.text = latest.email;
+    _phone.text = latest.phoneNumber ?? '';
+    _role = _roles.contains(latest.role) ? latest.role : _roles.first;
+    _active = latest.isActive;
+    setState(() {});
+  }
+
+  Future<void> _submit() async {
+    if (_loading) return;
+    if (_first.text.trim().isEmpty || _last.text.trim().isEmpty) {
+      AppToast.show(context, message: 'First and last name are required.', type: AppToastType.error);
+      return;
+    }
+    final email = _email.text.trim();
+    final phone = _phone.text.trim();
+    if (email.isEmpty && phone.isEmpty) {
+      AppToast.show(context, message: 'Email or phone is required.', type: AppToastType.error);
+      return;
+    }
+    if (!_isEdit && _password.text.trim().isEmpty) {
+      AppToast.show(context, message: 'Password is required for new users.', type: AppToastType.error);
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    final payload = <String, dynamic>{
+      'first_name': _first.text.trim(),
+      'last_name': _last.text.trim(),
+      'role': _role,
+      'is_active': _active,
+      if (email.isNotEmpty) 'email': email,
+      if (phone.isNotEmpty) 'phone_number': phone.startsWith('+') ? phone : '+91$phone',
+      if (!_isEdit) 'password': _password.text.trim(),
+    };
+
+    await widget.onSubmit(payload, _isEdit, widget.existing?.id);
+    if (!mounted) return;
+    setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.6,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scroll) => SingleChildScrollView(
+        controller: scroll,
+        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_isEdit ? 'Edit User' : 'Add New User', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 16),
+            if (_fetching)
+              const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+            else ...[
+              Row(
+                children: [
+                  Expanded(child: AppInput(label: 'First Name *', controller: _first, enabled: !_loading)),
+                  const SizedBox(width: 12),
+                  Expanded(child: AppInput(label: 'Last Name *', controller: _last, enabled: !_loading)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppInput(
+                      label: 'Email',
+                      controller: _email,
+                      type: AppInputType.email,
+                      enabled: !_loading,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppInput(
+                      label: 'Phone',
+                      controller: _phone,
+                      type: AppInputType.phone,
+                      enabled: !_loading,
+                      placeholder: '9876543210',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Role *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField<String>(
+                          initialValue: _role,
+                          decoration: const InputDecoration(isDense: true),
+                          items: _roles
+                              .map((r) => DropdownMenuItem(value: r, child: Text(r, overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                          onChanged: _loading ? null : (v) => setState(() => _role = v ?? _roles.first),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Active', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.16)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Expanded(child: Text('Is Active', style: TextStyle(fontWeight: FontWeight.w700))),
+                              Switch(
+                                value: _active,
+                                onChanged: _loading ? null : (v) => setState(() => _active = v),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (!_isEdit) ...[
+                const SizedBox(height: 12),
+                AppInput(
+                  label: 'Password *',
+                  controller: _password,
+                  type: AppInputType.password,
+                  enabled: !_loading,
+                ),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: 'Cancel',
+                      variant: AppButtonVariant.secondary,
+                      expanded: true,
+                      onPressed: _loading ? null : () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      label: _isEdit ? 'Update User' : 'Create User',
+                      expanded: true,
+                      loading: _loading,
+                      onPressed: _loading ? null : _submit,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 

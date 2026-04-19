@@ -28,7 +28,7 @@ export default function EmailSettings() {
 
   return (
     <PageTransition>
-      <div className="p-4 md:p-6 max-w-3xl mx-auto">
+      <div className="p-4 md:p-6 max-w-8xl mx-auto">
         <SectionHeader title="Email Notification Settings" subtitle="Configure SMTP and notification triggers" />
 
         <div className="space-y-5">

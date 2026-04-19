@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum AppInputType { text, email, password, number }
+enum AppInputType { text, email, phone, password, number }
 
 class AppInput extends StatefulWidget {
   const AppInput({
@@ -43,15 +43,29 @@ class _AppInputState extends State<AppInput> {
             icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
           )
         : widget.suffix;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? const Color(0xFFE5E7EB) : const Color(0xFF374151);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.required ? '${widget.label} *' : widget.label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+        RichText(
+          text: TextSpan(
+            text: widget.label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: labelColor,
+                ),
+            children: widget.required
+                ? const [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700),
+                    ),
+                  ]
+                : const [],
+          ),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -59,6 +73,7 @@ class _AppInputState extends State<AppInput> {
           enabled: widget.enabled,
           keyboardType: switch (widget.type) {
             AppInputType.email => TextInputType.emailAddress,
+            AppInputType.phone => TextInputType.phone,
             AppInputType.number => TextInputType.number,
             _ => TextInputType.text,
           },
@@ -82,4 +97,3 @@ class _AppInputState extends State<AppInput> {
     );
   }
 }
-

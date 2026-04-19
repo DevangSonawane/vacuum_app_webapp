@@ -9,52 +9,42 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _colorsFor(label);
+    final colors = badgeColors[label] ?? (AppColors.gray200, AppColors.gray700);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
         color: colors.$1,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: colors.$2,
-              fontWeight: FontWeight.w600,
-            ),
+        style: TextStyle(
+          color: colors.$2,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 
-  (Color, Color) _colorsFor(String value) {
-    switch (value) {
-      case 'Active':
-      case 'Closed':
-      case 'Approved':
-      case 'Present':
-        return (AppColors.emerald500.withValues(alpha: 0.15), AppColors.emerald500);
-      case 'Inactive':
-      case 'Low':
-        return (AppColors.gray200, AppColors.gray700);
-      case 'On Leave':
-      case 'In Progress':
-      case 'Pending':
-      case 'Late':
-        return (AppColors.amber500.withValues(alpha: 0.15), AppColors.amber500);
-      case 'Raised':
-      case 'Medium':
-        return (AppColors.purple500.withValues(alpha: 0.15), AppColors.purple500);
-      case 'Assigned':
-      case 'High':
-        return (AppColors.blue600.withValues(alpha: 0.15), AppColors.blue600);
-      case 'Rejected':
-      case 'Critical':
-      case 'Absent':
-        return (AppColors.red500.withValues(alpha: 0.15), AppColors.red500);
-      case 'Expiring Soon':
-        return (AppColors.orange500.withValues(alpha: 0.15), AppColors.orange500);
-      default:
-        return (AppColors.gray200, AppColors.gray700);
-    }
-  }
+  static const badgeColors = <String, (Color, Color)>{
+    'Active': (Color(0xFFD1FAE5), Color(0xFF065F46)),
+    'Inactive': (Color(0xFFF3F4F6), Color(0xFF6B7280)),
+    'On Leave': (Color(0xFFFEF3C7), Color(0xFF92400E)),
+    'Raised': (Color(0xFFF3E8FF), Color(0xFF6B21A8)),
+    'Assigned': (Color(0xFFDBEAFE), Color(0xFF1E40AF)),
+    'In Progress': (Color(0xFFFEF3C7), Color(0xFF92400E)),
+    'Closed': (Color(0xFFD1FAE5), Color(0xFF065F46)),
+    'Pending': (Color(0xFFFEF3C7), Color(0xFF92400E)),
+    'Approved': (Color(0xFFD1FAE5), Color(0xFF065F46)),
+    'Rejected': (Color(0xFFFEE2E2), Color(0xFF991B1B)),
+    'Expiring Soon': (Color(0xFFFFEDD5), Color(0xFF9A3412)),
+    'Critical': (Color(0xFFFEE2E2), Color(0xFF991B1B)),
+    'High': (Color(0xFFFFEDD5), Color(0xFF9A3412)),
+    'Medium': (Color(0xFFDBEAFE), Color(0xFF1E40AF)),
+    'Low': (Color(0xFFF3F4F6), Color(0xFF6B7280)),
+    'Present': (Color(0xFFD1FAE5), Color(0xFF065F46)),
+    'Absent': (Color(0xFFFEE2E2), Color(0xFF991B1B)),
+    'Late': (Color(0xFFFEF3C7), Color(0xFF92400E)),
+  };
 }

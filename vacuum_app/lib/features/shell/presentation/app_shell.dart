@@ -8,8 +8,9 @@ import '../../../core/ui/ui_providers.dart';
 import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/app_toast.dart';
 import '../../auth/application/auth_notifier.dart';
+import '../../notifications/application/notifications_notifier.dart';
+import '../../notifications/presentation/notifications_menu.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
@@ -26,7 +27,7 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       drawer: isDesktop ? null : Drawer(child: _Sidebar(onNavigate: () => Navigator.pop(context))),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
+        preferredSize: const Size.fromHeight(56),
         child: _TopBar(showHamburger: !isDesktop),
       ),
       body: Row(
@@ -59,13 +60,16 @@ class _TopBar extends ConsumerWidget {
     final user = auth?.user;
     final isAdmin = user?.role == 'admin';
     final title = _titleForLocation(GoRouterState.of(context).matchedLocation);
+    final width = MediaQuery.sizeOf(context).width;
 
     return Material(
       color: Theme.of(context).appBarTheme.backgroundColor,
       child: SafeArea(
         bottom: false,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: SizedBox(
+          height: 56,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: 0.08)),
@@ -81,22 +85,32 @@ class _TopBar extends ConsumerWidget {
                     icon: const Icon(Icons.menu),
                   ),
                 ),
-              if (MediaQuery.sizeOf(context).width >= 420) ...[
+              if (width >= 420) ...[
                 const SizedBox(width: 4),
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
               ],
               const Spacer(),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width < 520 ? 220 : 320),
-                child: const _SearchField(),
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: width < 520 ? 200 : 320),
+                    child: const _SearchField(),
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
-              _NotificationBell(
-                count: 3,
-                onTap: () =>
-                    AppToast.show(context, message: 'Notifications coming soon…', type: AppToastType.info),
-              ),
-              const SizedBox(width: 8),
+              const _NotificationBell(),
+              const SizedBox(width: 4),
+              Container(width: 1, height: 24, color: Theme.of(context).dividerColor.withValues(alpha: 0.2)),
+              const SizedBox(width: 4),
               if (user != null)
                 PopupMenuButton<_UserMenuAction>(
                   tooltip: 'Account',
@@ -188,8 +202,15 @@ class _TopBar extends ConsumerWidget {
                     children: [
                       AppAvatar(initials: initialsFromName(user.fullName), size: AppAvatarSize.md),
                       const SizedBox(width: 10),
-                      if (MediaQuery.sizeOf(context).width >= 620)
-                        Text(user.firstName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      if (width >= 620)
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 140),
+                          child: Text(
+                            user.firstName,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       const SizedBox(width: 6),
                       const Icon(Icons.expand_more),
                     ],
@@ -203,64 +224,80 @@ class _TopBar extends ConsumerWidget {
                 ),
             ],
           ),
+          ),
         ),
       ),
     );
   }
 
   String _titleForLocation(String location) {
-    return switch (location) {
-      '/' => 'Dashboard',
-      '/technicians' => 'Technicians',
-      '/clients' => 'Clients',
-      '/jobs' => 'Work Orders',
-      '/reports' => 'Service Reports',
-      '/quotations' => 'Quotations',
-      '/amc' => 'AMC Contracts',
-      '/attendance' => 'Attendance',
-      '/email' => 'Email Settings',
-      '/activity' => 'Activity History',
-      '/users' => 'Users',
-      '/profile' => 'Profile',
-      '/settings' => 'Settings',
-      _ => 'VDTI Service Hub',
-    };
+    if (location == '/') return 'Dashboard';
+    if (location.startsWith('/technicians')) return 'Technicians';
+    if (location.startsWith('/clients')) return 'Clients';
+    if (location.startsWith('/jobs')) return 'Work Orders';
+    if (location.startsWith('/reports')) return 'Service Reports';
+    if (location.startsWith('/quotations')) return 'Quotations';
+    if (location.startsWith('/amc')) return 'AMC Contracts';
+    if (location.startsWith('/attendance')) return 'Attendance';
+    if (location.startsWith('/email')) return 'Email Settings';
+    if (location.startsWith('/activity')) return 'Activity History';
+    if (location.startsWith('/users')) return 'Users';
+    if (location.startsWith('/profile')) return 'Profile';
+    if (location.startsWith('/settings')) return 'Settings';
+    return 'VDTI Service Hub';
   }
 }
 
 class _NotificationBell extends StatelessWidget {
-  const _NotificationBell({required this.count, required this.onTap});
-
-  final int count;
-  final VoidCallback onTap;
+  const _NotificationBell();
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          tooltip: 'Notifications',
-          onPressed: onTap,
-          icon: const Icon(Icons.notifications_none),
-        ),
-        if (count > 0)
-          Positioned(
-            right: 8,
-            top: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.red500,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '$count',
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+    return Consumer(
+      builder: (context, ref, _) {
+        final s = ref.watch(notificationsProvider).valueOrNull;
+        final count = s?.unreadCount ?? 0;
+        final connected = s?.connected ?? false;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              tooltip: 'Notifications',
+              onPressed: () => NotificationsMenu.open(context),
+              icon: const Icon(Icons.notifications_none),
+            ),
+            Positioned(
+              left: 12,
+              bottom: 12,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: connected ? AppColors.emerald500 : AppColors.gray400,
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
-          ),
-      ],
+            if (count > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.red500,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -444,6 +481,8 @@ class _NavItem extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                   style: TextStyle(
                     color: active ? Colors.white : AppColors.blue200,
                     fontWeight: FontWeight.w600,
@@ -484,6 +523,6 @@ const _navItems = <_NavDescriptor>[
   _NavDescriptor(label: 'AMC Contracts', route: '/amc', icon: Icons.verified_user_outlined, adminOnly: false),
   _NavDescriptor(label: 'Attendance', route: '/attendance', icon: Icons.access_time, adminOnly: false),
   _NavDescriptor(label: 'Email Settings', route: '/email', icon: Icons.mail_outline, adminOnly: true),
-  _NavDescriptor(label: 'Activity History', route: '/activity', icon: Icons.description_outlined, adminOnly: false),
+  _NavDescriptor(label: 'Activity History', route: '/activity', icon: Icons.description_outlined, adminOnly: true),
   _NavDescriptor(label: 'Users', route: '/users', icon: Icons.manage_accounts_outlined, adminOnly: true),
 ];

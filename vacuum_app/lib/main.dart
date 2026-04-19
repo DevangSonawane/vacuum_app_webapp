@@ -10,6 +10,21 @@ void main() {
   runApp(const ProviderScope(child: MyApp()));
 }
 
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    // Prevent debug-time "Build scheduled during frame" assertions triggered
+    // by the StretchingOverscrollIndicator's internal animation controller.
+    return child;
+  }
+}
+
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
@@ -30,10 +45,10 @@ class MyApp extends ConsumerWidget {
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+        scrollBehavior: const _AppScrollBehavior(),
         routerConfig: router,
         debugShowCheckedModeBanner: false,
       ),
     );
   }
 }
-

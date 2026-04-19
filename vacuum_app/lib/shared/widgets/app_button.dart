@@ -29,9 +29,14 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, fg, border) = _colorsFor(context);
     final padding = switch (size) {
-      AppButtonSize.sm => const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      AppButtonSize.md => const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      AppButtonSize.lg => const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      AppButtonSize.sm => const EdgeInsets.symmetric(horizontal: 12),
+      AppButtonSize.md => const EdgeInsets.symmetric(horizontal: 16),
+      AppButtonSize.lg => const EdgeInsets.symmetric(horizontal: 18),
+    };
+    final height = switch (size) {
+      AppButtonSize.sm => 40.0,
+      AppButtonSize.md => 44.0,
+      AppButtonSize.lg => 48.0,
     };
 
     final child = Row(
@@ -53,7 +58,7 @@ class AppButton extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: fg,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               fontSize: 14,
             ),
           ),
@@ -68,6 +73,7 @@ class AppButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: loading ? null : onPressed,
         child: Container(
+          height: height,
           padding: padding,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -101,4 +107,3 @@ class AppButton extends StatelessWidget {
     }
   }
 }
-

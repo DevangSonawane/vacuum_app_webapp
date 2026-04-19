@@ -6,8 +6,20 @@ import '../../features/auth/application/auth_notifier.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/email_settings/presentation/email_settings_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
-import '../../features/simple_pages/simple_page.dart';
+import '../../features/clients/presentation/clients_screen.dart';
+import '../../features/amc/presentation/amc_screen.dart';
+import '../../features/attendance/presentation/attendance_screen.dart';
+import '../../features/activity/presentation/activity_screen.dart';
+import '../../features/jobs/presentation/job_detail_screen.dart';
+import '../../features/jobs/presentation/jobs_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/quotations/presentation/quotations_screen.dart';
+import '../../features/reports/presentation/report_detail_screen.dart';
+import '../../features/reports/presentation/reports_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/technicians/presentation/technicians_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
 import '../../shared/widgets/page_loader.dart';
 
@@ -45,7 +57,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (isAuthRoute || state.matchedLocation == '/splash') return '/';
 
       final userRole = role();
-      final adminOnly = state.matchedLocation == '/users' || state.matchedLocation == '/email';
+      final adminOnly = state.matchedLocation == '/users' ||
+          state.matchedLocation == '/email' ||
+          state.matchedLocation == '/activity';
       if (adminOnly && userRole != 'admin') return '/';
 
       return null;
@@ -72,39 +86,47 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/technicians',
-            builder: (context, state) => const SimplePage(title: 'Technicians'),
+            builder: (context, state) => const TechniciansScreen(),
           ),
           GoRoute(
             path: '/clients',
-            builder: (context, state) => const SimplePage(title: 'Clients'),
+            builder: (context, state) => const ClientsScreen(),
           ),
           GoRoute(
             path: '/jobs',
-            builder: (context, state) => const SimplePage(title: 'Work Orders'),
+            builder: (context, state) => const JobsScreen(),
+          ),
+          GoRoute(
+            path: '/jobs/:id',
+            builder: (context, state) => JobDetailScreen(id: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/reports',
-            builder: (context, state) => const SimplePage(title: 'Service Reports'),
+            builder: (context, state) => const ReportsScreen(),
+          ),
+          GoRoute(
+            path: '/reports/:id',
+            builder: (context, state) => ReportDetailScreen(id: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/quotations',
-            builder: (context, state) => const SimplePage(title: 'Quotations'),
+            builder: (context, state) => const QuotationsScreen(),
           ),
           GoRoute(
             path: '/amc',
-            builder: (context, state) => const SimplePage(title: 'AMC Contracts'),
+            builder: (context, state) => const AmcScreen(),
           ),
           GoRoute(
             path: '/attendance',
-            builder: (context, state) => const SimplePage(title: 'Attendance'),
+            builder: (context, state) => const AttendanceScreen(),
           ),
           GoRoute(
             path: '/email',
-            builder: (context, state) => const SimplePage(title: 'Email Settings'),
+            builder: (context, state) => const EmailSettingsScreen(),
           ),
           GoRoute(
             path: '/activity',
-            builder: (context, state) => const SimplePage(title: 'Activity History'),
+            builder: (context, state) => const ActivityScreen(),
           ),
           GoRoute(
             path: '/users',
@@ -112,11 +134,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const SimplePage(title: 'Profile'),
+            builder: (context, state) => const ProfileScreen(),
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const SimplePage(title: 'Settings'),
+            builder: (context, state) => const SettingsScreen(),
           ),
         ],
       ),

@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to take verification photos for job completion</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to attach photos to service reports</string>
 </dict>
 </plist>
