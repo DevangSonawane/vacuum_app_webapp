@@ -89,12 +89,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const TechniciansScreen(),
           ),
           GoRoute(
+            path: '/technicians/new',
+            builder: (context, state) => const TechnicianCreateScreen(),
+          ),
+          GoRoute(
             path: '/clients',
             builder: (context, state) => const ClientsScreen(),
           ),
           GoRoute(
+            path: '/clients/new',
+            builder: (context, state) => const ClientCreateScreen(),
+          ),
+          GoRoute(
             path: '/jobs',
             builder: (context, state) => const JobsScreen(),
+          ),
+          GoRoute(
+            path: '/jobs/new',
+            builder: (context, state) => const JobCreateScreen(),
           ),
           GoRoute(
             path: '/jobs/:id',
@@ -105,6 +117,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const ReportsScreen(),
           ),
           GoRoute(
+            path: '/reports/new',
+            builder: (context, state) => const ReportCreateScreen(),
+          ),
+          GoRoute(
             path: '/reports/:id',
             builder: (context, state) => ReportDetailScreen(id: state.pathParameters['id']!),
           ),
@@ -113,8 +129,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const QuotationsScreen(),
           ),
           GoRoute(
+            path: '/quotations/new',
+            builder: (context, state) => const QuotationCreateScreen(),
+          ),
+          GoRoute(
             path: '/amc',
             builder: (context, state) => const AmcScreen(),
+          ),
+          GoRoute(
+            path: '/amc/new',
+            builder: (context, state) => const AmcCreateScreen(),
           ),
           GoRoute(
             path: '/attendance',

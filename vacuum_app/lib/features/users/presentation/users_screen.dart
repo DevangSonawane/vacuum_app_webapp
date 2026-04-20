@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_input.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
@@ -60,17 +61,15 @@ class UsersScreen extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Text('Users', style: Theme.of(context).textTheme.titleMedium),
-                      const Spacer(),
-                      SizedBox(
-                        width: 240,
+                      Expanded(
                         child: TextField(
                           decoration: const InputDecoration(
-                            hintText: 'Search…',
+                            hintText: 'Search users…',
                             prefixIcon: Icon(Icons.search),
                             isDense: true,
                           ),
-                          onChanged: (query) => ref.read(usersProvider.notifier).search(query),
+                          onChanged: (query) =>
+                              ref.read(usersProvider.notifier).search(query),
                         ),
                       ),
                     ],
@@ -99,47 +98,83 @@ class UsersScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(width: 10),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Text(u.fullName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        Text(
+                                          u.fullName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                         const SizedBox(height: 2),
                                         Text(
                                           u.email,
-                                          style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                                          style: TextStyle(
+                                            color: Theme.of(context).hintColor,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ],
                                 ),
                               ),
-                              DataCell(Row(children: [
-                                const Icon(Icons.shield_outlined, size: 18, color: AppColors.blue600),
-                                const SizedBox(width: 8),
-                                Text(_titleCase(u.role)),
-                              ])),
-                              DataCell(Text(u.phoneNumber?.isNotEmpty == true ? u.phoneNumber! : '—')),
+                              DataCell(
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.shield_outlined,
+                                      size: 18,
+                                      color: AppColors.blue600,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(_titleCase(u.role)),
+                                  ],
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  u.phoneNumber?.isNotEmpty == true
+                                      ? u.phoneNumber!
+                                      : '—',
+                                ),
+                              ),
                               DataCell(
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(999),
-                                    color: (u.isActive ? AppColors.emerald500 : AppColors.red500)
-                                        .withValues(alpha: 0.15),
+                                    color:
+                                        (u.isActive
+                                                ? AppColors.emerald500
+                                                : AppColors.red500)
+                                            .withValues(alpha: 0.15),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        u.isActive ? Icons.check_circle_outline : Icons.cancel_outlined,
+                                        u.isActive
+                                            ? Icons.check_circle_outline
+                                            : Icons.cancel_outlined,
                                         size: 16,
-                                        color: u.isActive ? AppColors.emerald500 : AppColors.red500,
+                                        color: u.isActive
+                                            ? AppColors.emerald500
+                                            : AppColors.red500,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         u.isActive ? 'Active' : 'Inactive',
                                         style: TextStyle(
-                                          color: u.isActive ? AppColors.emerald500 : AppColors.red500,
+                                          color: u.isActive
+                                              ? AppColors.emerald500
+                                              : AppColors.red500,
                                           fontWeight: FontWeight.w700,
                                           fontSize: 12,
                                         ),
@@ -153,13 +188,26 @@ class UsersScreen extends ConsumerWidget {
                                   children: [
                                     IconButton(
                                       tooltip: 'Edit',
-                                      onPressed: () => _openUserSheet(context, ref, u),
-                                      icon: const Icon(Icons.edit_outlined, color: AppColors.blue600),
+                                      onPressed: () =>
+                                          _openUserSheet(context, ref, u),
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        color: AppColors.blue600,
+                                      ),
                                     ),
                                     IconButton(
                                       tooltip: 'Deactivate',
-                                      onPressed: u.isActive ? () => _confirmDeactivate(context, ref, u) : null,
-                                      icon: const Icon(Icons.delete_outline, color: AppColors.red500),
+                                      onPressed: u.isActive
+                                          ? () => _confirmDeactivate(
+                                              context,
+                                              ref,
+                                              u,
+                                            )
+                                          : null,
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: AppColors.red500,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -170,24 +218,103 @@ class UsersScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Text('Showing ${data.users.length} of ${data.total} users'),
-                      const Spacer(),
-                      AppButton(
-                        label: 'Previous',
-                        variant: AppButtonVariant.secondary,
-                        onPressed: data.page <= 1 ? null : () => ref.read(usersProvider.notifier).prevPage(),
-                      ),
-                      const SizedBox(width: 10),
-                      Text('Page ${data.page} of ${data.totalPages}'),
-                      const SizedBox(width: 10),
-                      AppButton(
-                        label: 'Next',
-                        variant: AppButtonVariant.secondary,
-                        onPressed: data.page >= data.totalPages ? null : () => ref.read(usersProvider.notifier).nextPage(),
-                      ),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final showing =
+                          'Showing ${data.users.length} of ${data.total} users';
+                      final pageText =
+                          'Page ${data.page} of ${data.totalPages}';
+                      final effectiveWidth = constraints.maxWidth.isFinite
+                          ? constraints.maxWidth
+                          : MediaQuery.sizeOf(context).width;
+                      final compact = effectiveWidth < 420;
+
+                      if (compact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(showing),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: AppButton(
+                                    label: 'Prev',
+                                    size: AppButtonSize.sm,
+                                    variant: AppButtonVariant.secondary,
+                                    onPressed: data.page <= 1
+                                        ? null
+                                        : () => ref
+                                              .read(usersProvider.notifier)
+                                              .prevPage(),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: AppButton(
+                                    label: 'Next',
+                                    size: AppButtonSize.sm,
+                                    variant: AppButtonVariant.secondary,
+                                    onPressed: data.page >= data.totalPages
+                                        ? null
+                                        : () => ref
+                                              .read(usersProvider.notifier)
+                                              .nextPage(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              pageText,
+                              style: TextStyle(
+                                color: Theme.of(context).hintColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              showing,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          AppButton(
+                            label: 'Previous',
+                            size: AppButtonSize.sm,
+                            variant: AppButtonVariant.secondary,
+                            onPressed: data.page <= 1
+                                ? null
+                                : () => ref
+                                      .read(usersProvider.notifier)
+                                      .prevPage(),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              pageText,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          AppButton(
+                            label: 'Next',
+                            size: AppButtonSize.sm,
+                            variant: AppButtonVariant.secondary,
+                            onPressed: data.page >= data.totalPages
+                                ? null
+                                : () => ref
+                                      .read(usersProvider.notifier)
+                                      .nextPage(),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -203,7 +330,11 @@ class UsersScreen extends ConsumerWidget {
     return value[0].toUpperCase() + value.substring(1);
   }
 
-  Future<void> _confirmDeactivate(BuildContext context, WidgetRef ref, AppUser user) async {
+  Future<void> _confirmDeactivate(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Deactivate user',
@@ -221,7 +352,11 @@ class UsersScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openUserSheet(BuildContext context, WidgetRef ref, AppUser? existing) async {
+  Future<void> _openUserSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser? existing,
+  ) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -229,16 +364,22 @@ class UsersScreen extends ConsumerWidget {
       useSafeArea: true,
       builder: (ctx) => _UserFormSheet(
         existing: existing,
-        fetchById: existing == null ? null : () => ref.read(usersProvider.notifier).fetchById(existing.id),
+        fetchById: existing == null
+            ? null
+            : () => ref.read(usersProvider.notifier).fetchById(existing.id),
         onSubmit: (payload, isEdit, id) async {
           final ok = isEdit && id != null
-              ? await ref.read(usersProvider.notifier).updateUserDetails(id, payload)
+              ? await ref
+                    .read(usersProvider.notifier)
+                    .updateUserDetails(id, payload)
               : await ref.read(usersProvider.notifier).createUser(payload);
           if (!context.mounted) return;
           Navigator.of(ctx).pop();
           AppToast.show(
             context,
-            message: ok ? (isEdit ? 'User updated!' : 'User created!') : 'Operation failed',
+            message: ok
+                ? (isEdit ? 'User updated!' : 'User created!')
+                : 'Operation failed',
             type: ok ? AppToastType.success : AppToastType.error,
           );
         },
@@ -258,7 +399,12 @@ class _UserFormSheet extends StatefulWidget {
 
   final AppUser? existing;
   final Future<AppUser?> Function()? fetchById;
-  final Future<void> Function(Map<String, dynamic> payload, bool isEdit, int? id) onSubmit;
+  final Future<void> Function(
+    Map<String, dynamic> payload,
+    bool isEdit,
+    int? id,
+  )
+  onSubmit;
 
   @override
   State<_UserFormSheet> createState() => _UserFormSheetState();
@@ -324,17 +470,29 @@ class _UserFormSheetState extends State<_UserFormSheet> {
   Future<void> _submit() async {
     if (_loading) return;
     if (_first.text.trim().isEmpty || _last.text.trim().isEmpty) {
-      AppToast.show(context, message: 'First and last name are required.', type: AppToastType.error);
+      AppToast.show(
+        context,
+        message: 'First and last name are required.',
+        type: AppToastType.error,
+      );
       return;
     }
     final email = _email.text.trim();
     final phone = _phone.text.trim();
     if (email.isEmpty && phone.isEmpty) {
-      AppToast.show(context, message: 'Email or phone is required.', type: AppToastType.error);
+      AppToast.show(
+        context,
+        message: 'Email or phone is required.',
+        type: AppToastType.error,
+      );
       return;
     }
     if (!_isEdit && _password.text.trim().isEmpty) {
-      AppToast.show(context, message: 'Password is required for new users.', type: AppToastType.error);
+      AppToast.show(
+        context,
+        message: 'Password is required for new users.',
+        type: AppToastType.error,
+      );
       return;
     }
 
@@ -346,7 +504,8 @@ class _UserFormSheetState extends State<_UserFormSheet> {
       'role': _role,
       'is_active': _active,
       if (email.isNotEmpty) 'email': email,
-      if (phone.isNotEmpty) 'phone_number': phone.startsWith('+') ? phone : '+91$phone',
+      if (phone.isNotEmpty)
+        'phone_number': phone.startsWith('+') ? phone : '+91$phone',
       if (!_isEdit) 'password': _password.text.trim(),
     };
 
@@ -364,20 +523,45 @@ class _UserFormSheetState extends State<_UserFormSheet> {
       expand: false,
       builder: (context, scroll) => SingleChildScrollView(
         controller: scroll,
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_isEdit ? 'Edit User' : 'Add New User', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              _isEdit ? 'Edit User' : 'Add New User',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 16),
             if (_fetching)
-              const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                ),
+              )
             else ...[
               Row(
                 children: [
-                  Expanded(child: AppInput(label: 'First Name *', controller: _first, enabled: !_loading)),
+                  Expanded(
+                    child: AppInput(
+                      label: 'First Name *',
+                      controller: _first,
+                      enabled: !_loading,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: AppInput(label: 'Last Name *', controller: _last, enabled: !_loading)),
+                  Expanded(
+                    child: AppInput(
+                      label: 'Last Name *',
+                      controller: _last,
+                      enabled: !_loading,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -410,15 +594,37 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Role *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const Text(
+                          'Role *',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         DropdownButtonFormField<String>(
                           initialValue: _role,
+                          isExpanded: true,
+                          menuMaxHeight: 360,
+                          borderRadius: BorderRadius.circular(14),
+                          dropdownColor: Theme.of(context).colorScheme.surface,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
                           decoration: const InputDecoration(isDense: true),
                           items: _roles
-                              .map((r) => DropdownMenuItem(value: r, child: Text(r, overflow: TextOverflow.ellipsis)))
+                              .map(
+                                (r) => DropdownMenuItem(
+                                  value: r,
+                                  child: Text(
+                                    r,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
                               .toList(),
-                          onChanged: _loading ? null : (v) => setState(() => _role = v ?? _roles.first),
+                          onChanged: _loading
+                              ? null
+                              : (v) =>
+                                    setState(() => _role = v ?? _roles.first),
                         ),
                       ],
                     ),
@@ -428,20 +634,40 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Active', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        const Text(
+                          'Active',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.16)),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.16),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              const Expanded(child: Text('Is Active', style: TextStyle(fontWeight: FontWeight.w700))),
+                              const Expanded(
+                                child: Text(
+                                  'Is Active',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
                               Switch(
                                 value: _active,
-                                onChanged: _loading ? null : (v) => setState(() => _active = v),
+                                onChanged: _loading
+                                    ? null
+                                    : (v) => setState(() => _active = v),
                               ),
                             ],
                           ),
@@ -461,26 +687,30 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                 ),
               ],
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: 'Cancel',
-                      variant: AppButtonVariant.secondary,
-                      expanded: true,
-                      onPressed: _loading ? null : () => Navigator.of(context).pop(),
+              BottomSafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.secondary,
+                        expanded: true,
+                        onPressed: _loading
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppButton(
-                      label: _isEdit ? 'Update User' : 'Create User',
-                      expanded: true,
-                      loading: _loading,
-                      onPressed: _loading ? null : _submit,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AppButton(
+                        label: _isEdit ? 'Update User' : 'Create User',
+                        expanded: true,
+                        loading: _loading,
+                        onPressed: _loading ? null : _submit,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],
@@ -521,7 +751,9 @@ class _UsersSkeleton extends StatelessWidget {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
@@ -530,7 +762,9 @@ class _UsersSkeleton extends StatelessWidget {
                           child: Container(
                             height: 16,
                             decoration: BoxDecoration(
-                              color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),

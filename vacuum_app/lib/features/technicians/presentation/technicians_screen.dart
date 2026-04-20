@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/initials.dart';
@@ -9,6 +10,7 @@ import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
@@ -18,7 +20,15 @@ import '../../auth/application/auth_notifier.dart';
 import '../application/technicians_notifier.dart';
 import '../domain/technician.dart';
 
-const _specializations = ['HVAC', 'Electrical', 'Plumbing', 'Carpentry', 'Generator', 'Civil', 'IT'];
+const _specializations = [
+  'HVAC',
+  'Electrical',
+  'Plumbing',
+  'Carpentry',
+  'Generator',
+  'Civil',
+  'IT',
+];
 const _statuses = ['Active', 'On Leave', 'Inactive'];
 
 class TechniciansScreen extends ConsumerStatefulWidget {
@@ -69,7 +79,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
               action: canEdit
                   ? AppButton(
                       label: '+ Add Technician',
-                      onPressed: () => _openFormSheet(context, null),
+                      onPressed: () => context.push('/technicians/new'),
                     )
                   : null,
             ),
@@ -96,7 +106,8 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                   return const EmptyState(
                     icon: Icons.engineering_outlined,
                     title: 'No technicians found',
-                    description: 'Try a different search or add a new technician.',
+                    description:
+                        'Try a different search or add a new technician.',
                   );
                 }
 
@@ -138,11 +149,15 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
       useSafeArea: true,
       builder: (ctx) => _TechnicianFormSheet(
         existing: tech,
-        fetchById: tech == null ? null : () => ref.read(techniciansProvider.notifier).fetchById(tech.id),
+        fetchById: tech == null
+            ? null
+            : () => ref.read(techniciansProvider.notifier).fetchById(tech.id),
         onSubmit: (payload, isEdit, id, password) async {
           bool ok;
           if (isEdit && id != null) {
-            ok = await ref.read(techniciansProvider.notifier).updateTechnician(id, payload);
+            ok = await ref
+                .read(techniciansProvider.notifier)
+                .updateTechnician(id, payload);
           } else {
             if (password.isNotEmpty) payload['password'] = password;
             ok = await ref.read(techniciansProvider.notifier).create(payload);
@@ -152,7 +167,9 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
           Navigator.of(ctx).pop();
           AppToast.show(
             context,
-            message: ok ? (isEdit ? 'Technician updated!' : 'Technician added!') : 'Operation failed',
+            message: ok
+                ? (isEdit ? 'Technician updated!' : 'Technician added!')
+                : 'Operation failed',
             type: ok ? AppToastType.success : AppToastType.error,
           );
         },
@@ -164,7 +181,8 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Remove Technician',
-      body: 'Are you sure you want to remove ${tech.name}? This cannot be undone.',
+      body:
+          'Are you sure you want to remove ${tech.name}? This cannot be undone.',
       confirmLabel: 'Remove',
     );
 
@@ -175,6 +193,30 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
       context,
       message: ok ? 'Technician removed' : 'Delete failed',
       type: ok ? AppToastType.error : AppToastType.error,
+    );
+  }
+}
+
+class TechnicianCreateScreen extends ConsumerWidget {
+  const TechnicianCreateScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _TechnicianFormSheet(
+      asSheet: false,
+      existing: null,
+      fetchById: null,
+      onSubmit: (payload, isEdit, id, password) async {
+        if (password.trim().isNotEmpty) payload['password'] = password.trim();
+        final ok = await ref.read(techniciansProvider.notifier).create(payload);
+        if (!context.mounted) return;
+        if (ok) context.pop();
+        AppToast.show(
+          context,
+          message: ok ? 'Technician added!' : 'Operation failed',
+          type: ok ? AppToastType.success : AppToastType.error,
+        );
+      },
     );
   }
 }
@@ -204,7 +246,10 @@ class _TechnicianCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              AppAvatar(initials: initialsFromName(tech.name), size: AppAvatarSize.lg),
+              AppAvatar(
+                initials: initialsFromName(tech.name),
+                size: AppAvatarSize.lg,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -212,7 +257,10 @@ class _TechnicianCard extends StatelessWidget {
                   children: [
                     Text(
                       tech.name,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -233,12 +281,19 @@ class _TechnicianCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          if (tech.email.isNotEmpty) _ContactRow(icon: Icons.mail_outline, text: tech.email),
+          if (tech.email.isNotEmpty)
+            _ContactRow(icon: Icons.mail_outline, text: tech.email),
           _ContactRow(icon: Icons.phone_outlined, text: tech.phone),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _MiniStat(label: 'Jobs', value: tech.jobsCompleted.toString(), bg: boxBg)),
+              Expanded(
+                child: _MiniStat(
+                  label: 'Jobs',
+                  value: tech.jobsCompleted.toString(),
+                  bg: boxBg,
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: _MiniStat(
@@ -252,7 +307,9 @@ class _TechnicianCard extends StatelessWidget {
               Expanded(
                 child: _MiniStat(
                   label: 'Since',
-                  value: tech.joinDate != null && tech.joinDate!.length >= 4 ? tech.joinDate!.substring(0, 4) : '—',
+                  value: tech.joinDate != null && tech.joinDate!.length >= 4
+                      ? tech.joinDate!.substring(0, 4)
+                      : '—',
                   bg: boxBg,
                 ),
               ),
@@ -336,17 +393,30 @@ class _MiniStat extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Theme.of(context).hintColor, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: valueColor),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+              color: valueColor,
+            ),
           ),
         ],
       ),
@@ -359,11 +429,19 @@ class _TechnicianFormSheet extends StatefulWidget {
     required this.existing,
     required this.onSubmit,
     required this.fetchById,
+    this.asSheet = true,
   });
 
   final Technician? existing;
   final Future<Technician?> Function()? fetchById;
-  final Future<void> Function(Map<String, dynamic> payload, bool isEdit, int? id, String password) onSubmit;
+  final Future<void> Function(
+    Map<String, dynamic> payload,
+    bool isEdit,
+    int? id,
+    String password,
+  )
+  onSubmit;
+  final bool asSheet;
 
   @override
   State<_TechnicianFormSheet> createState() => _TechnicianFormSheetState();
@@ -392,7 +470,9 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
       _name.text = t.name;
       _email.text = t.email;
       _phone.text = t.phone;
-      _specialization = _specializations.contains(t.specialization) ? t.specialization : _specializations.first;
+      _specialization = _specializations.contains(t.specialization)
+          ? t.specialization
+          : _specializations.first;
       _status = _statuses.contains(t.status) ? t.status : _statuses.first;
       _joinDate = _parseDate(t.joinDate);
       _loadLatestIfNeeded();
@@ -425,8 +505,12 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     _name.text = latest.name;
     _email.text = latest.email;
     _phone.text = latest.phone;
-    _specialization = _specializations.contains(latest.specialization) ? latest.specialization : _specializations.first;
-    _status = _statuses.contains(latest.status) ? latest.status : _statuses.first;
+    _specialization = _specializations.contains(latest.specialization)
+        ? latest.specialization
+        : _specializations.first;
+    _status = _statuses.contains(latest.status)
+        ? latest.status
+        : _statuses.first;
     _joinDate = _parseDate(latest.joinDate);
     setState(() {});
   }
@@ -434,7 +518,11 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
   Future<void> _submit() async {
     if (_loading) return;
     if (_name.text.trim().isEmpty || _phone.text.trim().isEmpty) {
-      AppToast.show(context, message: 'Name and phone are required.', type: AppToastType.error);
+      AppToast.show(
+        context,
+        message: 'Name and phone are required.',
+        type: AppToastType.error,
+      );
       return;
     }
 
@@ -445,9 +533,15 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
       'phone': _phone.text.trim(),
       'specialization': _specialization,
       'status': _status,
-      if (_joinDate != null) 'join_date': _joinDate!.toIso8601String().substring(0, 10),
+      if (_joinDate != null)
+        'join_date': _joinDate!.toIso8601String().substring(0, 10),
     };
-    await widget.onSubmit(payload, _isEdit, widget.existing?.id, _password.text);
+    await widget.onSubmit(
+      payload,
+      _isEdit,
+      widget.existing?.id,
+      _password.text,
+    );
     if (!mounted) return;
     setState(() => _loading = false);
   }
@@ -455,19 +549,51 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      minChildSize: 0.55,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scroll) => SingleChildScrollView(
-        controller: scroll,
-        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomInset + 16),
+    void close() {
+      final r = GoRouter.of(context);
+      if (r.canPop()) {
+        r.pop();
+      } else {
+        context.go('/technicians');
+      }
+    }
+
+    Widget content(ScrollController? scroll) => SingleChildScrollView(
+      controller: scroll,
+      padding: EdgeInsets.fromLTRB(
+        16,
+        widget.asSheet ? 0 : 16,
+        16,
+        bottomInset + 16,
+      ),
+      child: SafeArea(
+        top: !widget.asSheet,
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_isEdit ? 'Edit Technician' : 'Add Technician', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
+            if (!widget.asSheet) ...[
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: _loading ? null : close,
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  Text(
+                    _isEdit ? 'Edit Technician' : 'Add Technician',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ] else ...[
+              Text(
+                _isEdit ? 'Edit Technician' : 'Add Technician',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+            ],
             if (_fetchingDetails)
               const Center(
                 child: Padding(
@@ -507,7 +633,9 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
                       'Specialization',
                       _specialization,
                       _specializations,
-                      (v) => setState(() => _specialization = v ?? _specializations.first),
+                      (v) => setState(
+                        () => _specialization = v ?? _specializations.first,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -525,39 +653,58 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
               _datePicker(context),
               if (!_isEdit) ...[
                 const SizedBox(height: 12),
-                _field('Password (optional)', _password, hint: 'Leave blank if no login needed', obscure: true),
+                _field(
+                  'Password (optional)',
+                  _password,
+                  hint: 'Leave blank if no login needed',
+                  obscure: true,
+                ),
                 const SizedBox(height: 4),
                 Text(
                   'If provided, this technician can log in via the mobile app.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).hintColor),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).hintColor,
+                  ),
                 ),
               ],
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: 'Cancel',
-                      variant: AppButtonVariant.secondary,
-                      expanded: true,
-                      onPressed: _loading ? null : () => Navigator.of(context).pop(),
+              BottomSafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.secondary,
+                        expanded: true,
+                        onPressed: _loading ? null : close,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppButton(
-                      label: _isEdit ? 'Update Technician' : 'Add Technician',
-                      expanded: true,
-                      loading: _loading,
-                      onPressed: _loading ? null : _submit,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AppButton(
+                        label: _isEdit ? 'Update Technician' : 'Add Technician',
+                        expanded: true,
+                        loading: _loading,
+                        onPressed: _loading ? null : _submit,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],
         ),
       ),
+    );
+
+    if (!widget.asSheet) return content(null);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.8,
+      minChildSize: 0.55,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scroll) => content(scroll),
     );
   }
 
@@ -571,7 +718,10 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
@@ -584,17 +734,35 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     );
   }
 
-  Widget _dropdown(String label, String value, List<String> options, ValueChanged<String?> onChanged) {
+  Widget _dropdown(
+    String label,
+    String value,
+    List<String> options,
+    ValueChanged<String?> onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           initialValue: value,
+          isExpanded: true,
+          menuMaxHeight: 360,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: Theme.of(context).colorScheme.surface,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
           decoration: const InputDecoration(isDense: true),
           items: options
-              .map((o) => DropdownMenuItem(value: o, child: Text(o, overflow: TextOverflow.ellipsis)))
+              .map(
+                (o) => DropdownMenuItem(
+                  value: o,
+                  child: Text(o, overflow: TextOverflow.ellipsis),
+                ),
+              )
               .toList(),
           onChanged: _loading ? null : onChanged,
         ),
@@ -607,7 +775,10 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Join Date', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        const Text(
+          'Join Date',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -626,17 +797,27 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             decoration: BoxDecoration(
-              border: Border.all(color: isDark ? const Color(0xFF374151) : AppColors.gray200),
+              border: Border.all(
+                color: isDark ? const Color(0xFF374151) : AppColors.gray200,
+              ),
               borderRadius: BorderRadius.circular(12),
               color: isDark ? const Color(0xFF0B1220) : AppColors.gray50,
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.gray400),
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 16,
+                  color: AppColors.gray400,
+                ),
                 const SizedBox(width: 8),
                 Text(
-                  _joinDate != null ? _joinDate!.toIso8601String().substring(0, 10) : 'Select date',
-                  style: TextStyle(color: _joinDate != null ? null : AppColors.gray400),
+                  _joinDate != null
+                      ? _joinDate!.toIso8601String().substring(0, 10)
+                      : 'Select date',
+                  style: TextStyle(
+                    color: _joinDate != null ? null : AppColors.gray400,
+                  ),
                 ),
               ],
             ),
@@ -662,7 +843,7 @@ class _TechniciansSkeleton extends StatelessWidget {
         crossAxisCount: cols,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: cols == 1 ? 2.0 : 1.4,
+        childAspectRatio: cols == 1 ? 1.6 : 1.25,
       ),
       itemCount: 6,
       itemBuilder: (context, index) => const AppCard(
@@ -678,7 +859,7 @@ class _TechniciansSkeleton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ShimmerBox(width: 140, height: 14, borderRadius: 8),
-                      SizedBox(height: 8),
+                      SizedBox(height: 6),
                       ShimmerBox(width: 90, height: 12, borderRadius: 8),
                     ],
                   ),
@@ -686,18 +867,18 @@ class _TechniciansSkeleton extends StatelessWidget {
                 ShimmerBox(width: 54, height: 16, borderRadius: 999),
               ],
             ),
-            SizedBox(height: 12),
-            ShimmerBox(height: 12, borderRadius: 8),
-            SizedBox(height: 8),
-            ShimmerBox(width: 180, height: 12, borderRadius: 8),
-            SizedBox(height: 12),
+            SizedBox(height: 10),
+            ShimmerBox(height: 11, borderRadius: 8),
+            SizedBox(height: 6),
+            ShimmerBox(width: 180, height: 11, borderRadius: 8),
+            SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: ShimmerBox(height: 44, borderRadius: 12)),
+                Expanded(child: ShimmerBox(height: 38, borderRadius: 12)),
                 SizedBox(width: 8),
-                Expanded(child: ShimmerBox(height: 44, borderRadius: 12)),
+                Expanded(child: ShimmerBox(height: 38, borderRadius: 12)),
                 SizedBox(width: 8),
-                Expanded(child: ShimmerBox(height: 44, borderRadius: 12)),
+                Expanded(child: ShimmerBox(height: 38, borderRadius: 12)),
               ],
             ),
           ],

@@ -9,7 +9,7 @@ class AmcRepository {
 
   Future<List<AmcContract>> fetchContracts({String status = ''}) async {
     final response = await _dio.get(
-      '/amc',
+      'amc',
       queryParameters: {
         'limit': 100,
         if (status.isNotEmpty && status != 'All') 'status': status,
@@ -24,13 +24,13 @@ class AmcRepository {
   }
 
   Future<AmcContract> fetchById(String id) async {
-    final response = await _dio.get('/amc/$id');
+    final response = await _dio.get('amc/$id');
     return AmcContract.fromJson(_asMap(_asMap(response.data)['data']));
   }
 
-  Future<void> create(Map<String, dynamic> payload) => _dio.post('/amc', data: payload);
-  Future<void> update(String id, Map<String, dynamic> payload) => _dio.put('/amc/$id', data: payload);
-  Future<void> delete(String id) => _dio.delete('/amc/$id');
+  Future<void> create(Map<String, dynamic> payload) => _dio.post('amc', data: payload);
+  Future<void> update(String id, Map<String, dynamic> payload) => _dio.put('amc/$id', data: payload);
+  Future<void> delete(String id) => _dio.delete('amc/$id');
 
   static Map<String, dynamic> _asMap(dynamic v) {
     if (v is Map<String, dynamic>) return v;
@@ -40,4 +40,3 @@ class AmcRepository {
 
   static List<dynamic> _asList(dynamic v) => v is List ? v : const [];
 }
-

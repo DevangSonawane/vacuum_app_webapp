@@ -8,7 +8,7 @@ class DashboardRepository {
   final Dio _dio;
 
   Future<DashboardData> fetchDashboard() async {
-    final response = await _dio.get('/dashboard');
+    final response = await _dio.get('dashboard');
     final root = _asMap(response.data);
     final success = root['success'] == true;
     if (!success) {
@@ -24,4 +24,3 @@ Map<String, dynamic> _asMap(dynamic value) {
   if (value is Map) return value.map((k, v) => MapEntry(k.toString(), v));
   return <String, dynamic>{};
 }
-

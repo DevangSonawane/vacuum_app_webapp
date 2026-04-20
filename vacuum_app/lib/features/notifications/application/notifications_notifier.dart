@@ -18,7 +18,7 @@ final notificationsProvider =
     AsyncNotifierProvider<NotificationsNotifier, NotificationsState>(NotificationsNotifier.new);
 
 class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
-  static const _wsUrl = 'wss://vaccumapi-production.up.railway.app/ws';
+  static const _wsUrl = 'wss://vaccumapi.onrender.com/ws';
 
   NotificationsRepository get _repo => ref.read(notificationsRepositoryProvider);
 
@@ -221,4 +221,3 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     }
   }
 }
-

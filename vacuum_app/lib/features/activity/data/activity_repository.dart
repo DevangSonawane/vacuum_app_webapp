@@ -9,7 +9,7 @@ class ActivityRepository {
 
   Future<List<ActivityItem>> fetchActivity({String type = ''}) async {
     final response = await _dio.get(
-      '/activity',
+      'activity',
       queryParameters: {
         'limit': 50,
         if (type.isNotEmpty && type != 'All') 'type': type,
@@ -32,4 +32,3 @@ class ActivityRepository {
 
   static List<dynamic> _asList(dynamic v) => v is List ? v : const [];
 }
-

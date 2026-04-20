@@ -12,6 +12,7 @@ import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
@@ -44,21 +45,28 @@ class ReportsScreen extends ConsumerWidget {
           children: [
             SectionHeader(
               title: 'Inspection & Service Reports',
-              subtitle: state.whenOrNull(data: (d) => '${d.items.length} reports'),
+              subtitle: state.whenOrNull(
+                data: (d) => '${d.items.length} reports',
+              ),
               action: canEdit
                   ? AppButton(
                       label: 'New Report',
-                      onPressed: () => _openNewReportSheet(context, ref),
+                      onPressed: () => context.push('/reports/new'),
                     )
                   : null,
             ),
             const SizedBox(height: 12),
             state.when(
               loading: () => const _ReportsSkeleton(),
-              error: (e, _) => EmptyState(icon: Icons.error_outline, title: 'Failed to load', description: e.toString()),
+              error: (e, _) => EmptyState(
+                icon: Icons.error_outline,
+                title: 'Failed to load',
+                description: e.toString(),
+              ),
               data: (data) {
                 final counts = <String, int>{
-                  for (final s in _reportStatuses) s: data.items.where((r) => r.status == s).length,
+                  for (final s in _reportStatuses)
+                    s: data.items.where((r) => r.status == s).length,
                 };
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,14 +74,16 @@ class ReportsScreen extends ConsumerWidget {
                     _FilterTabs(
                       value: data.statusFilter,
                       counts: counts,
-                      onChanged: (s) => ref.read(reportsProvider.notifier).setFilter(s),
+                      onChanged: (s) =>
+                          ref.read(reportsProvider.notifier).setFilter(s),
                     ),
                     const SizedBox(height: 16),
                     if (data.items.isEmpty)
                       const EmptyState(
                         icon: Icons.description_outlined,
                         title: 'No reports found',
-                        description: 'Create a new report or adjust the filter.',
+                        description:
+                            'Create a new report or adjust the filter.',
                       )
                     else
                       Builder(
@@ -83,12 +93,13 @@ class ReportsScreen extends ConsumerWidget {
                           return GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: cols,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: cols == 1 ? 1.55 : 1.35,
-                            ),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: cols,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: cols == 1 ? 1.55 : 1.35,
+                                ),
                             itemCount: data.items.length,
                             itemBuilder: (context, i) {
                               final r = data.items[i];
@@ -96,8 +107,10 @@ class ReportsScreen extends ConsumerWidget {
                                 report: r,
                                 canApprove: canApprove && r.status == 'Pending',
                                 onTap: () => context.go('/reports/${r.id}'),
-                                onApprove: () => _setStatus(context, ref, r.id, 'Approved'),
-                                onReject: () => _setStatus(context, ref, r.id, 'Rejected'),
+                                onApprove: () =>
+                                    _setStatus(context, ref, r.id, 'Approved'),
+                                onReject: () =>
+                                    _setStatus(context, ref, r.id, 'Rejected'),
                               );
                             },
                           );
@@ -113,8 +126,15 @@ class ReportsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _setStatus(BuildContext context, WidgetRef ref, String id, String status) async {
-    final ok = await ref.read(reportsProvider.notifier).updateStatus(id, status);
+  Future<void> _setStatus(
+    BuildContext context,
+    WidgetRef ref,
+    String id,
+    String status,
+  ) async {
+    final ok = await ref
+        .read(reportsProvider.notifier)
+        .updateStatus(id, status);
     if (!context.mounted) return;
     AppToast.show(
       context,
@@ -122,36 +142,59 @@ class ReportsScreen extends ConsumerWidget {
       type: ok ? AppToastType.success : AppToastType.error,
     );
   }
+}
 
-  Future<void> _openNewReportSheet(BuildContext context, WidgetRef ref) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (ctx) => _NewReportSheet(
-        dio: ref.read(dioProvider),
-        onSubmit: (payload, files) async {
-          final id = await ref.read(reportsProvider.notifier).create(payload);
-          if (!context.mounted) return;
-          if (id == null || id.isEmpty) {
-            AppToast.show(context, message: 'Failed to create report', type: AppToastType.error);
-            return;
-          }
-          if (files.isNotEmpty) {
-            await ref.read(reportsProvider.notifier).uploadAndLinkImages(id, files);
-          }
-          if (!context.mounted) return;
-          Navigator.of(ctx).pop();
-          AppToast.show(context, message: 'Report submitted!', type: AppToastType.success);
-        },
-      ),
+class ReportCreateScreen extends ConsumerWidget {
+  const ReportCreateScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    void close() {
+      final nav = Navigator.of(context);
+      if (nav.canPop()) {
+        nav.pop();
+      } else {
+        context.go('/reports');
+      }
+    }
+
+    return _NewReportSheet(
+      asSheet: false,
+      dio: ref.read(dioProvider),
+      onSubmit: (payload, files) async {
+        final id = await ref.read(reportsProvider.notifier).create(payload);
+        if (!context.mounted) return;
+        if (id == null || id.isEmpty) {
+          AppToast.show(
+            context,
+            message: 'Failed to create report',
+            type: AppToastType.error,
+          );
+          return;
+        }
+        if (files.isNotEmpty) {
+          await ref
+              .read(reportsProvider.notifier)
+              .uploadAndLinkImages(id, files);
+        }
+        if (!context.mounted) return;
+        close();
+        AppToast.show(
+          context,
+          message: 'Report submitted!',
+          type: AppToastType.success,
+        );
+      },
     );
   }
 }
 
 class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({required this.value, required this.counts, required this.onChanged});
+  const _FilterTabs({
+    required this.value,
+    required this.counts,
+    required this.onChanged,
+  });
 
   final String value;
   final Map<String, int> counts;
@@ -172,11 +215,20 @@ class _FilterTabs extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 onTap: () => onChanged(t),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
-                    color: value == t ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE)) : Colors.transparent,
-                    border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.16)),
+                    color: value == t
+                        ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.16),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -185,18 +237,31 @@ class _FilterTabs extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
-                          color: value == t ? (isDark ? Colors.white : AppColors.blue600) : Theme.of(context).hintColor,
+                          color: value == t
+                              ? (isDark ? Colors.white : AppColors.blue600)
+                              : Theme.of(context).hintColor,
                         ),
                       ),
                       if (t != 'All') ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Text('${counts[t] ?? 0}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                          child: Text(
+                            '${counts[t] ?? 0}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -250,7 +315,12 @@ class _ReportCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(report.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            report.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 4),
           Text(
             '${report.clientName} • ${report.jobTitle}',
@@ -263,9 +333,13 @@ class _ReportCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF111827) : AppColors.gray50,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF111827)
+                  : AppColors.gray50,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+              ),
             ),
             child: Text(
               findingsPreview.isEmpty ? 'No findings' : findingsPreview,
@@ -278,14 +352,26 @@ class _ReportCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.image_outlined, size: 16, color: AppColors.gray400),
+                const Icon(
+                  Icons.image_outlined,
+                  size: 16,
+                  color: AppColors.gray400,
+                ),
                 const SizedBox(width: 6),
-                Text('${report.imageCount > 0 ? report.imageCount : report.images.length} photos', style: const TextStyle(fontSize: 12, color: AppColors.gray500)),
+                Text(
+                  '${report.imageCount > 0 ? report.imageCount : report.images.length} photos',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.gray500,
+                  ),
+                ),
               ],
             ),
           ],
           const SizedBox(height: 10),
-          Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+          Divider(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -293,19 +379,28 @@ class _ReportCard extends StatelessWidget {
                 child: Text(
                   '${report.technicianName} • ${_shortDate(report.reportDate) ?? '—'}',
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).hintColor,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               if (canApprove) ...[
                 IconButton(
                   tooltip: 'Approve',
                   onPressed: onApprove,
-                  icon: const Icon(Icons.check_circle_outline, color: AppColors.emerald500),
+                  icon: const Icon(
+                    Icons.check_circle_outline,
+                    color: AppColors.emerald500,
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Reject',
                   onPressed: onReject,
-                  icon: const Icon(Icons.cancel_outlined, color: AppColors.red500),
+                  icon: const Icon(
+                    Icons.cancel_outlined,
+                    color: AppColors.red500,
+                  ),
                 ),
               ],
             ],
@@ -324,10 +419,19 @@ String? _shortDate(String? iso) {
 }
 
 class _NewReportSheet extends StatefulWidget {
-  const _NewReportSheet({required this.dio, required this.onSubmit});
+  const _NewReportSheet({
+    required this.dio,
+    required this.onSubmit,
+    this.asSheet = true,
+  });
 
   final Dio dio;
-  final Future<void> Function(Map<String, dynamic> payload, List<({String path, String name})> files) onSubmit;
+  final Future<void> Function(
+    Map<String, dynamic> payload,
+    List<({String path, String name})> files,
+  )
+  onSubmit;
+  final bool asSheet;
 
   @override
   State<_NewReportSheet> createState() => _NewReportSheetState();
@@ -367,13 +471,21 @@ class _NewReportSheetState extends State<_NewReportSheet> {
   Future<void> _fetchDropdowns() async {
     setState(() => _fetching = true);
     try {
-      final jobsRes = await widget.dio.get('/jobs', queryParameters: {'limit': 100});
+      final jobsRes = await widget.dio.get(
+        'jobs',
+        queryParameters: {'limit': 100},
+      );
       final jobsRoot = _asMap(jobsRes.data);
       final jobList = _asList(jobsRoot['data']);
       _jobs = jobList
           .whereType<Map>()
           .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-          .map((e) => (id: (e['id'] ?? '').toString(), title: (e['title'] ?? '').toString()))
+          .map(
+            (e) => (
+              id: (e['id'] ?? '').toString(),
+              title: (e['title'] ?? '').toString(),
+            ),
+          )
           .where((e) => e.id.isNotEmpty)
           .toList();
 
@@ -404,8 +516,15 @@ class _NewReportSheetState extends State<_NewReportSheet> {
 
   Future<void> _submit() async {
     if (_loading) return;
-    if (_jobId == null || _jobId!.isEmpty || _techId == null || _title.text.trim().isEmpty) {
-      AppToast.show(context, message: 'Job, technician and title are required.', type: AppToastType.error);
+    if (_jobId == null ||
+        _jobId!.isEmpty ||
+        _techId == null ||
+        _title.text.trim().isEmpty) {
+      AppToast.show(
+        context,
+        message: 'Job, technician and title are required.',
+        type: AppToastType.error,
+      );
       return;
     }
 
@@ -417,26 +536,60 @@ class _NewReportSheetState extends State<_NewReportSheet> {
       'findings': _findings.text.trim(),
       'recommendations': _recommendations.text.trim(),
     };
-    await widget.onSubmit(payload, [for (final f in _files) (path: f.path, name: f.name)]);
+    await widget.onSubmit(payload, [
+      for (final f in _files) (path: f.path, name: f.name),
+    ]);
     if (!mounted) return;
     setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      minChildSize: 0.6,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scroll) => SingleChildScrollView(
-        controller: scroll,
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+    void close() {
+      final nav = Navigator.of(context);
+      if (nav.canPop()) {
+        nav.pop();
+      } else {
+        context.go('/reports');
+      }
+    }
+
+    Widget content(ScrollController? scroll) => SingleChildScrollView(
+      controller: scroll,
+      padding: EdgeInsets.fromLTRB(
+        16,
+        widget.asSheet ? 0 : 16,
+        16,
+        MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SafeArea(
+        top: !widget.asSheet,
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('New Report', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
+            if (!widget.asSheet) ...[
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: _loading ? null : close,
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  Text(
+                    'New Report',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ] else ...[
+              Text(
+                'New Report',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+            ],
             if (_fetching)
               const AppCard(child: ShimmerBox(height: 140))
             else ...[
@@ -448,7 +601,12 @@ class _NewReportSheetState extends State<_NewReportSheet> {
               const SizedBox(height: 12),
               _field('Findings', _findings, hint: 'Findings…', lines: 3),
               const SizedBox(height: 12),
-              _field('Recommendations', _recommendations, hint: 'Recommendations…', lines: 2),
+              _field(
+                'Recommendations',
+                _recommendations,
+                hint: 'Recommendations…',
+                lines: 2,
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -489,21 +647,28 @@ class _NewReportSheetState extends State<_NewReportSheet> {
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,
-                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image_outlined),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.broken_image_outlined),
                         ),
                       ),
                       Positioned(
                         right: 6,
                         top: 6,
                         child: InkWell(
-                          onTap: _loading ? null : () => setState(() => _files.removeAt(i)),
+                          onTap: _loading
+                              ? null
+                              : () => setState(() => _files.removeAt(i)),
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.55),
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: const Icon(Icons.close, color: Colors.white, size: 14),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 14,
+                            ),
                           ),
                         ),
                       ),
@@ -511,39 +676,59 @@ class _NewReportSheetState extends State<_NewReportSheet> {
                   ),
                 ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: 'Cancel',
-                      variant: AppButtonVariant.secondary,
-                      expanded: true,
-                      onPressed: _loading ? null : () => Navigator.of(context).pop(),
+              BottomSafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.secondary,
+                        expanded: true,
+                        onPressed: _loading ? null : close,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppButton(
-                      label: 'Submit Report',
-                      expanded: true,
-                      loading: _loading,
-                      onPressed: _loading ? null : _submit,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Submit Report',
+                        expanded: true,
+                        loading: _loading,
+                        onPressed: _loading ? null : _submit,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],
         ),
       ),
     );
+
+    if (!widget.asSheet) return content(null);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.6,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scroll) => content(scroll),
+    );
   }
 
-  Widget _field(String label, TextEditingController ctrl, {String? hint, int lines = 1}) {
+  Widget _field(
+    String label,
+    TextEditingController ctrl, {
+    String? hint,
+    int lines = 1,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
@@ -559,16 +744,29 @@ class _NewReportSheetState extends State<_NewReportSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Linked Job *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        const Text(
+          'Linked Job *',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           initialValue: _jobId,
+          isExpanded: true,
+          menuMaxHeight: 360,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: Theme.of(context).colorScheme.surface,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
           decoration: const InputDecoration(isDense: true),
           items: _jobs
-              .map((j) => DropdownMenuItem<String>(
-                    value: j.id,
-                    child: Text('${j.id} — ${j.title}', overflow: TextOverflow.ellipsis),
-                  ))
+              .map(
+                (j) => DropdownMenuItem<String>(
+                  value: j.id,
+                  child: Text(
+                    '${j.id} — ${j.title}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
               .toList(),
           onChanged: _loading ? null : (v) => setState(() => _jobId = v),
         ),
@@ -580,12 +778,27 @@ class _NewReportSheetState extends State<_NewReportSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Technician *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        const Text(
+          'Technician *',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         DropdownButtonFormField<int>(
           initialValue: _techId,
+          isExpanded: true,
+          menuMaxHeight: 360,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: Theme.of(context).colorScheme.surface,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
           decoration: const InputDecoration(isDense: true),
-          items: _techs.map((t) => DropdownMenuItem<int>(value: t.id, child: Text(t.name, overflow: TextOverflow.ellipsis))).toList(),
+          items: _techs
+              .map(
+                (t) => DropdownMenuItem<int>(
+                  value: t.id,
+                  child: Text(t.name, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
           onChanged: _loading ? null : (v) => setState(() => _techId = v),
         ),
       ],

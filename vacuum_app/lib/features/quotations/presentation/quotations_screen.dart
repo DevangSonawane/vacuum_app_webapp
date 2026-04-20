@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -15,6 +18,12 @@ import '../../auth/application/auth_notifier.dart';
 import '../../clients/data/clients_repository.dart';
 import '../application/quotations_notifier.dart';
 import '../domain/quotation.dart';
+
+final _inr0 = NumberFormat.currency(
+  locale: 'en_IN',
+  symbol: '₹',
+  decimalDigits: 0,
+);
 
 class QuotationsScreen extends ConsumerStatefulWidget {
   const QuotationsScreen({super.key});
@@ -24,28 +33,6 @@ class QuotationsScreen extends ConsumerStatefulWidget {
 }
 
 class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
-  List<({int id, String name})> _clients = const [];
-  bool _loadingClients = true;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_loadClients());
-  }
-
-  Future<void> _loadClients() async {
-    setState(() => _loadingClients = true);
-    try {
-      final repo = ClientsRepository(dio: ref.read(dioProvider));
-      final list = await repo.fetchClients(search: '', type: '');
-      _clients = [for (final c in list) (id: c.id, name: c.name)];
-    } catch (_) {
-      _clients = const [];
-    } finally {
-      if (mounted) setState(() => _loadingClients = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
@@ -68,7 +55,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
             action: canEdit
                 ? AppButton(
                     label: 'New Quotation',
-                    onPressed: _loadingClients ? null : () => _openCreateSheet(context),
+                    onPressed: () => context.push('/quotations/new'),
                   )
                 : null,
           ),
@@ -87,7 +74,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                 crossAxisCount: cols,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: cols == 1 ? 1.25 : 1.15,
+                childAspectRatio: cols == 1 ? 1.8 : 1.45,
               ),
               itemCount: quotations.length,
               itemBuilder: (context, i) => _QuotationCard(
@@ -112,29 +99,6 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
     );
   }
 
-  Future<void> _openCreateSheet(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (ctx) => _CreateQuotationSheet(
-        clients: _clients,
-        onCreate: (clientId, clientName, title, validTill, items) {
-          ref.read(quotationsProvider.notifier).addQuotation(
-                clientId: clientId,
-                clientName: clientName,
-                title: title,
-                validTill: validTill,
-                items: items,
-              );
-          Navigator.of(ctx).pop();
-          AppToast.show(context, message: 'Quotation created!', type: AppToastType.success);
-        },
-      ),
-    );
-  }
-
   Future<void> _openDetailSheet(BuildContext context, Quotation q) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -142,6 +106,93 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
       showDragHandle: true,
       useSafeArea: true,
       builder: (_) => _QuotationDetailSheet(quotation: q),
+    );
+  }
+}
+
+class QuotationCreateScreen extends ConsumerStatefulWidget {
+  const QuotationCreateScreen({super.key});
+
+  @override
+  ConsumerState<QuotationCreateScreen> createState() =>
+      _QuotationCreateScreenState();
+}
+
+class _QuotationCreateScreenState extends ConsumerState<QuotationCreateScreen> {
+  List<({int id, String name})> _clients = const [];
+  bool _loadingClients = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadClients());
+  }
+
+  Future<void> _loadClients() async {
+    setState(() => _loadingClients = true);
+    try {
+      final repo = ClientsRepository(dio: ref.read(dioProvider));
+      final list = await repo.fetchClients(search: '', type: '');
+      _clients = [for (final c in list) (id: c.id, name: c.name)];
+    } catch (_) {
+      _clients = const [];
+    } finally {
+      if (mounted) setState(() => _loadingClients = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    void close() {
+      final r = GoRouter.of(context);
+      if (r.canPop()) {
+        r.pop();
+      } else {
+        context.go('/quotations');
+      }
+    }
+
+    if (_loadingClients) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_clients.isEmpty) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const EmptyState(
+            icon: Icons.groups_outlined,
+            title: 'No clients',
+            description: 'Create a client first to make a quotation.',
+          ),
+          const SizedBox(height: 12),
+          AppButton(
+            label: 'Add Client',
+            onPressed: () => context.go('/clients/new'),
+          ),
+        ],
+      );
+    }
+
+    return _CreateQuotationSheet(
+      asSheet: false,
+      clients: _clients,
+      onCreate: (clientId, clientName, title, validTill, items) {
+        ref
+            .read(quotationsProvider.notifier)
+            .addQuotation(
+              clientId: clientId,
+              clientName: clientName,
+              title: title,
+              validTill: validTill,
+              items: items,
+            );
+        close();
+        AppToast.show(
+          context,
+          message: 'Quotation created!',
+          type: AppToastType.success,
+        );
+      },
     );
   }
 }
@@ -163,6 +214,8 @@ class _QuotationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final amountText = _inr0.format(quotation.amount);
+
     return AppCard(
       hover: true,
       onTap: onTap,
@@ -186,17 +239,32 @@ class _QuotationCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(quotation.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+                    Text(
+                      quotation.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
                     const SizedBox(height: 2),
-                    Text(quotation.clientName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
+                    Text(
+                      quotation.clientName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
               StatusBadge(label: quotation.status),
             ],
           ),
-          const Spacer(),
-          Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+          const SizedBox(height: 12),
+          Divider(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
           Row(
             children: [
               Expanded(
@@ -204,8 +272,9 @@ class _QuotationCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '₹${quotation.amount.toStringAsFixed(0)}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      amountText,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             color: AppColors.blue600,
                             fontWeight: FontWeight.w900,
                             fontSize: 22,
@@ -214,7 +283,10 @@ class _QuotationCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Valid till ${quotation.validTill ?? '—'}',
-                      style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -225,7 +297,10 @@ class _QuotationCard extends StatelessWidget {
                     IconButton(
                       tooltip: 'Approve',
                       onPressed: onApprove,
-                      icon: const Icon(Icons.check, color: AppColors.emerald500),
+                      icon: const Icon(
+                        Icons.check,
+                        color: AppColors.emerald500,
+                      ),
                     ),
                     IconButton(
                       tooltip: 'Reject',
@@ -243,10 +318,22 @@ class _QuotationCard extends StatelessWidget {
 }
 
 class _CreateQuotationSheet extends StatefulWidget {
-  const _CreateQuotationSheet({required this.clients, required this.onCreate});
+  const _CreateQuotationSheet({
+    required this.clients,
+    required this.onCreate,
+    this.asSheet = true,
+  });
 
   final List<({int id, String name})> clients;
-  final void Function(int clientId, String clientName, String title, String? validTill, List<QuotationItem> items) onCreate;
+  final void Function(
+    int clientId,
+    String clientName,
+    String title,
+    String? validTill,
+    List<QuotationItem> items,
+  )
+  onCreate;
+  final bool asSheet;
 
   @override
   State<_CreateQuotationSheet> createState() => _CreateQuotationSheetState();
@@ -280,96 +367,177 @@ class _CreateQuotationSheetState extends State<_CreateQuotationSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      minChildSize: 0.6,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scroll) => SingleChildScrollView(
-        controller: scroll,
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+    void close() {
+      final r = GoRouter.of(context);
+      if (r.canPop()) {
+        r.pop();
+      } else {
+        context.go('/quotations');
+      }
+    }
+
+    Widget content(ScrollController? scroll) => SingleChildScrollView(
+      controller: scroll,
+      padding: EdgeInsets.fromLTRB(
+        16,
+        widget.asSheet ? 0 : 16,
+        16,
+        MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SafeArea(
+        top: !widget.asSheet,
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Create Quotation', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
+            if (!widget.asSheet) ...[
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: close,
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  Text(
+                    'Create Quotation',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ] else ...[
+              Text(
+                'Create Quotation',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+            ],
             Row(
               children: [
                 Expanded(child: _clientDropdown()),
                 const SizedBox(width: 12),
-                Expanded(child: _field('Quotation Title *', _title, hint: 'Annual contract')),
+                Expanded(
+                  child: _field(
+                    'Quotation Title *',
+                    _title,
+                    hint: 'Annual contract',
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             _field('Valid Till', _validTill, hint: 'YYYY-MM-DD'),
             const SizedBox(height: 16),
-            const Text('Line Items', style: TextStyle(fontWeight: FontWeight.w800)),
+            const Text(
+              'Line Items',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 10),
             for (int i = 0; i < _items.length; i++) ...[
               _LineItemRow(
                 value: _items[i],
                 onChanged: (v) => setState(() => _items[i] = v),
-                onRemove: _items.length > 1 ? () => setState(() => _items.removeAt(i)) : null,
+                onRemove: _items.length > 1
+                    ? () => setState(() => _items.removeAt(i))
+                    : null,
               ),
               const SizedBox(height: 10),
             ],
             TextButton.icon(
-              onPressed: () => setState(() => _items = [..._items, const _LineItemState()]),
+              onPressed: () =>
+                  setState(() => _items = [..._items, const _LineItemState()]),
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add Item'),
             ),
             const SizedBox(height: 12),
-            Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+            Divider(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+            ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Total Amount', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '₹${_total.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: AppColors.blue600,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 22,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                AppButton(
-                  label: 'Create Quotation',
-                  onPressed: () {
-                    if (_clientId == null || _title.text.trim().isEmpty) {
-                      AppToast.show(context, message: 'Client and title are required.', type: AppToastType.error);
-                      return;
-                    }
-                    final items = [
-                      for (final it in _items)
-                        QuotationItem(
-                          description: it.description.trim(),
-                          qty: it.qty,
-                          rate: it.rate,
-                          total: it.total,
+            BottomSafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Amount',
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 12,
+                          ),
                         ),
-                    ].where((e) => e.description.isNotEmpty).toList();
+                        const SizedBox(height: 4),
+                        Text(
+                          _inr0.format(_total),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: AppColors.blue600,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 22,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AppButton(
+                    label: 'Create Quotation',
+                    onPressed: () {
+                      if (_clientId == null || _title.text.trim().isEmpty) {
+                        AppToast.show(
+                          context,
+                          message: 'Client and title are required.',
+                          type: AppToastType.error,
+                        );
+                        return;
+                      }
+                      final items = [
+                        for (final it in _items)
+                          QuotationItem(
+                            description: it.description.trim(),
+                            qty: it.qty,
+                            rate: it.rate,
+                            total: it.total,
+                          ),
+                      ].where((e) => e.description.isNotEmpty).toList();
 
-                    if (items.isEmpty) {
-                      AppToast.show(context, message: 'Add at least one line item.', type: AppToastType.error);
-                      return;
-                    }
+                      if (items.isEmpty) {
+                        AppToast.show(
+                          context,
+                          message: 'Add at least one line item.',
+                          type: AppToastType.error,
+                        );
+                        return;
+                      }
 
-                    widget.onCreate(_clientId!, _clientName, _title.text.trim(), _validTill.text.trim().isEmpty ? null : _validTill.text.trim(), items);
-                  },
-                ),
-              ],
+                      widget.onCreate(
+                        _clientId!,
+                        _clientName,
+                        _title.text.trim(),
+                        _validTill.text.trim().isEmpty
+                            ? null
+                            : _validTill.text.trim(),
+                        items,
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
+    );
+
+    if (!widget.asSheet) return content(null);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.6,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scroll) => content(scroll),
     );
   }
 
@@ -377,16 +545,33 @@ class _CreateQuotationSheetState extends State<_CreateQuotationSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Client *', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        const Text(
+          'Client *',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         DropdownButtonFormField<int>(
           initialValue: _clientId,
+          isExpanded: true,
+          menuMaxHeight: 360,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: Theme.of(context).colorScheme.surface,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
           decoration: const InputDecoration(isDense: true),
-          items: widget.clients.map((c) => DropdownMenuItem<int>(value: c.id, child: Text(c.name, overflow: TextOverflow.ellipsis))).toList(),
+          items: widget.clients
+              .map(
+                (c) => DropdownMenuItem<int>(
+                  value: c.id,
+                  child: Text(c.name, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
           onChanged: (v) {
             setState(() {
               _clientId = v;
-              _clientName = widget.clients.firstWhere((e) => e.id == v, orElse: () => (id: 0, name: '')).name;
+              _clientName = widget.clients
+                  .firstWhere((e) => e.id == v, orElse: () => (id: 0, name: ''))
+                  .name;
             });
           },
         ),
@@ -398,16 +583,26 @@ class _CreateQuotationSheetState extends State<_CreateQuotationSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
-        TextField(controller: ctrl, decoration: InputDecoration(hintText: hint)),
+        TextField(
+          controller: ctrl,
+          decoration: InputDecoration(hintText: hint),
+        ),
       ],
     );
   }
 }
 
 class _LineItemRow extends StatelessWidget {
-  const _LineItemRow({required this.value, required this.onChanged, required this.onRemove});
+  const _LineItemRow({
+    required this.value,
+    required this.onChanged,
+    required this.onRemove,
+  });
 
   final _LineItemState value;
   final ValueChanged<_LineItemState> onChanged;
@@ -430,7 +625,8 @@ class _LineItemRow extends StatelessWidget {
           child: TextField(
             decoration: const InputDecoration(hintText: 'Qty'),
             keyboardType: TextInputType.number,
-            onChanged: (v) => onChanged(value.copyWith(qty: int.tryParse(v) ?? 1)),
+            onChanged: (v) =>
+                onChanged(value.copyWith(qty: int.tryParse(v) ?? 1)),
           ),
         ),
         const SizedBox(width: 8),
@@ -439,7 +635,8 @@ class _LineItemRow extends StatelessWidget {
           child: TextField(
             decoration: const InputDecoration(hintText: 'Rate'),
             keyboardType: TextInputType.number,
-            onChanged: (v) => onChanged(value.copyWith(rate: num.tryParse(v) ?? 0)),
+            onChanged: (v) =>
+                onChanged(value.copyWith(rate: num.tryParse(v) ?? 0)),
           ),
         ),
         const SizedBox(width: 8),
@@ -454,7 +651,10 @@ class _LineItemRow extends StatelessWidget {
             child: Text(
               '₹${value.total.toStringAsFixed(0)}',
               textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.blue600),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: AppColors.blue600,
+              ),
             ),
           ),
         ),
@@ -495,6 +695,7 @@ class _QuotationDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final amountText = _inr0.format(quotation.amount);
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -506,19 +707,33 @@ class _QuotationDetailSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(quotation.title, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              quotation.title,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: _Info(label: 'ID', value: quotation.id, monospace: true),
+                  child: _Info(
+                    label: 'ID',
+                    value: quotation.id,
+                    monospace: true,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('STATUS', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 10, fontWeight: FontWeight.w700)),
+                      Text(
+                        'STATUS',
+                        style: TextStyle(
+                          color: Theme.of(context).hintColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       StatusBadge(label: quotation.status),
                     ],
@@ -529,9 +744,16 @@ class _QuotationDetailSheet extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _Info(label: 'Client', value: quotation.clientName)),
+                Expanded(
+                  child: _Info(label: 'Client', value: quotation.clientName),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _Info(label: 'Valid Till', value: quotation.validTill ?? '—')),
+                Expanded(
+                  child: _Info(
+                    label: 'Valid Till',
+                    value: quotation.validTill ?? '—',
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -548,10 +770,23 @@ class _QuotationDetailSheet extends StatelessWidget {
                   for (final it in quotation.items)
                     DataRow(
                       cells: [
-                        DataCell(SizedBox(width: 220, child: Text(it.description, overflow: TextOverflow.ellipsis))),
+                        DataCell(
+                          SizedBox(
+                            width: 220,
+                            child: Text(
+                              it.description,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
                         DataCell(Text(it.qty.toString())),
                         DataCell(Text('₹${it.rate.toStringAsFixed(0)}')),
-                        DataCell(Text('₹${it.total.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w800))),
+                        DataCell(
+                          Text(
+                            '₹${it.total.toStringAsFixed(0)}',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
                       ],
                     ),
                 ],
@@ -564,11 +799,19 @@ class _QuotationDetailSheet extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('Grand Total', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12, fontWeight: FontWeight.w700)),
+                    Text(
+                      'Grand Total',
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
-                      '₹${quotation.amount.toStringAsFixed(0)}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      amountText,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             color: AppColors.blue600,
                             fontWeight: FontWeight.w900,
                             fontSize: 22,
@@ -586,7 +829,11 @@ class _QuotationDetailSheet extends StatelessWidget {
 }
 
 class _Info extends StatelessWidget {
-  const _Info({required this.label, required this.value, this.monospace = false});
+  const _Info({
+    required this.label,
+    required this.value,
+    this.monospace = false,
+  });
 
   final String label;
   final String value;
@@ -597,15 +844,25 @@ class _Info extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(), style: TextStyle(color: Theme.of(context).hintColor, fontSize: 10, fontWeight: FontWeight.w700)),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: Theme.of(context).hintColor,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(height: 6),
         Text(
           value,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontWeight: FontWeight.w700, fontFamily: monospace ? 'monospace' : null, color: monospace ? AppColors.blue600 : null),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontFamily: monospace ? 'monospace' : null,
+            color: monospace ? AppColors.blue600 : null,
+          ),
         ),
       ],
     );
   }
 }
-

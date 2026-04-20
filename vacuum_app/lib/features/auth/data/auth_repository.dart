@@ -22,7 +22,7 @@ class AuthRepository {
         payload['phone_number'] = digits.startsWith('91') ? '+$digits' : '+91$digits';
       }
 
-      final response = await _dio.post('/auth/login', data: payload);
+      final response = await _dio.post('auth/login', data: payload);
       final data = _asMap(response.data);
 
       final token = (data['token'] ?? '').toString();
@@ -43,7 +43,7 @@ class AuthRepository {
 
   Future<User> getMe() async {
     try {
-      final response = await _dio.get('/auth/me');
+      final response = await _dio.get('auth/me');
       final data = _asMap(response.data);
       final userJson = _asMap(data['user'] ?? data);
       final user = User.fromJson(userJson);
@@ -56,7 +56,7 @@ class AuthRepository {
 
   Future<String?> forgotPassword({required String email}) async {
     try {
-      final response = await _dio.post('/auth/forgot-password', data: {'email': email.trim()});
+      final response = await _dio.post('auth/forgot-password', data: {'email': email.trim()});
       final data = _asMap(response.data);
       final token = data['dev_only_reset_token'];
       return (token as Object?)?.toString();
@@ -72,7 +72,7 @@ class AuthRepository {
   }) async {
     try {
       await _dio.post(
-        '/auth/reset-password',
+        'auth/reset-password',
         data: {
           'token': token.trim(),
           'new_password': newPassword,

@@ -13,7 +13,7 @@ import {
   Select, SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = "https://vaccumapi-production.up.railway.app/api";
+const API_BASE_URL = "https://vaccumapi.onrender.com/api";
 
 const STATUS_GRAD = {
   Active:          "from-blue-500   to-blue-700",

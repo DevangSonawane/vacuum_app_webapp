@@ -8,7 +8,7 @@ class UsersRepository {
   final Dio _dio;
 
   Future<UsersPage> fetchUsers({required int page}) async {
-    final response = await _dio.get('/users', queryParameters: {'page': page});
+    final response = await _dio.get('users', queryParameters: {'page': page});
     final data = _asMap(response.data);
 
     final list = (data['data'] as List?) ?? const [];
@@ -28,21 +28,21 @@ class UsersRepository {
   }
 
   Future<void> updateUser(int id, Map<String, dynamic> payload) async {
-    await _dio.put('/users/$id', data: payload);
+    await _dio.put('users/$id', data: payload);
   }
 
   Future<void> createUser(Map<String, dynamic> payload) async {
-    await _dio.post('/users', data: payload);
+    await _dio.post('users', data: payload);
   }
 
   Future<AppUser> fetchById(int id) async {
-    final response = await _dio.get('/users/$id');
+    final response = await _dio.get('users/$id');
     final data = _asMap(_asMap(response.data)['data'] ?? response.data);
     return AppUser.fromJson(data);
   }
 
   Future<void> deactivateUser(int id) async {
-    await _dio.delete('/users/$id');
+    await _dio.delete('users/$id');
   }
 
   static Map<String, dynamic> _asMap(dynamic value) {

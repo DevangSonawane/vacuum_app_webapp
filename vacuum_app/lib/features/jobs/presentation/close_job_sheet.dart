@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 
 class CloseJobSheet extends StatefulWidget {
   const CloseJobSheet({
@@ -43,7 +44,9 @@ class _CloseJobSheetState extends State<CloseJobSheet> {
   Future<void> _submit() async {
     if (_loading) return;
     setState(() => _loading = true);
-    await widget.onClose([for (final f in _files) (path: f.path, name: f.name)]);
+    await widget.onClose([
+      for (final f in _files) (path: f.path, name: f.name),
+    ]);
     if (!mounted) return;
     setState(() => _loading = false);
   }
@@ -102,7 +105,10 @@ class _CloseJobSheetState extends State<CloseJobSheet> {
                       color: const Color(0xFFDBEAFE),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.work_outline, color: AppColors.blue600),
+                    child: const Icon(
+                      Icons.work_outline,
+                      color: AppColors.blue600,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -119,7 +125,11 @@ class _CloseJobSheetState extends State<CloseJobSheet> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(widget.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        Text(
+                          widget.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
@@ -169,21 +179,29 @@ class _CloseJobSheetState extends State<CloseJobSheet> {
                           width: double.infinity,
                           height: double.infinity,
                           errorBuilder: (context, error, stackTrace) =>
-                              const Center(child: Icon(Icons.broken_image_outlined)),
+                              const Center(
+                                child: Icon(Icons.broken_image_outlined),
+                              ),
                         ),
                       ),
                       Positioned(
                         right: 6,
                         top: 6,
                         child: InkWell(
-                          onTap: _loading ? null : () => setState(() => _files.removeAt(i)),
+                          onTap: _loading
+                              ? null
+                              : () => setState(() => _files.removeAt(i)),
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.55),
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: const Icon(Icons.close, color: Colors.white, size: 14),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 14,
+                            ),
                           ),
                         ),
                       ),
@@ -192,28 +210,35 @@ class _CloseJobSheetState extends State<CloseJobSheet> {
                 },
               )
             else
-              Text('No photos selected', style: TextStyle(color: Theme.of(context).hintColor)),
+              Text(
+                'No photos selected',
+                style: TextStyle(color: Theme.of(context).hintColor),
+              ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Cancel',
-                    variant: AppButtonVariant.secondary,
-                    expanded: true,
-                    onPressed: _loading ? null : () => Navigator.of(context).pop(),
+            BottomSafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: 'Cancel',
+                      variant: AppButtonVariant.secondary,
+                      expanded: true,
+                      onPressed: _loading
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppButton(
-                    label: 'Close Job',
-                    expanded: true,
-                    loading: _loading,
-                    onPressed: _loading ? null : _submit,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      label: 'Close Job',
+                      expanded: true,
+                      loading: _loading,
+                      onPressed: _loading ? null : _submit,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -221,4 +246,3 @@ class _CloseJobSheetState extends State<CloseJobSheet> {
     );
   }
 }
-

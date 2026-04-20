@@ -13,7 +13,7 @@ import {
   PageTransition, Card, SectionHeader, EmptyState, Button, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = "https://vaccumapi-production.up.railway.app/api";
+const API_BASE_URL = "https://vaccumapi.onrender.com/api";
 
 // ── Activity log — type meta ──────────────────────────────────
 const TYPE_META = {

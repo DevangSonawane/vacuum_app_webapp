@@ -9,7 +9,7 @@ class ClientsRepository {
 
   Future<List<Client>> fetchClients({String search = '', String type = ''}) async {
     final response = await _dio.get(
-      '/clients',
+      'clients',
       queryParameters: {
         'limit': 50,
         if (search.isNotEmpty) 'search': search,
@@ -26,15 +26,15 @@ class ClientsRepository {
   }
 
   Future<Client> fetchById(int id) async {
-    final response = await _dio.get('/clients/$id');
+    final response = await _dio.get('clients/$id');
     final root = _asMap(response.data);
     final data = _asMap(root['data'] ?? root);
     return Client.fromJson(data);
   }
 
-  Future<void> create(Map<String, dynamic> payload) => _dio.post('/clients', data: payload);
-  Future<void> update(int id, Map<String, dynamic> payload) => _dio.put('/clients/$id', data: payload);
-  Future<void> delete(int id) => _dio.delete('/clients/$id');
+  Future<void> create(Map<String, dynamic> payload) => _dio.post('clients', data: payload);
+  Future<void> update(int id, Map<String, dynamic> payload) => _dio.put('clients/$id', data: payload);
+  Future<void> delete(int id) => _dio.delete('clients/$id');
 
   static Map<String, dynamic> _asMap(dynamic v) {
     if (v is Map<String, dynamic>) return v;
@@ -44,4 +44,3 @@ class ClientsRepository {
 
   static List<dynamic> _asList(dynamic v) => v is List ? v : const [];
 }
-

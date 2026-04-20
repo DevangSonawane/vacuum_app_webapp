@@ -46,7 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       final dio = ref.read(dioProvider);
-      await dio.post('/auth/change-password', data: {
+      await dio.post('auth/change-password', data: {
         'new_password': _newPassword.text.trim(),
         'confirm_password': _confirm.text.trim(),
       });
@@ -213,4 +213,3 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 }
-

@@ -40,7 +40,11 @@ class _DashboardError extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).hintColor)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
             const SizedBox(height: 12),
             AppButton(
               label: 'Retry',
@@ -91,29 +95,21 @@ class _DashboardBody extends ConsumerWidget {
               StatCard(
                 title: 'Active Jobs',
                 value: stats.activeJobs.toString(),
-                icon: Icons.work_outline,
-                gradient: StatCard.blue,
                 changePercent: stats.momActiveJobs,
               ),
               StatCard(
                 title: 'Total Clients',
                 value: stats.totalClients.toString(),
-                icon: Icons.groups_outlined,
-                gradient: StatCard.emerald,
                 changePercent: stats.momClients,
               ),
               StatCard(
                 title: 'Technicians',
                 value: stats.activeTechnicians.toString(),
-                icon: Icons.engineering_outlined,
-                gradient: StatCard.purple,
                 subtitle: '${stats.totalTechnicians} total',
               ),
               StatCard(
-                title: 'Revenue (Approved)',
+                title: 'Revenue',
                 value: fmtRevenue(stats.revenueApproved),
-                icon: Icons.currency_rupee,
-                gradient: StatCard.amber,
                 changePercent: stats.momRevenue,
               ),
             ],
@@ -146,10 +142,15 @@ class _JobsAndRevenueCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxY = items.isEmpty
         ? 1.0
-        : (items.map((e) => e.jobsRaised > e.jobsCompleted ? e.jobsRaised : e.jobsCompleted).reduce(
-                (a, b) => a > b ? a : b,
-              ) +
-            2).toDouble();
+        : (items
+                      .map(
+                        (e) => e.jobsRaised > e.jobsCompleted
+                            ? e.jobsRaised
+                            : e.jobsCompleted,
+                      )
+                      .reduce((a, b) => a > b ? a : b) +
+                  2)
+              .toDouble();
 
     return AppCard(
       child: Column(
@@ -161,11 +162,16 @@ class _JobsAndRevenueCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Jobs & Revenue', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Jobs & Revenue',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       'Last 6 months',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).hintColor),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
                     ),
                   ],
                 ),
@@ -182,13 +188,20 @@ class _JobsAndRevenueCard extends StatelessWidget {
                 gridData: FlGridData(show: true, drawVerticalLine: false),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 30,
-                      getTitlesWidget: (v, meta) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10)),
+                      getTitlesWidget: (v, meta) => Text(
+                        v.toInt().toString(),
+                        style: const TextStyle(fontSize: 10),
+                      ),
                     ),
                   ),
                   bottomTitles: AxisTitles(
@@ -197,11 +210,16 @@ class _JobsAndRevenueCard extends StatelessWidget {
                       reservedSize: 26,
                       getTitlesWidget: (v, meta) {
                         final i = v.toInt();
-                        if (i < 0 || i >= items.length) return const SizedBox.shrink();
+                        if (i < 0 || i >= items.length) {
+                          return const SizedBox.shrink();
+                        }
                         final month = items[i].month.replaceAll(' 20', " '");
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: Text(month, style: const TextStyle(fontSize: 10)),
+                          child: Text(
+                            month,
+                            style: const TextStyle(fontSize: 10),
+                          ),
                         );
                       },
                     ),
@@ -295,17 +313,21 @@ class _JobStatusCard extends StatelessWidget {
                             ? [
                                 PieChartSectionData(
                                   value: 1,
-                                  color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+                                  color: Theme.of(
+                                    context,
+                                  ).dividerColor.withValues(alpha: 0.15),
                                   radius: 40,
                                   showTitle: false,
-                                )
+                                ),
                               ]
                             : sections,
                       ),
                     ),
                     Text(
                       total.toString(),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -337,7 +359,8 @@ class _JobStatusCard extends StatelessWidget {
                             ),
                             Text(
                               s.count.toString(),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
@@ -360,12 +383,14 @@ class _RevenueTrendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final points = <FlSpot>[
-      for (int i = 0; i < items.length; i++) FlSpot(i.toDouble(), items[i].revenue.toDouble()),
+      for (int i = 0; i < items.length; i++)
+        FlSpot(i.toDouble(), items[i].revenue.toDouble()),
     ];
 
     final maxY = items.isEmpty
         ? 1.0
-        : (items.map((e) => e.revenue).reduce((a, b) => a > b ? a : b) * 1.15).toDouble();
+        : (items.map((e) => e.revenue).reduce((a, b) => a > b ? a : b) * 1.15)
+              .toDouble();
 
     return AppCard(
       child: Column(
@@ -382,8 +407,12 @@ class _RevenueTrendCard extends StatelessWidget {
                 gridData: FlGridData(show: true, drawVerticalLine: false),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
@@ -400,11 +429,16 @@ class _RevenueTrendCard extends StatelessWidget {
                       reservedSize: 24,
                       getTitlesWidget: (v, meta) {
                         final i = v.toInt();
-                        if (i < 0 || i >= items.length) return const SizedBox.shrink();
+                        if (i < 0 || i >= items.length) {
+                          return const SizedBox.shrink();
+                        }
                         final month = items[i].month.replaceAll(' 20', " '");
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: Text(month, style: const TextStyle(fontSize: 10)),
+                          child: Text(
+                            month,
+                            style: const TextStyle(fontSize: 10),
+                          ),
                         );
                       },
                     ),
@@ -438,7 +472,10 @@ class _QuickOverviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Quick Overview', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Quick Overview',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           _ProgressRow(
             label: 'Jobs This Month',
@@ -470,7 +507,11 @@ class _QuickOverviewCard extends StatelessWidget {
 }
 
 class _ProgressRow extends StatelessWidget {
-  const _ProgressRow({required this.label, required this.item, required this.color});
+  const _ProgressRow({
+    required this.label,
+    required this.item,
+    required this.color,
+  });
 
   final String label;
   final QuickOverviewItem item;
@@ -489,12 +530,16 @@ class _ProgressRow extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
             Text(
               '${item.value}/${item.target}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
             ),
           ],
         ),
@@ -527,7 +572,11 @@ class _ProgressRow extends StatelessWidget {
 }
 
 class _RecentJobsCard extends StatelessWidget {
-  const _RecentJobsCard({required this.items, required this.onViewAll, required this.onJobTap});
+  const _RecentJobsCard({
+    required this.items,
+    required this.onViewAll,
+    required this.onJobTap,
+  });
 
   final List<RecentJob> items;
   final VoidCallback onViewAll;
@@ -541,7 +590,12 @@ class _RecentJobsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Recent Work Orders', style: Theme.of(context).textTheme.titleMedium)),
+              Expanded(
+                child: Text(
+                  'Recent Work Orders',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
               TextButton.icon(
                 onPressed: onViewAll,
                 icon: const Text('View all', style: TextStyle(fontSize: 12)),
@@ -553,7 +607,12 @@ class _RecentJobsCard extends StatelessWidget {
           if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(child: Text('No recent jobs', style: TextStyle(color: Theme.of(context).hintColor))),
+              child: Center(
+                child: Text(
+                  'No recent jobs',
+                  style: TextStyle(color: Theme.of(context).hintColor),
+                ),
+              ),
             )
           else
             SingleChildScrollView(
@@ -591,11 +650,19 @@ class _RecentJobsCard extends StatelessWidget {
                             child: Text(
                               job.title,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                        DataCell(Text(job.clientName?.isNotEmpty == true ? job.clientName! : '—')),
+                        DataCell(
+                          Text(
+                            job.clientName?.isNotEmpty == true
+                                ? job.clientName!
+                                : '—',
+                          ),
+                        ),
                         DataCell(StatusBadge(label: job.status)),
                         DataCell(StatusBadge(label: job.priority)),
                         DataCell(Text('₹${job.amount.toStringAsFixed(0)}')),

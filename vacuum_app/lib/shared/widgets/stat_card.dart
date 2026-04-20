@@ -8,16 +8,12 @@ class StatCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.value,
-    required this.icon,
-    required this.gradient,
     this.subtitle,
     this.changePercent,
   });
 
   final String title;
   final String value;
-  final IconData icon;
-  final LinearGradient gradient;
   final String? subtitle;
   final num? changePercent;
 
@@ -37,38 +33,36 @@ class StatCard extends StatelessWidget {
 
     return AppCard(
       hover: true,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            right: -8,
-            top: -8,
-            child: Opacity(
-              opacity: 0.10,
-              child: Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: gradient,
-                ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxHeight < 92;
+          final showFooter = constraints.maxHeight >= 72;
+          final valueFontSize = compact ? 26.0 : 32.0;
+
+          Widget footer = const SizedBox.shrink();
+          if (subtitle != null) {
+            footer = Text(
+              subtitle!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: titleColor),
+            );
+          } else if (changeText != null) {
+            footer = Text(
+              changeText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: changeColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
               ),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: gradient,
-              ),
-              child: Icon(icon, size: 20, color: Colors.white),
-            ),
-          ),
-          Column(
+            );
+          }
+
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -76,80 +70,47 @@ class StatCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: titleColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 450),
-                curve: Curves.easeOutCubic,
-                builder: (context, t, child) => Opacity(
-                  opacity: t,
-                  child: Transform.translate(offset: Offset(0, (1 - t) * 10), child: child),
+                  color: titleColor,
+                  fontWeight: FontWeight.w700,
                 ),
-                child: SizedBox(
-                  height: 40,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 450),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, t, child) => ClipRect(
+                    child: Opacity(
+                      opacity: t,
+                      child: Transform.translate(
+                        offset: Offset(0, (1 - t) * 10),
+                        child: child,
+                      ),
+                    ),
+                  ),
+                  child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      value,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                          ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontSize: valueFontSize,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
-              if (subtitle != null)
-                Text(
-                  subtitle!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: titleColor),
-                )
-              else if (changeText != null)
-                Text(
-                  changeText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: changeColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                )
-              else
-                const SizedBox(height: 14),
+              if (showFooter) ...[const SizedBox(height: 4), footer],
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
-
-  static const LinearGradient blue = LinearGradient(
-    colors: [AppColors.blue500, AppColors.blue600],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  static const LinearGradient emerald = LinearGradient(
-    colors: [AppColors.emerald500, Color(0xFF059669)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  static const LinearGradient purple = LinearGradient(
-    colors: [AppColors.purple500, Color(0xFF7C3AED)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  static const LinearGradient amber = LinearGradient(
-    colors: [AppColors.amber500, Color(0xFFD97706)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 }
-

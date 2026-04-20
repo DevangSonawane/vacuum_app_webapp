@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/stat_card.dart';
@@ -53,16 +54,13 @@ class AttendanceState {
 }
 
 final attendanceProvider =
-    StateNotifierProvider<AttendanceNotifier, AttendanceState>((ref) => AttendanceNotifier(ref));
+    StateNotifierProvider<AttendanceNotifier, AttendanceState>(
+      (ref) => AttendanceNotifier(ref),
+    );
 
 class AttendanceNotifier extends StateNotifier<AttendanceState> {
   AttendanceNotifier(this.ref)
-      : super(
-          AttendanceState(
-            date: DateTime.now(),
-            items: _seed,
-          ),
-        );
+    : super(AttendanceState(date: DateTime.now(), items: _seed));
 
   final Ref ref;
   bool _apiUnavailable = false;
@@ -135,23 +133,25 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
     final dio = ref.read(dioProvider);
     final date = _fmtDate(state.date);
     try {
-      final res = await dio.get('/attendance', queryParameters: {'date': date});
+      final res = await dio.get('attendance', queryParameters: {'date': date});
       final root = _asMap(res.data);
       final list = _asList(root['data']);
       final items = list
           .whereType<Map>()
           .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-          .map((e) => AttendanceEntry(
-                id: (e['id'] as num?)?.toInt() ?? 0,
-                technicianId: (e['technician_id'] as num?)?.toInt() ?? 0,
-                technicianName: (e['technician_name'] ?? '').toString(),
-                specialization: (e['specialization'] ?? '').toString(),
-                date: (e['date'] ?? date).toString(),
-                checkIn: (e['check_in'] as Object?)?.toString(),
-                checkOut: (e['check_out'] as Object?)?.toString(),
-                status: (e['status'] ?? '').toString(),
-                hours: (e['hours'] as num?) ?? 0,
-              ))
+          .map(
+            (e) => AttendanceEntry(
+              id: (e['id'] as num?)?.toInt() ?? 0,
+              technicianId: (e['technician_id'] as num?)?.toInt() ?? 0,
+              technicianName: (e['technician_name'] ?? '').toString(),
+              specialization: (e['specialization'] ?? '').toString(),
+              date: (e['date'] ?? date).toString(),
+              checkIn: (e['check_in'] as Object?)?.toString(),
+              checkOut: (e['check_out'] as Object?)?.toString(),
+              status: (e['status'] ?? '').toString(),
+              hours: (e['hours'] as num?) ?? 0,
+            ),
+          )
           .toList();
       state = state.copyWith(items: items);
     } on DioException catch (e) {
@@ -218,16 +218,19 @@ class AttendanceScreen extends ConsumerWidget {
             mainAxisSpacing: 12,
             childAspectRatio: 1.9,
             children: [
-              StatCard(title: 'Present', value: '$present', icon: Icons.check_circle_outline, gradient: StatCard.emerald),
-              StatCard(title: 'Late', value: '$late', icon: Icons.access_time, gradient: StatCard.amber),
-              StatCard(title: 'Absent', value: '$absent', icon: Icons.cancel_outlined, gradient: StatCard.purple),
-              StatCard(title: 'Total', value: '$total', icon: Icons.groups_outlined, gradient: StatCard.blue),
+              StatCard(title: 'Present', value: '$present'),
+              StatCard(title: 'Late', value: '$late'),
+              StatCard(title: 'Absent', value: '$absent'),
+              StatCard(title: 'Total', value: '$total'),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              const Text('Date:', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text(
+                'Date:',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: InkWell(
@@ -240,19 +243,34 @@ class AttendanceScreen extends ConsumerWidget {
                       lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
                     if (picked != null) {
-                      await ref.read(attendanceProvider.notifier).setDate(picked);
+                      await ref
+                          .read(attendanceProvider.notifier)
+                          .setDate(picked);
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.16)),
-                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0B1220) : AppColors.gray50,
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.16),
+                      ),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF0B1220)
+                          : AppColors.gray50,
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.gray400),
+                        const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                          color: AppColors.gray400,
+                        ),
                         const SizedBox(width: 8),
                         Text(dateKey),
                       ],
@@ -282,19 +300,47 @@ class AttendanceScreen extends ConsumerWidget {
                         DataCell(
                           Row(
                             children: [
-                              AppAvatar(initials: initialsFromName(r.technicianName), size: AppAvatarSize.sm),
+                              AppAvatar(
+                                initials: initialsFromName(r.technicianName),
+                                size: AppAvatarSize.sm,
+                              ),
                               const SizedBox(width: 10),
                               ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 160),
-                                child: Text(r.technicianName, overflow: TextOverflow.ellipsis),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 160,
+                                ),
+                                child: Text(
+                                  r.technicianName,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        DataCell(Text(r.specialization, overflow: TextOverflow.ellipsis)),
-                        DataCell(Text(r.checkIn ?? '—', style: const TextStyle(fontFamily: 'monospace'))),
-                        DataCell(Text(r.checkOut ?? '—', style: const TextStyle(fontFamily: 'monospace'))),
-                        DataCell(Text(r.hours.toString(), style: const TextStyle(fontWeight: FontWeight.w800))),
+                        DataCell(
+                          Text(
+                            r.specialization,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            r.checkIn ?? '—',
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            r.checkOut ?? '—',
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            r.hours.toString(),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
                         DataCell(StatusBadge(label: r.status)),
                       ],
                     ),
@@ -318,7 +364,11 @@ class AttendanceScreen extends ConsumerWidget {
         onSubmit: (entry) {
           ref.read(attendanceProvider.notifier).addLocal(entry);
           Navigator.of(ctx).pop();
-          AppToast.show(context, message: 'Attendance marked', type: AppToastType.success);
+          AppToast.show(
+            context,
+            message: 'Attendance marked',
+            type: AppToastType.success,
+          );
         },
       ),
     );
@@ -364,7 +414,9 @@ class _MarkAttendanceSheetState extends State<_MarkAttendanceSheet> {
     try {
       final repo = TechniciansRepository(dio: widget.dio);
       final techs = await repo.fetchTechnicians(search: '');
-      _techs = [for (final t in techs) (id: t.id, name: t.name, spec: t.specialization)];
+      _techs = [
+        for (final t in techs) (id: t.id, name: t.name, spec: t.specialization),
+      ];
       if (_techs.isNotEmpty) _techId = _techs.first.id;
     } catch (_) {
       _techs = const [];
@@ -390,13 +442,20 @@ class _MarkAttendanceSheetState extends State<_MarkAttendanceSheet> {
   Future<void> _submit() async {
     if (_loading) return;
     if (_techId == null) {
-      AppToast.show(context, message: 'Select a technician', type: AppToastType.error);
+      AppToast.show(
+        context,
+        message: 'Select a technician',
+        type: AppToastType.error,
+      );
       return;
     }
     setState(() => _loading = true);
     final tech = _techs.firstWhere((t) => t.id == _techId);
     final date = DateTime.now().toIso8601String().substring(0, 10);
-    final hours = _hours(_checkIn.text.trim().isEmpty ? null : _checkIn.text.trim(), _checkOut.text.trim().isEmpty ? null : _checkOut.text.trim());
+    final hours = _hours(
+      _checkIn.text.trim().isEmpty ? null : _checkIn.text.trim(),
+      _checkOut.text.trim().isEmpty ? null : _checkOut.text.trim(),
+    );
     widget.onSubmit(
       AttendanceEntry(
         id: DateTime.now().millisecondsSinceEpoch,
@@ -423,65 +482,104 @@ class _MarkAttendanceSheetState extends State<_MarkAttendanceSheet> {
       expand: false,
       builder: (context, scroll) => SingleChildScrollView(
         controller: scroll,
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Mark Attendance', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Mark Attendance',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 16),
             if (_fetching)
               const AppCard(child: ShimmerBox(height: 100))
             else ...[
-              const Text('Technician', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const Text(
+                'Technician',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
                 initialValue: _techId,
+                isExpanded: true,
+                menuMaxHeight: 360,
+                borderRadius: BorderRadius.circular(14),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                icon: const Icon(Icons.keyboard_arrow_down_rounded),
                 decoration: const InputDecoration(isDense: true),
-                items: _techs.map((t) => DropdownMenuItem<int>(value: t.id, child: Text(t.name, overflow: TextOverflow.ellipsis))).toList(),
+                items: _techs
+                    .map(
+                      (t) => DropdownMenuItem<int>(
+                        value: t.id,
+                        child: Text(t.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
                 onChanged: _loading ? null : (v) => setState(() => _techId = v),
               ),
               const SizedBox(height: 12),
-              const Text('Status', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const Text(
+                'Status',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: _status,
+                isExpanded: true,
+                menuMaxHeight: 360,
+                borderRadius: BorderRadius.circular(14),
+                dropdownColor: Theme.of(context).colorScheme.surface,
+                icon: const Icon(Icons.keyboard_arrow_down_rounded),
                 decoration: const InputDecoration(isDense: true),
                 items: const [
                   DropdownMenuItem(value: 'Present', child: Text('Present')),
                   DropdownMenuItem(value: 'Late', child: Text('Late')),
                   DropdownMenuItem(value: 'Absent', child: Text('Absent')),
                 ],
-                onChanged: _loading ? null : (v) => setState(() => _status = v ?? 'Present'),
+                onChanged: _loading
+                    ? null
+                    : (v) => setState(() => _status = v ?? 'Present'),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(child: _field('Check In', _checkIn, hint: '09:00')),
                   const SizedBox(width: 12),
-                  Expanded(child: _field('Check Out', _checkOut, hint: '18:00')),
+                  Expanded(
+                    child: _field('Check Out', _checkOut, hint: '18:00'),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: 'Cancel',
-                      variant: AppButtonVariant.secondary,
-                      expanded: true,
-                      onPressed: _loading ? null : () => Navigator.of(context).pop(),
+              BottomSafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.secondary,
+                        expanded: true,
+                        onPressed: _loading
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppButton(
-                      label: 'Submit',
-                      expanded: true,
-                      loading: _loading,
-                      onPressed: _loading ? null : _submit,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Submit',
+                        expanded: true,
+                        loading: _loading,
+                        onPressed: _loading ? null : _submit,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],
@@ -494,9 +592,16 @@ class _MarkAttendanceSheetState extends State<_MarkAttendanceSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
-        TextField(controller: ctrl, enabled: !_loading, decoration: InputDecoration(hintText: hint)),
+        TextField(
+          controller: ctrl,
+          enabled: !_loading,
+          decoration: InputDecoration(hintText: hint),
+        ),
       ],
     );
   }

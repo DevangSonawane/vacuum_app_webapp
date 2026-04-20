@@ -20,7 +20,7 @@ import {
   PageTransition, Badge, Button, useToast, Toast, Card
 } from "../components/ui";
 
-const API_BASE_URL = "https://vaccumapi-production.up.railway.app/api";
+const API_BASE_URL = "https://vaccumapi.onrender.com/api";
 
 const STATUSES  = ["Raised", "Assigned", "In Progress", "Closed"];
 const STATUS_FLOW = {

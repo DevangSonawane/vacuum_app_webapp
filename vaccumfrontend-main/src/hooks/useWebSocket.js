@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 
-const WS_URL = "wss://vaccumapi-production.up.railway.app/ws";
+const WS_URL = "wss://vaccumapi.onrender.com/ws";
 // For local dev use: ws://localhost:3000/ws
 
 export function useWebSocket({ onEvent } = {}) {

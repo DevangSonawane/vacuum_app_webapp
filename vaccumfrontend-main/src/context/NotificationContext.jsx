@@ -10,7 +10,7 @@ import { useWebSocket } from "../hooks/useWebSocket";
 
 const NotificationContext = createContext();
 
-const API_BASE_URL = "https://vaccumapi-production.up.railway.app/api";
+const API_BASE_URL = "https://vaccumapi.onrender.com/api";
 
 const EVENT_LABELS = {
   job_raised:       { title: "New Job Raised",        color: "blue"    },

@@ -13,7 +13,7 @@ import {
   Select, Textarea, SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = 'https://vaccumapi-production.up.railway.app/api';
+const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
 
 const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];

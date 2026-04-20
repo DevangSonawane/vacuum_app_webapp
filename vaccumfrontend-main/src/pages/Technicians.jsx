@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Star, UserCog, Phone, Mail, Search, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, UserCog, Phone, Mail, Search, Loader2, Eye, EyeOff } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
 import { PageTransition, Card, Badge, Avatar, Button, Modal, Input, Select, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
 
-const API_BASE_URL = 'https://vaccumapi-production.up.railway.app/api';
+const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
 
 const EMPTY_FORM = {
   name:           "",
@@ -33,6 +33,7 @@ export default function Technicians() {
   const [formLoading, setFormLoading] = useState(false);  // loading indicator inside modal while fetching by ID
   const [deleteId, setDeleteId]       = useState(null);
   const [submitting, setSubmitting]   = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => { fetchTechnicians(); }, []);
 
@@ -68,6 +69,7 @@ export default function Technicians() {
   const openAdd = () => {
     setForm(EMPTY_FORM);
     setEditId(null);
+    setShowPassword(false);
     setModalOpen(true);
   };
 
@@ -75,6 +77,7 @@ export default function Technicians() {
   // Per requirement: use GET /technicians/:id before populating form
   const openEdit = async (tech) => {
     setEditId(tech.id);
+    setShowPassword(false);
     // Pre-populate with list data immediately so modal opens fast
     setForm({
       name:           tech.name           || "",
@@ -294,13 +297,25 @@ export default function Technicians() {
               {/* Password — only on create */}
               {!editId && (
                 <div className="space-y-1.5">
-                  <Input
-                    label="Login Password (optional)"
-                    type="password"
-                    value={form.password}
-                    onChange={f("password")}
-                    placeholder="Leave blank if no login needed"
-                  />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Login Password (optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={f("password")}
+                      placeholder="Leave blank if no login needed"
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-400">
                     If provided, this technician can log in via the mobile app using phone/email + this password.
                   </p>

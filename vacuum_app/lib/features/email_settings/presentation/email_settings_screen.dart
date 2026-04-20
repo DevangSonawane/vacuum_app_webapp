@@ -17,7 +17,8 @@ class EmailSettingsScreen extends ConsumerStatefulWidget {
   const EmailSettingsScreen({super.key});
 
   @override
-  ConsumerState<EmailSettingsScreen> createState() => _EmailSettingsScreenState();
+  ConsumerState<EmailSettingsScreen> createState() =>
+      _EmailSettingsScreenState();
 }
 
 class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
@@ -96,14 +97,19 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
 
     return settings.when(
       loading: () => const PageLoader(),
-      error: (e, _) => EmptyState(icon: Icons.error_outline, title: 'Failed to load', description: e.toString()),
+      error: (e, _) => EmptyState(
+        icon: Icons.error_outline,
+        title: 'Failed to load',
+        description: e.toString(),
+      ),
       data: (s) {
         _hydrate(s);
 
         final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bottom = MediaQuery.viewPaddingOf(context).bottom;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -122,28 +128,49 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0B1220) : const Color(0xFFDBEAFE),
+                            color: isDark
+                                ? const Color(0xFF0B1220)
+                                : const Color(0xFFDBEAFE),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.mail_outline, color: AppColors.blue600, size: 18),
+                          child: const Icon(
+                            Icons.mail_outline,
+                            color: AppColors.blue600,
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 10),
-                        Text('SMTP Configuration', style: Theme.of(context).textTheme.titleMedium),
+                        Text(
+                          'SMTP Configuration',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     _grid(
                       context,
                       children: [
-                        AppInput(label: 'SMTP Host', controller: _smtpHost, placeholder: 'smtp.gmail.com'),
-                        AppInput(label: 'SMTP Port', controller: _smtpPort, placeholder: '587'),
+                        AppInput(
+                          label: 'SMTP Host',
+                          controller: _smtpHost,
+                          placeholder: 'smtp.gmail.com',
+                        ),
+                        AppInput(
+                          label: 'SMTP Port',
+                          controller: _smtpPort,
+                          placeholder: '587',
+                        ),
                         AppInput(
                           label: 'From Email',
                           controller: _fromEmail,
                           type: AppInputType.email,
                           placeholder: 'noreply@company.com',
                         ),
-                        AppInput(label: 'From Name', controller: _fromName, placeholder: 'VDTI Service Hub'),
+                        AppInput(
+                          label: 'From Name',
+                          controller: _fromName,
+                          placeholder: 'VDTI Service Hub',
+                        ),
                         AppInput(
                           label: 'Email Password / App Password',
                           controller: _password,
@@ -172,7 +199,10 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Notification Triggers', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Notification Triggers',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 12),
                     _TriggerTile(
                       title: 'New Job Raised',
@@ -217,7 +247,10 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Email Template Preview', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Email Template Preview',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 12),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
@@ -226,19 +259,30 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                         children: [
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
                             color: AppColors.blue600,
                             child: const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'VDTI Service Hub Notification',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                  ),
                                 ),
                                 SizedBox(height: 2),
                                 Text(
                                   'Vacuum Drying Technology India LLP',
-                                  style: TextStyle(color: AppColors.blue200, fontWeight: FontWeight.w700, fontSize: 12),
+                                  style: TextStyle(
+                                    color: AppColors.blue200,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
@@ -246,46 +290,88 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
-                            color: isDark ? const Color(0xFF0B1220) : Colors.white,
+                            color: isDark
+                                ? const Color(0xFF0B1220)
+                                : Colors.white,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Dear Recipient,',
-                                  style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.color,
+                                  ),
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
                                   'A new Work Order (JOB-XXXX) has been raised and assigned to you. Please review the details and proceed accordingly.',
-                                  style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.color,
+                                  ),
                                 ),
                                 const SizedBox(height: 12),
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF111827) : const Color(0xFFEFF6FF),
+                                    color: isDark
+                                        ? const Color(0xFF111827)
+                                        : const Color(0xFFEFF6FF),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: isDark ? const Color(0xFF1F2937) : const Color(0xFFBFDBFE)),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF1F2937)
+                                          : const Color(0xFFBFDBFE),
+                                    ),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         'Job Details',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.blue600),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.blue600,
+                                        ),
                                       ),
                                       const SizedBox(height: 6),
-                                      Text('Job ID: JOB-XXXX', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
-                                      Text('Client: Client Name', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
-                                      Text('Scheduled: DD-MM-YYYY', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
+                                      Text(
+                                        'Job ID: JOB-XXXX',
+                                        style: TextStyle(
+                                          color: Theme.of(context).hintColor,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Client: Client Name',
+                                        style: TextStyle(
+                                          color: Theme.of(context).hintColor,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Scheduled: DD-MM-YYYY',
+                                        style: TextStyle(
+                                          color: Theme.of(context).hintColor,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
                                   'This is an automated notification from ${_fromName.text.trim().isEmpty ? 'VDTI Service Hub' : _fromName.text.trim()}.',
-                                  style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                                  style: TextStyle(
+                                    color: Theme.of(context).hintColor,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
@@ -305,9 +391,15 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                   onPressed: settings.isLoading
                       ? null
                       : () async {
-                          await ref.read(emailSettingsProvider.notifier).save(_currentSettings());
+                          await ref
+                              .read(emailSettingsProvider.notifier)
+                              .save(_currentSettings());
                           if (!context.mounted) return;
-                          AppToast.show(context, message: 'Email settings saved!', type: AppToastType.success);
+                          AppToast.show(
+                            context,
+                            message: 'Email settings saved!',
+                            type: AppToastType.success,
+                          );
                         },
                 ),
               ),
@@ -337,7 +429,11 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
 }
 
 class _TriggerTile extends StatelessWidget {
-  const _TriggerTile({required this.title, required this.value, required this.onChanged});
+  const _TriggerTile({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
 
   final String title;
   final bool value;
@@ -362,11 +458,17 @@ class _TriggerTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   'Send email notification when this event occurs',
-                  style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                  style: TextStyle(
+                    color: Theme.of(context).hintColor,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../application/notifications_notifier.dart';
 import '../domain/app_notification.dart';
@@ -77,12 +78,18 @@ class _MenuBody extends ConsumerWidget {
       ),
       error: (e, _) => SizedBox(
         height: isBottomSheet ? MediaQuery.sizeOf(context).height * 0.7 : 460,
-        child: EmptyState(icon: Icons.error_outline, title: 'Failed to load', description: e.toString()),
+        child: EmptyState(
+          icon: Icons.error_outline,
+          title: 'Failed to load',
+          description: e.toString(),
+        ),
       ),
       data: (s) {
         return ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: isBottomSheet ? MediaQuery.sizeOf(context).height * 0.86 : 520,
+            maxHeight: isBottomSheet
+                ? MediaQuery.sizeOf(context).height * 0.86
+                : 520,
           ),
           child: Column(
             children: [
@@ -93,7 +100,10 @@ class _MenuBody extends ConsumerWidget {
                     const Expanded(
                       child: Text(
                         'Notifications',
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                     _ConnectionDot(connected: s.connected),
@@ -103,7 +113,8 @@ class _MenuBody extends ConsumerWidget {
                       size: AppButtonSize.sm,
                       variant: AppButtonVariant.secondary,
                       leading: const Icon(Icons.refresh_outlined),
-                      onPressed: () => ref.read(notificationsProvider.notifier).refresh(),
+                      onPressed: () =>
+                          ref.read(notificationsProvider.notifier).refresh(),
                     ),
                   ],
                 ),
@@ -115,7 +126,11 @@ class _MenuBody extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         '${s.unreadCount} unread',
-                        style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: Theme.of(context).hintColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     AppButton(
@@ -123,9 +138,15 @@ class _MenuBody extends ConsumerWidget {
                       size: AppButtonSize.sm,
                       variant: AppButtonVariant.outline,
                       onPressed: () async {
-                        await ref.read(notificationsProvider.notifier).markAllRead();
+                        await ref
+                            .read(notificationsProvider.notifier)
+                            .markAllRead();
                         if (!context.mounted) return;
-                        AppToast.show(context, message: 'Marked all as read', type: AppToastType.success);
+                        AppToast.show(
+                          context,
+                          message: 'Marked all as read',
+                          type: AppToastType.success,
+                        );
                       },
                     ),
                     const SizedBox(width: 10),
@@ -134,9 +155,15 @@ class _MenuBody extends ConsumerWidget {
                       size: AppButtonSize.sm,
                       variant: AppButtonVariant.secondary,
                       onPressed: () async {
-                        await ref.read(notificationsProvider.notifier).clearAll();
+                        await ref
+                            .read(notificationsProvider.notifier)
+                            .clearAll();
                         if (!context.mounted) return;
-                        AppToast.show(context, message: 'Cleared notifications', type: AppToastType.info);
+                        AppToast.show(
+                          context,
+                          message: 'Cleared notifications',
+                          type: AppToastType.info,
+                        );
                       },
                     ),
                   ],
@@ -158,11 +185,14 @@ class _MenuBody extends ConsumerWidget {
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         itemCount: s.items.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 6),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 6),
                         itemBuilder: (context, i) => _NotificationTile(
                           n: s.items[i],
                           onTap: () async {
-                            await ref.read(notificationsProvider.notifier).markRead(s.items[i]);
+                            await ref
+                                .read(notificationsProvider.notifier)
+                                .markRead(s.items[i]);
                             if (!context.mounted) return;
                             _navigateFromNotification(context, s.items[i]);
                           },
@@ -170,7 +200,7 @@ class _MenuBody extends ConsumerWidget {
                       ),
               ),
               const Divider(height: 1),
-              Padding(
+              BottomSafeArea(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                 child: Align(
                   alignment: Alignment.centerLeft,
@@ -208,7 +238,11 @@ class _MenuBody extends ConsumerWidget {
       return;
     }
     // fallback
-    AppToast.show(context, message: 'Opened notification', type: AppToastType.info);
+    AppToast.show(
+      context,
+      message: 'Opened notification',
+      type: AppToastType.info,
+    );
   }
 }
 
@@ -222,9 +256,16 @@ class _ConnectionDot extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 6),
-        Text(connected ? 'Live' : 'Offline', style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12)),
+        Text(
+          connected ? 'Live' : 'Offline',
+          style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+        ),
       ],
     );
   }
@@ -284,14 +325,20 @@ class _NotificationTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           _relativeTime(n.timestamp),
-                          style: TextStyle(color: Theme.of(context).hintColor, fontSize: 11),
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 11,
+                          ),
                         ),
                         if (!n.read) ...[
                           const SizedBox(width: 8),
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(color: AppColors.red500, shape: BoxShape.circle),
+                            decoration: const BoxDecoration(
+                              color: AppColors.red500,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ],
                       ],
@@ -301,7 +348,10 @@ class _NotificationTile extends StatelessWidget {
                       n.message,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),

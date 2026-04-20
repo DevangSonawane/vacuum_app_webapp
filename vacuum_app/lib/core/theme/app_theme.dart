@@ -15,6 +15,16 @@ class AppTheme {
       error: AppColors.red500,
       surface: Colors.white,
     ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: Colors.white,
+      elevation: 16,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black.withValues(alpha: 0.2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppColors.gray200),
+      ),
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: AppColors.gray900,
@@ -55,6 +65,16 @@ class AppTheme {
       secondary: AppColors.blue500,
       error: AppColors.red500,
       surface: AppColors.darkCard,
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: AppColors.darkCard,
+      elevation: 16,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black.withValues(alpha: 0.35),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFF1B2A44)),
+      ),
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.darkBg,
@@ -97,9 +117,17 @@ class AppTheme {
     final display = GoogleFonts.syneTextTheme(base);
 
     return body.copyWith(
-      titleLarge: display.titleLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.w700),
-      titleMedium: display.titleMedium?.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
-      headlineSmall: display.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+      titleLarge: display.titleLarge?.copyWith(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+      ),
+      titleMedium: display.titleMedium?.copyWith(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+      ),
+      headlineSmall: display.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w800,
+      ),
     );
   }
 }

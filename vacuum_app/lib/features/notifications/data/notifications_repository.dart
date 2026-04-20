@@ -8,7 +8,7 @@ class NotificationsRepository {
   final Dio _dio;
 
   Future<({List<AppNotification> items, int unreadCount})> fetch({int limit = 30}) async {
-    final response = await _dio.get('/notifications', queryParameters: {'limit': limit});
+    final response = await _dio.get('notifications', queryParameters: {'limit': limit});
     final root = _asMap(response.data);
 
     final unread = _asInt(root['unread_count']);
@@ -21,15 +21,15 @@ class NotificationsRepository {
   }
 
   Future<void> markAllRead() async {
-    await _dio.patch('/notifications/read', data: {});
+    await _dio.patch('notifications/read', data: {});
   }
 
   Future<void> markRead(List<int> ids) async {
-    await _dio.patch('/notifications/read', data: {'ids': ids});
+    await _dio.patch('notifications/read', data: {'ids': ids});
   }
 
   Future<void> clearAll() async {
-    await _dio.delete('/notifications');
+    await _dio.delete('notifications');
   }
 
   static AppNotification _fromRow(Map<String, dynamic> row) {
@@ -79,4 +79,3 @@ class NotificationsRepository {
     return int.tryParse((v ?? '').toString()) ?? 0;
   }
 }
-

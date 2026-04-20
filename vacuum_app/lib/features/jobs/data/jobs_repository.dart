@@ -9,7 +9,7 @@ class JobsRepository {
 
   Future<List<Job>> fetchJobs({String status = ''}) async {
     final response = await _dio.get(
-      '/jobs',
+      'jobs',
       queryParameters: {
         'limit': 100,
         if (status.isNotEmpty && status != 'All') 'status': status,
@@ -25,14 +25,14 @@ class JobsRepository {
   }
 
   Future<Job> fetchById(String id) async {
-    final response = await _dio.get('/jobs/$id');
+    final response = await _dio.get('jobs/$id');
     return Job.fromJson(_asMap(_asMap(response.data)['data']));
   }
 
-  Future<void> create(Map<String, dynamic> payload) => _dio.post('/jobs', data: payload);
+  Future<void> create(Map<String, dynamic> payload) => _dio.post('jobs', data: payload);
 
   Future<void> advanceStatus(String id, String newStatus) =>
-      _dio.patch('/jobs/$id/status', data: {'status': newStatus});
+      _dio.patch('jobs/$id/status', data: {'status': newStatus});
 
   Future<String?> uploadImage(String jobId, String filePath, String filename) async {
     final formData = FormData.fromMap({
@@ -40,7 +40,7 @@ class JobsRepository {
     });
 
     final response = await _dio.post(
-      '/upload',
+      'upload',
       queryParameters: {'entity_type': 'job', 'entity_id': jobId},
       data: formData,
     );
@@ -51,7 +51,7 @@ class JobsRepository {
   }
 
   Future<void> linkImage(String jobId, Map<String, dynamic> imageData) =>
-      _dio.post('/jobs/$jobId/images', data: imageData);
+      _dio.post('jobs/$jobId/images', data: imageData);
 
   static Map<String, dynamic> _asMap(dynamic v) {
     if (v is Map<String, dynamic>) return v;
@@ -61,4 +61,3 @@ class JobsRepository {
 
   static List<dynamic> _asList(dynamic v) => v is List ? v : const [];
 }
-

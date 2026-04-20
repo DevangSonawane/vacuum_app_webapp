@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/revenue.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
@@ -25,7 +27,14 @@ const _typeColors = <String, (Color, Color)>{
   'Government': (Color(0xFFFEF3C7), Color(0xFF92400E)),
 };
 
-const _clientTypes = ['All', 'Corporate', 'Residential', 'Commercial', 'Healthcare', 'Government'];
+const _clientTypes = [
+  'All',
+  'Corporate',
+  'Residential',
+  'Commercial',
+  'Healthcare',
+  'Government',
+];
 const _clientStatuses = ['Active', 'Inactive'];
 
 class ClientsScreen extends ConsumerStatefulWidget {
@@ -70,11 +79,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           children: [
             SectionHeader(
               title: 'Clients',
-              subtitle: state.whenOrNull(data: (d) => '${d.items.where((c) => c.status == "Active").length} active clients'),
+              subtitle: state.whenOrNull(
+                data: (d) =>
+                    '${d.items.where((c) => c.status == "Active").length} active clients',
+              ),
               action: canEdit
                   ? AppButton(
                       label: '+ Add Client',
-                      onPressed: () => _openFormSheet(context, null),
+                      onPressed: () => context.push('/clients/new'),
                     )
                   : null,
             ),
@@ -113,14 +125,16 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                 children: [
                   _TypeFilters(
                     value: data.typeFilter,
-                    onChanged: (t) => ref.read(clientsProvider.notifier).filter(type: t),
+                    onChanged: (t) =>
+                        ref.read(clientsProvider.notifier).filter(type: t),
                   ),
                   const SizedBox(height: 16),
                   if (data.items.isEmpty)
                     const EmptyState(
                       icon: Icons.groups_outlined,
                       title: 'No clients found',
-                      description: 'Try a different search or adjust the type filter.',
+                      description:
+                          'Try a different search or adjust the type filter.',
                     )
                   else
                     _ClientsGrid(
@@ -149,13 +163,17 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         existing: existing,
         onSubmit: (payload, isEdit, id) async {
           final ok = isEdit && id != null
-              ? await ref.read(clientsProvider.notifier).updateClient(id, payload)
+              ? await ref
+                    .read(clientsProvider.notifier)
+                    .updateClient(id, payload)
               : await ref.read(clientsProvider.notifier).create(payload);
           if (!context.mounted) return;
           Navigator.of(ctx).pop();
           AppToast.show(
             context,
-            message: ok ? (isEdit ? 'Client updated!' : 'Client added!') : 'Operation failed',
+            message: ok
+                ? (isEdit ? 'Client updated!' : 'Client added!')
+                : 'Operation failed',
             type: ok ? AppToastType.success : AppToastType.error,
           );
         },
@@ -163,7 +181,11 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     );
   }
 
-  Future<void> _openDetailSheet(BuildContext context, Client client, bool canEdit) async {
+  Future<void> _openDetailSheet(
+    BuildContext context,
+    Client client,
+    bool canEdit,
+  ) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -189,7 +211,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Remove Client',
-      body: 'Are you sure you want to remove ${client.name}? This cannot be undone.',
+      body:
+          'Are you sure you want to remove ${client.name}? This cannot be undone.',
       confirmLabel: 'Remove',
     );
     if (!confirmed || !context.mounted) return;
@@ -200,6 +223,28 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
       context,
       message: ok ? 'Client removed' : 'Delete failed',
       type: ok ? AppToastType.error : AppToastType.error,
+    );
+  }
+}
+
+class ClientCreateScreen extends ConsumerWidget {
+  const ClientCreateScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _ClientFormSheet(
+      asSheet: false,
+      existing: null,
+      onSubmit: (payload, isEdit, id) async {
+        final ok = await ref.read(clientsProvider.notifier).create(payload);
+        if (!context.mounted) return;
+        if (ok) context.pop();
+        AppToast.show(
+          context,
+          message: ok ? 'Client added!' : 'Operation failed',
+          type: ok ? AppToastType.success : AppToastType.error,
+        );
+      },
     );
   }
 }
@@ -224,20 +269,29 @@ class _TypeFilters extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 onTap: () => onChanged(t),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
                     color: value == t
                         ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
                         : Colors.transparent,
-                    border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.16)),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.16),
+                    ),
                   ),
                   child: Text(
                     t,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
-                      color: value == t ? (isDark ? Colors.white : AppColors.blue600) : Theme.of(context).hintColor,
+                      color: value == t
+                          ? (isDark ? Colors.white : AppColors.blue600)
+                          : Theme.of(context).hintColor,
                     ),
                   ),
                 ),
@@ -306,7 +360,8 @@ class _ClientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typeColors = _typeColors[client.type] ?? (AppColors.gray100, AppColors.gray700);
+    final typeColors =
+        _typeColors[client.type] ?? (AppColors.gray100, AppColors.gray700);
     return AppCard(
       hover: true,
       onTap: onTap,
@@ -327,7 +382,10 @@ class _ClientCard extends StatelessWidget {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                child: const Icon(Icons.apartment_outlined, color: Colors.white),
+                child: const Icon(
+                  Icons.apartment_outlined,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -345,7 +403,10 @@ class _ClientCard extends StatelessWidget {
                       client.contactPerson,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -361,11 +422,16 @@ class _ClientCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          if (client.email.isNotEmpty) _InfoRow(icon: Icons.mail_outline, text: client.email),
-          if (client.phone.isNotEmpty) _InfoRow(icon: Icons.phone_outlined, text: client.phone),
-          if (client.address.isNotEmpty) _InfoRow(icon: Icons.location_on_outlined, text: client.address),
+          if (client.email.isNotEmpty)
+            _InfoRow(icon: Icons.mail_outline, text: client.email),
+          if (client.phone.isNotEmpty)
+            _InfoRow(icon: Icons.phone_outlined, text: client.phone),
+          if (client.address.isNotEmpty)
+            _InfoRow(icon: Icons.location_on_outlined, text: client.address),
           const SizedBox(height: 10),
-          Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+          Divider(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -378,20 +444,33 @@ class _ClientCard extends StatelessWidget {
                 ),
               ),
               Text(
-                client.joinDate != null && client.joinDate!.length >= 10 ? client.joinDate!.substring(0, 10) : '—',
-                style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+                client.joinDate != null && client.joinDate!.length >= 10
+                    ? client.joinDate!.substring(0, 10)
+                    : '—',
+                style: TextStyle(
+                  color: Theme.of(context).hintColor,
+                  fontSize: 12,
+                ),
               ),
               if (canEdit) ...[
                 const SizedBox(width: 8),
                 IconButton(
                   tooltip: 'Edit',
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.blue600),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: AppColors.blue600,
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Delete',
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.red500),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: AppColors.red500,
+                  ),
                 ),
               ],
             ],
@@ -480,7 +559,12 @@ class _ClientDetailSheet extends StatelessWidget {
       expand: false,
       builder: (context, scroll) => SingleChildScrollView(
         controller: scroll,
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -505,7 +589,10 @@ class _ClientDetailSheet extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.apartment_outlined, color: Colors.white),
+                    child: const Icon(
+                      Icons.apartment_outlined,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -516,14 +603,20 @@ class _ClientDetailSheet extends StatelessWidget {
                           client.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           client.contactPerson,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
                         ),
                       ],
                     ),
@@ -550,39 +643,78 @@ class _ClientDetailSheet extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: _StatBox(label: 'Total Jobs', value: '${stats?.totalJobs ?? 0}')),
+                        Expanded(
+                          child: _StatBox(
+                            label: 'Total Jobs',
+                            value: '${stats?.totalJobs ?? 0}',
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        Expanded(child: _StatBox(label: 'Open Jobs', value: '${stats?.openJobs ?? 0}')),
+                        Expanded(
+                          child: _StatBox(
+                            label: 'Open Jobs',
+                            value: '${stats?.openJobs ?? 0}',
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        Expanded(child: _StatBox(label: 'Active AMC', value: '${stats?.activeAmcCount ?? 0}')),
+                        Expanded(
+                          child: _StatBox(
+                            label: 'Active AMC',
+                            value: '${stats?.activeAmcCount ?? 0}',
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text('Contact', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Contact',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
                     AppCard(
                       child: Column(
                         children: [
                           if ((detail?.email ?? client.email).isNotEmpty)
-                            _DetailRow(icon: Icons.mail_outline, text: detail?.email ?? client.email),
+                            _DetailRow(
+                              icon: Icons.mail_outline,
+                              text: detail?.email ?? client.email,
+                            ),
                           if ((detail?.phone ?? client.phone).isNotEmpty)
-                            _DetailRow(icon: Icons.phone_outlined, text: detail?.phone ?? client.phone),
+                            _DetailRow(
+                              icon: Icons.phone_outlined,
+                              text: detail?.phone ?? client.phone,
+                            ),
                           if ((detail?.address ?? client.address).isNotEmpty)
-                            _DetailRow(icon: Icons.location_on_outlined, text: detail?.address ?? client.address),
+                            _DetailRow(
+                              icon: Icons.location_on_outlined,
+                              text: detail?.address ?? client.address,
+                            ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text('Contract', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Contract',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: _StatBox(label: 'Value', value: fmtRevenue(detail?.contractValue ?? client.contractValue))),
+                        Expanded(
+                          child: _StatBox(
+                            label: 'Value',
+                            value: fmtRevenue(
+                              detail?.contractValue ?? client.contractValue,
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _StatBox(
                             label: 'Since',
-                            value: _shortDate(detail?.joinDate ?? client.joinDate),
+                            value: _shortDate(
+                              detail?.joinDate ?? client.joinDate,
+                            ),
                           ),
                         ),
                       ],
@@ -637,7 +769,9 @@ class _DetailRow extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF111827) : AppColors.gray50,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF111827)
+                  : AppColors.gray50,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, size: 16, color: AppColors.blue600),
@@ -665,12 +799,21 @@ class _StatBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF111827) : AppColors.gray50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Theme.of(context).hintColor, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
         ],
@@ -687,10 +830,20 @@ String _shortDate(String? value) {
 }
 
 class _ClientFormSheet extends StatefulWidget {
-  const _ClientFormSheet({required this.existing, required this.onSubmit});
+  const _ClientFormSheet({
+    required this.existing,
+    required this.onSubmit,
+    this.asSheet = true,
+  });
 
   final Client? existing;
-  final Future<void> Function(Map<String, dynamic> payload, bool isEdit, int? id) onSubmit;
+  final Future<void> Function(
+    Map<String, dynamic> payload,
+    bool isEdit,
+    int? id,
+  )
+  onSubmit;
+  final bool asSheet;
 
   @override
   State<_ClientFormSheet> createState() => _ClientFormSheetState();
@@ -720,9 +873,13 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
       _email.text = c.email;
       _phone.text = c.phone;
       _address.text = c.address;
-      _contractValue.text = c.contractValue == 0 ? '' : c.contractValue.toString();
+      _contractValue.text = c.contractValue == 0
+          ? ''
+          : c.contractValue.toString();
       _type = _clientTypes.contains(c.type) ? c.type : _clientTypes[1];
-      _status = _clientStatuses.contains(c.status) ? c.status : _clientStatuses.first;
+      _status = _clientStatuses.contains(c.status)
+          ? c.status
+          : _clientStatuses.first;
     }
   }
 
@@ -740,7 +897,11 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
   Future<void> _submit() async {
     if (_loading) return;
     if (_name.text.trim().isEmpty || _contact.text.trim().isEmpty) {
-      AppToast.show(context, message: 'Company name and contact person are required.', type: AppToastType.error);
+      AppToast.show(
+        context,
+        message: 'Company name and contact person are required.',
+        type: AppToastType.error,
+      );
       return;
     }
 
@@ -767,67 +928,144 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.9,
-      minChildSize: 0.55,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scroll) => SingleChildScrollView(
-        controller: scroll,
-        padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+    void close() {
+      final r = GoRouter.of(context);
+      if (r.canPop()) {
+        r.pop();
+      } else {
+        context.go('/clients');
+      }
+    }
+
+    Widget content(ScrollController? scroll) => SingleChildScrollView(
+      controller: scroll,
+      padding: EdgeInsets.fromLTRB(
+        16,
+        widget.asSheet ? 0 : 16,
+        16,
+        MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SafeArea(
+        top: !widget.asSheet,
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_isEdit ? 'Edit Client' : 'Add Client', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
+            if (!widget.asSheet) ...[
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: _loading ? null : close,
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  Text(
+                    _isEdit ? 'Edit Client' : 'Add Client',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ] else ...[
+              Text(
+                _isEdit ? 'Edit Client' : 'Add Client',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+            ],
             _field('Company Name *', _name, hint: 'Acme Pvt Ltd'),
             const SizedBox(height: 12),
             _field('Contact Person *', _contact, hint: 'Rahul Sharma'),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _field('Email', _email, hint: 'contact@acme.com', keyboard: TextInputType.emailAddress)),
+                Expanded(
+                  child: _field(
+                    'Email',
+                    _email,
+                    hint: 'contact@acme.com',
+                    keyboard: TextInputType.emailAddress,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _field('Phone', _phone, hint: '9876543210', keyboard: TextInputType.phone)),
+                Expanded(
+                  child: _field(
+                    'Phone',
+                    _phone,
+                    hint: '9876543210',
+                    keyboard: TextInputType.phone,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _dropdown('Type', _type, _clientTypes.skip(1).toList(), (v) => setState(() => _type = v ?? _clientTypes[1]))),
+                Expanded(
+                  child: _dropdown(
+                    'Type',
+                    _type,
+                    _clientTypes.skip(1).toList(),
+                    (v) => setState(() => _type = v ?? _clientTypes[1]),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _dropdown('Status', _status, _clientStatuses, (v) => setState(() => _status = v ?? _clientStatuses.first))),
+                Expanded(
+                  child: _dropdown(
+                    'Status',
+                    _status,
+                    _clientStatuses,
+                    (v) => setState(() => _status = v ?? _clientStatuses.first),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            _field('Contract Value (₹)', _contractValue, hint: '250000', keyboard: TextInputType.number),
+            _field(
+              'Contract Value (₹)',
+              _contractValue,
+              hint: '250000',
+              keyboard: TextInputType.number,
+            ),
             const SizedBox(height: 12),
             _field('Address', _address, hint: 'Full address', lines: 3),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Cancel',
-                    variant: AppButtonVariant.secondary,
-                    expanded: true,
-                    onPressed: _loading ? null : () => Navigator.of(context).pop(),
+            BottomSafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: 'Cancel',
+                      variant: AppButtonVariant.secondary,
+                      expanded: true,
+                      onPressed: _loading ? null : close,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppButton(
-                    label: _isEdit ? 'Update Client' : 'Add Client',
-                    expanded: true,
-                    loading: _loading,
-                    onPressed: _loading ? null : _submit,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      label: _isEdit ? 'Update Client' : 'Add Client',
+                      expanded: true,
+                      loading: _loading,
+                      onPressed: _loading ? null : _submit,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
       ),
+    );
+
+    if (!widget.asSheet) return content(null);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.55,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scroll) => content(scroll),
     );
   }
 
@@ -841,7 +1079,10 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
@@ -854,16 +1095,36 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
     );
   }
 
-  Widget _dropdown(String label, String value, List<String> options, ValueChanged<String?> onChanged) {
+  Widget _dropdown(
+    String label,
+    String value,
+    List<String> options,
+    ValueChanged<String?> onChanged,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           initialValue: value,
+          isExpanded: true,
+          menuMaxHeight: 360,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: Theme.of(context).colorScheme.surface,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
           decoration: const InputDecoration(isDense: true),
-          items: options.map((o) => DropdownMenuItem(value: o, child: Text(o, overflow: TextOverflow.ellipsis))).toList(),
+          items: options
+              .map(
+                (o) => DropdownMenuItem(
+                  value: o,
+                  child: Text(o, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
           onChanged: _loading ? null : onChanged,
         ),
       ],
