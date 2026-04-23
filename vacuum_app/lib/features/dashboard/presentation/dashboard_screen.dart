@@ -290,85 +290,109 @@ class _JobStatusCard extends StatelessWidget {
         )
         .toList();
 
+    final chart = SizedBox(
+      width: 180,
+      height: 180,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          PieChart(
+            PieChartData(
+              centerSpaceRadius: 50,
+              sectionsSpace: 2,
+              sections: sections.isEmpty
+                  ? [
+                      PieChartSectionData(
+                        value: 1,
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.15),
+                        radius: 40,
+                        showTitle: false,
+                      ),
+                    ]
+                  : sections,
+            ),
+          ),
+          Text(
+            total.toString(),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final legend = Column(
+      children: [
+        for (final s in items)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: _colorFor(s.status),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    s.status,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                Text(
+                  s.count.toString(),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Job Status', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 180,
-                height: 180,
-                child: Stack(
-                  alignment: Alignment.center,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 520;
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    PieChart(
-                      PieChartData(
-                        centerSpaceRadius: 50,
-                        sectionsSpace: 2,
-                        sections: sections.isEmpty
-                            ? [
-                                PieChartSectionData(
-                                  value: 1,
-                                  color: Theme.of(
-                                    context,
-                                  ).dividerColor.withValues(alpha: 0.15),
-                                  radius: 40,
-                                  showTitle: false,
-                                ),
-                              ]
-                            : sections,
-                      ),
-                    ),
-                    Text(
-                      total.toString(),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    Center(child: chart),
+                    const SizedBox(height: 12),
+                    legend,
                   ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  children: [
-                    for (final s in items)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: _colorFor(s.status),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                s.status,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                            Text(
-                              s.count.toString(),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+                );
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  chart,
+                  const SizedBox(width: 16),
+                  Flexible(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: legend,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

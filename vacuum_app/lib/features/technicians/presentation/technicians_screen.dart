@@ -120,7 +120,9 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                     crossAxisCount: cols,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: cols == 1 ? 2.0 : 1.4,
+                    childAspectRatio: cols == 1
+                        ? (canEdit ? 1.25 : 1.45)
+                        : (canEdit ? 1.0 : 1.15),
                   ),
                   itemCount: data.items.length,
                   itemBuilder: (context, i) {
@@ -284,7 +286,7 @@ class _TechnicianCard extends StatelessWidget {
           if (tech.email.isNotEmpty)
             _ContactRow(icon: Icons.mail_outline, text: tech.email),
           _ContactRow(icon: Icons.phone_outlined, text: tech.phone),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -316,7 +318,7 @@ class _TechnicianCard extends StatelessWidget {
             ],
           ),
           if (canEdit) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -843,7 +845,7 @@ class _TechniciansSkeleton extends StatelessWidget {
         crossAxisCount: cols,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: cols == 1 ? 1.6 : 1.25,
+        childAspectRatio: cols == 1 ? 1.35 : 1.05,
       ),
       itemCount: 6,
       itemBuilder: (context, index) => const AppCard(
