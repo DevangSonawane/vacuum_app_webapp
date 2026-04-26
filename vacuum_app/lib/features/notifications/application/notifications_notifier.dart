@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/ws_channel.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../data/notifications_repository.dart';
 import '../domain/app_notification.dart';
@@ -117,8 +118,10 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     if (_channel != null) return;
 
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
-      _channel!.sink.add(jsonEncode({'type': 'auth', 'token': token}));
+      _channel = await connectWebSocket(Uri.parse(_wsUrl));
+      try {
+        _channel!.sink.add(jsonEncode({'type': 'auth', 'token': token}));
+      } catch (_) {}
 
       _pingTimer?.cancel();
       _pingTimer = Timer.periodic(const Duration(seconds: 25), (_) {
