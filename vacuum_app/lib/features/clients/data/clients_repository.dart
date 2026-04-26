@@ -7,11 +7,15 @@ class ClientsRepository {
 
   final Dio _dio;
 
-  Future<List<Client>> fetchClients({String search = '', String type = ''}) async {
+  Future<List<Client>> fetchClients({
+    int limit = 50,
+    String search = '',
+    String type = '',
+  }) async {
     final response = await _dio.get(
       'clients',
       queryParameters: {
-        'limit': 50,
+        'limit': limit,
         if (search.isNotEmpty) 'search': search,
         if (type.isNotEmpty && type != 'All') 'type': type,
       },
@@ -32,8 +36,10 @@ class ClientsRepository {
     return Client.fromJson(data);
   }
 
-  Future<void> create(Map<String, dynamic> payload) => _dio.post('clients', data: payload);
-  Future<void> update(int id, Map<String, dynamic> payload) => _dio.put('clients/$id', data: payload);
+  Future<void> create(Map<String, dynamic> payload) =>
+      _dio.post('clients', data: payload);
+  Future<void> update(int id, Map<String, dynamic> payload) =>
+      _dio.put('clients/$id', data: payload);
   Future<void> delete(int id) => _dio.delete('clients/$id');
 
   static Map<String, dynamic> _asMap(dynamic v) {

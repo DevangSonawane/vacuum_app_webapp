@@ -28,7 +28,9 @@ final dioProvider = Provider<Dio>((ref) {
       InterceptorsWrapper(
         onRequest: (options, handler) {
           final safeHeaders = Map<String, dynamic>.from(options.headers);
-          if (safeHeaders['Authorization'] != null) safeHeaders['Authorization'] = 'Bearer **redacted**';
+          if (safeHeaders['Authorization'] != null) {
+            safeHeaders['Authorization'] = 'Bearer **redacted**';
+          }
 
           Object? safeData = options.data;
           if (safeData is Map) {
@@ -48,12 +50,16 @@ final dioProvider = Provider<Dio>((ref) {
 
           debugPrint('[DIO] -> ${options.method} ${options.uri}');
           debugPrint('[DIO] headers=$safeHeaders');
-          if (options.queryParameters.isNotEmpty) debugPrint('[DIO] query=${options.queryParameters}');
+          if (options.queryParameters.isNotEmpty) {
+            debugPrint('[DIO] query=${options.queryParameters}');
+          }
           if (safeData != null) debugPrint('[DIO] data=$safeData');
           handler.next(options);
         },
         onResponse: (response, handler) {
-          debugPrint('[DIO] <- ${response.statusCode} ${response.requestOptions.uri}');
+          debugPrint(
+            '[DIO] <- ${response.statusCode} ${response.requestOptions.uri}',
+          );
           handler.next(response);
         },
         onError: (error, handler) {

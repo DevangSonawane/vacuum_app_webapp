@@ -29,12 +29,17 @@ class JobsRepository {
     return Job.fromJson(_asMap(_asMap(response.data)['data']));
   }
 
-  Future<void> create(Map<String, dynamic> payload) => _dio.post('jobs', data: payload);
+  Future<void> create(Map<String, dynamic> payload) =>
+      _dio.post('jobs', data: payload);
 
   Future<void> advanceStatus(String id, String newStatus) =>
       _dio.patch('jobs/$id/status', data: {'status': newStatus});
 
-  Future<String?> uploadImage(String jobId, String filePath, String filename) async {
+  Future<String?> uploadImage(
+    String jobId,
+    String filePath,
+    String filename,
+  ) async {
     final formData = FormData.fromMap({
       'images': await MultipartFile.fromFile(filePath, filename: filename),
     });

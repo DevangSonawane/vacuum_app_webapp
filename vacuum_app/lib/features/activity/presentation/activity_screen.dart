@@ -4,17 +4,33 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../auth/application/auth_notifier.dart';
+import '../../notifications/application/notifications_notifier.dart';
+import '../../notifications/domain/app_notification.dart';
 import '../application/activity_notifier.dart';
 import '../domain/activity_item.dart';
 
-const _filters = ['All', 'job', 'client', 'report', 'technician', 'amc', 'user'];
+const _filters = [
+  'All',
+  'job',
+  'client',
+  'report',
+  'technician',
+  'amc',
+  'user',
+];
 
 final activitySearchProvider = StateProvider<String>((_) => '');
+final activityTabProvider = StateProvider<int>((_) => 0);
+final _activityLoadingMoreProvider = StateProvider<bool>((_) => false);
+final _notifFilterProvider = StateProvider<String>(
+  (_) => 'all',
+); // all | unread
 
 final _activityTsFmt = DateFormat.yMMMd('en_IN').add_jm();
 
@@ -46,99 +62,530 @@ class ActivityScreen extends ConsumerWidget {
       );
     }
 
+    final tab = ref.watch(activityTabProvider);
+    final notif = ref.watch(notificationsProvider).valueOrNull;
+    final notifUnread = notif?.unreadCount ?? 0;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'Activity History',
+            action: IconButton(
+              tooltip: 'Refresh',
+              onPressed: () {
+                if (tab == 0) {
+                  ref.read(activityProvider.notifier).refresh();
+                } else {
+                  ref.read(notificationsProvider.notifier).refresh();
+                }
+              },
+              icon: const Icon(Icons.refresh),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _TabsRow(
+            index: tab,
+            unreadCount: notifUnread,
+            connected: notif?.connected ?? false,
+            onChanged: (i) => ref.read(activityTabProvider.notifier).state = i,
+          ),
+          const SizedBox(height: 12),
+          if (tab == 0) const _ActivityLogTab() else const _NotificationsTab(),
+        ],
+      ),
+    );
+  }
+}
+
+class _TabsRow extends StatelessWidget {
+  const _TabsRow({
+    required this.index,
+    required this.unreadCount,
+    required this.connected,
+    required this.onChanged,
+  });
+
+  final int index;
+  final int unreadCount;
+  final bool connected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Widget tab({required int i, required String label, Widget? trailing}) {
+      final active = index == i;
+      return InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => onChanged(i),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: active
+                ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
+                : Colors.transparent,
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  color: active
+                      ? (isDark ? Colors.white : AppColors.blue600)
+                      : Theme.of(context).hintColor,
+                ),
+              ),
+              if (trailing != null) ...[const SizedBox(width: 8), trailing],
+            ],
+          ),
+        ),
+      );
+    }
+
+    final wsColor = connected ? AppColors.emerald500 : AppColors.gray400;
+    final wsLabel = connected ? 'Live' : 'Offline';
+    return Row(
+      children: [
+        tab(i: 0, label: 'Activity Log'),
+        const SizedBox(width: 10),
+        tab(
+          i: 1,
+          label: 'Notifications',
+          trailing: Row(
+            children: [
+              if (unreadCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$unreadCount',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: wsColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: wsColor.withValues(alpha: 0.22)),
+                ),
+                child: Text(
+                  wsLabel,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: wsColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActivityLogTab extends ConsumerWidget {
+  const _ActivityLogTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(activityProvider);
     return state.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => EmptyState(icon: Icons.error_outline, title: 'Failed to load', description: e.toString()),
-      data: (data) => SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (e, _) => EmptyState(
+        icon: Icons.error_outline,
+        title: 'Failed to load',
+        description: e.toString(),
+      ),
+      data: (data) {
+        final q = ref.watch(activitySearchProvider).trim().toLowerCase();
+        final filtered = q.length >= 2
+            ? data.items.where((it) {
+                final action = it.action.toLowerCase();
+                final by = it.user.toLowerCase();
+                final entity = (it.entityId ?? '').toLowerCase();
+                return action.contains(q) ||
+                    by.contains(q) ||
+                    entity.contains(q);
+              }).toList()
+            : data.items;
+
+        final showingText =
+            'Showing ${data.items.length} of ${data.total} activities';
+        final canLoadMore = data.page < data.totalPages;
+        final loadingMore = ref.watch(_activityLoadingMoreProvider);
+
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
-              title: 'Activity History',
-              action: IconButton(
-                tooltip: 'Refresh',
-                onPressed: () => ref.read(activityProvider.notifier).refresh(),
-                icon: const Icon(Icons.refresh),
-              ),
-            ),
-            const SizedBox(height: 12),
             _ActivityFiltersRow(
               active: data.typeFilter,
-              onChanged: (f) => ref.read(activityProvider.notifier).setFilter(f),
+              onChanged: (f) =>
+                  ref.read(activityProvider.notifier).setFilter(f),
             ),
             const SizedBox(height: 12),
             _ActivitySearchField(
               value: ref.watch(activitySearchProvider),
-              onChanged: (v) => ref.read(activitySearchProvider.notifier).state = v,
-              onClear: () => ref.read(activitySearchProvider.notifier).state = '',
+              onChanged: (v) =>
+                  ref.read(activitySearchProvider.notifier).state = v,
+              onClear: () =>
+                  ref.read(activitySearchProvider.notifier).state = '',
+            ),
+            const SizedBox(height: 10),
+            Text(
+              showingText,
+              style: const TextStyle(fontSize: 12, color: AppColors.gray500),
             ),
             const SizedBox(height: 12),
-            Builder(
-              builder: (context) {
-                final q = ref.watch(activitySearchProvider).trim().toLowerCase();
-                final items = q.length >= 2
-                    ? data.items.where((it) {
-                        final action = it.action.toLowerCase();
-                        final by = it.user.toLowerCase();
-                        final entity = (it.entityId ?? '').toLowerCase();
-                        return action.contains(q) || by.contains(q) || entity.contains(q);
-                      }).toList()
-                    : data.items;
-
-                if (data.items.isEmpty && q.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.history,
-                    title: 'No activity yet',
-                    description: 'Actions will show up here.',
-                  );
-                }
-
-                if (items.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.history,
-                    title: 'No activity found',
-                    description: 'No activity logs match your current filter.',
-                  );
-                }
-
-                return AppCard(
-                  padding: EdgeInsets.zero,
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: items.length,
-                    separatorBuilder: (context, index) =>
-                        Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.12), height: 1),
-                    itemBuilder: (context, i) => _ActivityRow(
-                      item: items[i],
-                      onTap: () => _onTap(context, items[i]),
-                    ),
+            if (data.items.isEmpty && q.isEmpty)
+              const EmptyState(
+                icon: Icons.history,
+                title: 'No activity yet',
+                description: 'Actions will show up here.',
+              )
+            else if (filtered.isEmpty)
+              const EmptyState(
+                icon: Icons.history,
+                title: 'No activity found',
+                description: 'No activity logs match your current filter.',
+              )
+            else ...[
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filtered.length,
+                  separatorBuilder: (context, index) => Divider(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.12),
+                    height: 1,
                   ),
-                );
-              },
-            ),
+                  itemBuilder: (context, i) => _ActivityRow(
+                    item: filtered[i],
+                    onTap: () => _onActivityTap(context, filtered[i]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (canLoadMore)
+                AppButton(
+                  label: loadingMore ? 'Loading…' : 'Load More',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: loadingMore
+                      ? null
+                      : () async {
+                          ref
+                                  .read(_activityLoadingMoreProvider.notifier)
+                                  .state =
+                              true;
+                          await ref.read(activityProvider.notifier).loadMore();
+                          if (context.mounted) {
+                            ref
+                                    .read(_activityLoadingMoreProvider.notifier)
+                                    .state =
+                                false;
+                          }
+                        },
+                ),
+            ],
           ],
+        );
+      },
+    );
+  }
+
+  void _onActivityTap(BuildContext context, ActivityItem item) {
+    final id = item.entityId;
+    if (id == null || id.isEmpty) return;
+    final type = item.entityType ?? item.type;
+
+    if (type == 'job') {
+      context.go('/jobs/$id');
+      return;
+    }
+    if (type == 'report') {
+      context.go('/reports/$id');
+      return;
+    }
+
+    AppToast.show(
+      context,
+      message: 'Navigation for $type not wired yet.',
+      type: AppToastType.info,
+    );
+  }
+}
+
+class _NotificationsTab extends ConsumerWidget {
+  const _NotificationsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(notificationsProvider);
+    final filter = ref.watch(_notifFilterProvider);
+
+    return state.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (e, _) => EmptyState(
+        icon: Icons.error_outline,
+        title: 'Failed to load',
+        description: e.toString(),
+      ),
+      data: (data) {
+        final unreadCount = data.unreadCount;
+        final items = filter == 'unread'
+            ? data.items.where((n) => !n.read).toList()
+            : data.items;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _chip(
+                  context,
+                  label: 'All',
+                  active: filter == 'all',
+                  onTap: () =>
+                      ref.read(_notifFilterProvider.notifier).state = 'all',
+                ),
+                const SizedBox(width: 10),
+                _chip(
+                  context,
+                  label: unreadCount > 0 ? 'Unread ($unreadCount)' : 'Unread',
+                  active: filter == 'unread',
+                  onTap: () =>
+                      ref.read(_notifFilterProvider.notifier).state = 'unread',
+                ),
+                const Spacer(),
+                AppButton(
+                  label: 'Mark all read',
+                  size: AppButtonSize.sm,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: unreadCount == 0
+                      ? null
+                      : () => ref
+                            .read(notificationsProvider.notifier)
+                            .markAllRead(),
+                ),
+                const SizedBox(width: 10),
+                AppButton(
+                  label: 'Clear all',
+                  size: AppButtonSize.sm,
+                  variant: AppButtonVariant.danger,
+                  onPressed: data.items.isEmpty
+                      ? null
+                      : () =>
+                            ref.read(notificationsProvider.notifier).clearAll(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (items.isEmpty)
+              const EmptyState(
+                icon: Icons.notifications_none,
+                title: 'No notifications',
+                description: 'You are all caught up.',
+              )
+            else
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  separatorBuilder: (context, i) => Divider(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.12),
+                    height: 1,
+                  ),
+                  itemBuilder: (context, i) => _NotificationRow(
+                    item: items[i],
+                    onTap: () => _onNotificationTap(context, ref, items[i]),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  static Widget _chip(
+    BuildContext context, {
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: active
+              ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
+              : Colors.transparent,
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+            color: active
+                ? (isDark ? Colors.white : AppColors.blue600)
+                : Theme.of(context).hintColor,
+          ),
         ),
       ),
     );
   }
 
-  void _onTap(BuildContext context, ActivityItem item) {
-    final id = item.entityId;
-    if (id == null || id.isEmpty) return;
+  void _onNotificationTap(
+    BuildContext context,
+    WidgetRef ref,
+    AppNotification n,
+  ) {
+    ref.read(notificationsProvider.notifier).markRead(n);
 
-    if (item.type == 'job') {
+    final id = n.entityId;
+    final type = n.entityType;
+    if (id == null || id.isEmpty || type == null || type.isEmpty) return;
+
+    if (type == 'job') {
       context.go('/jobs/$id');
       return;
     }
-    if (item.type == 'report') {
+    if (type == 'report') {
       context.go('/reports/$id');
       return;
     }
+  }
+}
 
-    AppToast.show(context, message: 'Navigation for ${item.type} not wired yet.', type: AppToastType.info);
+class _NotificationRow extends StatelessWidget {
+  const _NotificationRow({required this.item, required this.onTap});
+
+  final AppNotification item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = notificationMeta(item.event);
+    final tsText = relativeTime(item.timestamp.toIso8601String());
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: meta.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(meta.icon, color: meta.color, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      if (!item.read) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.blue600,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    tsText,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.gray400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: AppColors.gray400),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -150,10 +597,11 @@ class _ActivityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, bg, fg) = _typeStyle(item.type);
-    final typeLabel = _filterLabel(item.type);
+    final type = item.entityType ?? item.type;
+    final (icon, bg, fg) = _typeStyle(type);
+    final typeLabel = _filterLabel(type);
     final hasEntity = (item.entityId ?? '').isNotEmpty;
-    final clickable = hasEntity && (item.type == 'job' || item.type == 'report');
+    final clickable = hasEntity && (type == 'job' || type == 'report');
     final userName = item.user.trim();
     final tsText = _formatTime(item.timestamp) ?? relativeTime(item.timestamp);
     return InkWell(
@@ -199,11 +647,23 @@ class _ActivityRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text('·', style: TextStyle(fontSize: 12, color: AppColors.gray400)),
+                        const Text(
+                          '·',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.gray400,
+                          ),
+                        ),
                         const SizedBox(width: 8),
                       ] else
                         const Spacer(),
-                      Text(tsText, style: const TextStyle(fontSize: 11, color: AppColors.gray400)),
+                      Text(
+                        tsText,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.gray400,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -226,12 +686,36 @@ class _ActivityRow extends StatelessWidget {
   (IconData, Color, Color) _typeStyle(String type) {
     return switch (type) {
       'job' => (Icons.work_outline, const Color(0xFFDBEAFE), AppColors.blue600),
-      'client' => (Icons.groups_outlined, const Color(0xFFD1FAE5), AppColors.emerald500),
-      'amc' => (Icons.verified_user_outlined, const Color(0xFFF3E8FF), AppColors.purple500),
-      'report' => (Icons.description_outlined, const Color(0xFFF3F4F6), AppColors.gray500),
-      'technician' => (Icons.engineering_outlined, const Color(0xFFFEE2E2), AppColors.red500),
-      'user' => (Icons.person_outline, const Color(0xFFE0E7FF), const Color(0xFF4F46E5)),
-      'email_settings' => (Icons.mail_outline, const Color(0xFFCFFAFE), const Color(0xFF0891B2)),
+      'client' => (
+        Icons.groups_outlined,
+        const Color(0xFFD1FAE5),
+        AppColors.emerald500,
+      ),
+      'amc' => (
+        Icons.verified_user_outlined,
+        const Color(0xFFF3E8FF),
+        AppColors.purple500,
+      ),
+      'report' => (
+        Icons.description_outlined,
+        const Color(0xFFF3F4F6),
+        AppColors.gray500,
+      ),
+      'technician' => (
+        Icons.engineering_outlined,
+        const Color(0xFFFEE2E2),
+        AppColors.red500,
+      ),
+      'user' => (
+        Icons.person_outline,
+        const Color(0xFFE0E7FF),
+        const Color(0xFF4F46E5),
+      ),
+      'email_settings' => (
+        Icons.mail_outline,
+        const Color(0xFFCFFAFE),
+        const Color(0xFF0891B2),
+      ),
       _ => (Icons.history, const Color(0xFFF3F4F6), AppColors.gray500),
     };
   }
@@ -262,7 +746,9 @@ class _ActivityFiltersRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+        ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -285,7 +771,11 @@ class _ActivityFiltersRow extends StatelessWidget {
 }
 
 class _FilterPill extends StatelessWidget {
-  const _FilterPill({required this.label, required this.selected, required this.onTap});
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -345,14 +835,18 @@ class _ActivitySearchField extends StatefulWidget {
 }
 
 class _ActivitySearchFieldState extends State<_ActivitySearchField> {
-  late final TextEditingController _controller = TextEditingController(text: widget.value);
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.value,
+  );
 
   @override
   void didUpdateWidget(covariant _ActivitySearchField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_controller.text != widget.value) {
       _controller.text = widget.value;
-      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
     }
   }
 
@@ -417,7 +911,11 @@ class _TypePill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: color),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ class Client {
     required this.contactPerson,
     required this.email,
     required this.phone,
+    this.gstNo = '',
     required this.address,
     required this.type,
     required this.status,
@@ -18,8 +19,10 @@ class Client {
   final String contactPerson;
   final String email;
   final String phone;
+  final String gstNo; // json: gst_no
   final String address;
-  final String type; // Corporate | Residential | Commercial | Healthcare | Government
+  final String
+  type; // Corporate | Residential | Commercial | Healthcare | Government
   final String status; // Active | Inactive
   final num contractValue;
   final String? joinDate;
@@ -38,12 +41,15 @@ class Client {
       contactPerson: s(json['contact_person']),
       email: s(json['email']),
       phone: s(json['phone']),
+      gstNo: s(json['gst_no']),
       address: s(json['address']),
       type: rawType.isEmpty ? 'Corporate' : rawType,
       status: rawStatus.isEmpty ? 'Active' : rawStatus,
       contractValue: n(json['contract_value']),
       joinDate: json['join_date']?.toString(),
-      stats: json['stats'] != null ? ClientStats.fromJson(_asMap(json['stats'])) : null,
+      stats: json['stats'] != null
+          ? ClientStats.fromJson(_asMap(json['stats']))
+          : null,
     );
   }
 
@@ -54,15 +60,16 @@ class Client {
   }
 
   Map<String, dynamic> toPayload() => {
-        'name': name,
-        'contact_person': contactPerson,
-        'type': type,
-        'status': status,
-        if (email.isNotEmpty) 'email': email,
-        if (phone.isNotEmpty) 'phone': phone,
-        if (address.isNotEmpty) 'address': address,
-        if (contractValue > 0) 'contract_value': contractValue,
-      };
+    'name': name,
+    'contact_person': contactPerson,
+    'type': type,
+    'status': status,
+    if (email.isNotEmpty) 'email': email,
+    if (phone.isNotEmpty) 'phone': phone,
+    if (address.isNotEmpty) 'address': address,
+    if (gstNo.isNotEmpty) 'gst_no': gstNo,
+    if (contractValue > 0) 'contract_value': contractValue,
+  };
 }
 
 class ClientStats {
@@ -90,4 +97,3 @@ class ClientStats {
     );
   }
 }
-

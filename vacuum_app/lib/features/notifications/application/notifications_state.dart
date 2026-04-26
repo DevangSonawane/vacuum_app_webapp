@@ -23,6 +23,9 @@ class NotificationsState {
     );
   }
 
-  static const empty = NotificationsState(items: [], unreadCount: 0, connected: false);
+  static const empty = NotificationsState(
+    items: [],
+    unreadCount: 0,
+    connected: false,
+  );
 }
-

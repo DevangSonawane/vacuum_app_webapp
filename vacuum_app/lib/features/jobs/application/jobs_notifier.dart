@@ -15,11 +15,16 @@ class JobsState {
   final String statusFilter;
 
   JobsState copyWith({List<Job>? items, String? statusFilter}) {
-    return JobsState(items: items ?? this.items, statusFilter: statusFilter ?? this.statusFilter);
+    return JobsState(
+      items: items ?? this.items,
+      statusFilter: statusFilter ?? this.statusFilter,
+    );
   }
 }
 
-final jobsProvider = AsyncNotifierProvider<JobsNotifier, JobsState>(JobsNotifier.new);
+final jobsProvider = AsyncNotifierProvider<JobsNotifier, JobsState>(
+  JobsNotifier.new,
+);
 
 class JobsNotifier extends AsyncNotifier<JobsState> {
   JobsRepository get _repo => ref.read(jobsRepositoryProvider);
@@ -75,7 +80,10 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
     }
   }
 
-  Future<bool> uploadAndLinkImages(String jobId, List<({String path, String name})> files) async {
+  Future<bool> uploadAndLinkImages(
+    String jobId,
+    List<({String path, String name})> files,
+  ) async {
     try {
       for (final f in files) {
         final url = await _repo.uploadImage(jobId, f.path, f.name);
@@ -88,4 +96,3 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
     }
   }
 }
-

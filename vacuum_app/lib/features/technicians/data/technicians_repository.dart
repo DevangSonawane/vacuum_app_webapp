@@ -7,12 +7,17 @@ class TechniciansRepository {
 
   final Dio _dio;
 
-  Future<List<Technician>> fetchTechnicians({String search = ''}) async {
+  Future<List<Technician>> fetchTechnicians({
+    int limit = 50,
+    String search = '',
+    String status = '',
+  }) async {
     final response = await _dio.get(
       'technicians',
       queryParameters: {
-        'limit': 50,
+        'limit': limit,
         if (search.isNotEmpty) 'search': search,
+        if (status.isNotEmpty) 'status': status,
       },
     );
 
@@ -33,13 +38,17 @@ class TechniciansRepository {
           .toList();
     }
 
-    throw Exception((root['message'] ?? 'Failed to load technicians').toString());
+    throw Exception(
+      (root['message'] ?? 'Failed to load technicians').toString(),
+    );
   }
 
   Future<Technician> fetchById(int id) async {
     final response = await _dio.get('technicians/$id');
     final root = _asMap(response.data);
-    final data = root['success'] == true ? _asMap(root['data']) : _asMap(root['data'] ?? root);
+    final data = root['success'] == true
+        ? _asMap(root['data'])
+        : _asMap(root['data'] ?? root);
     return Technician.fromJson(data);
   }
 

@@ -35,6 +35,12 @@ class UsersState {
     );
   }
 
-  static const empty =
-      UsersState(allUsers: [], users: [], page: 1, totalPages: 1, total: 0, query: '');
+  static const empty = UsersState(
+    allUsers: [],
+    users: [],
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    query: '',
+  );
 }

@@ -33,7 +33,11 @@ class _AppCardState extends State<AppCard> {
       onExit: (_) => canHover ? setState(() => _isHovering = false) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        transform: Matrix4.translationValues(0.0, _isHovering ? -4.0 : 0.0, 0.0),
+        transform: Matrix4.translationValues(
+          0.0,
+          _isHovering ? -4.0 : 0.0,
+          0.0,
+        ),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(16),

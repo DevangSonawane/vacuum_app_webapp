@@ -285,6 +285,7 @@ class _AmcCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final grad =
         _statusGrad[contract.status] ?? [AppColors.gray400, AppColors.gray500];
+    final po = (contract.poNumber ?? '').trim();
     return AppCard(
       hover: true,
       child: Column(
@@ -329,6 +330,14 @@ class _AmcCard extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
+                    if (po.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      _Pill(
+                        label: 'PO $po',
+                        bg: const Color(0xFFF3E8FF),
+                        fg: AppColors.purple500,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -480,10 +489,52 @@ class _InfoGrid extends StatelessWidget {
           children: [
             item('Value', fmtRevenue(contract.value)),
             const SizedBox(width: 10),
+            item(
+              'Days Left',
+              contract.daysLeft == null ? '—' : '${contract.daysLeft} days',
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
             item('Reminder', '${contract.renewalReminderDays} days'),
+            const SizedBox(width: 10),
+            item(
+              'PO Number',
+              (contract.poNumber ?? '').trim().isEmpty
+                  ? '—'
+                  : contract.poNumber!.trim(),
+            ),
           ],
         ),
       ],
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.bg, required this.fg});
+
+  final String label;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg),
+      ),
     );
   }
 }
@@ -518,8 +569,8 @@ class _AmcFormSheet extends StatefulWidget {
 
 class _AmcFormSheetState extends State<_AmcFormSheet> {
   final _title = TextEditingController();
+  final _poNumber = TextEditingController();
   final _value = TextEditingController();
-  final _reminder = TextEditingController(text: '30');
   final _services = TextEditingController();
 
   DateTime? _start;
@@ -531,6 +582,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
 
   int? _clientId;
   List<({int id, String name})> _clients = const [];
+  int _reminderDays = 30;
 
   bool get _isEdit => widget.existing != null;
 
@@ -540,8 +592,9 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     final e = widget.existing;
     if (e != null) {
       _title.text = e.title;
+      _poNumber.text = e.poNumber ?? '';
       _value.text = e.value.toString();
-      _reminder.text = e.renewalReminderDays.toString();
+      _reminderDays = e.renewalReminderDays;
       _services.text = e.services.join(', ');
       _start = _parse(e.startDate);
       _end = _parse(e.endDate);
@@ -554,8 +607,8 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   @override
   void dispose() {
     _title.dispose();
+    _poNumber.dispose();
     _value.dispose();
-    _reminder.dispose();
     _services.dispose();
     super.dispose();
   }
@@ -566,7 +619,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     setState(() => _fetching = true);
     try {
       final repo = ClientsRepository(dio: widget.dio);
-      final clients = await repo.fetchClients(search: '', type: '');
+      final clients = await repo.fetchClients(limit: 100, search: '', type: '');
       _clients = [for (final c in clients) (id: c.id, name: c.name)];
       _clientId ??= _clients.isNotEmpty ? _clients.first.id : null;
     } catch (_) {
@@ -595,10 +648,11 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     final payload = <String, dynamic>{
       'client_id': _clientId,
       'title': _title.text.trim(),
+      if (_poNumber.text.trim().isNotEmpty) 'po_number': _poNumber.text.trim(),
       'start_date': _start!.toIso8601String().substring(0, 10),
       'end_date': _end!.toIso8601String().substring(0, 10),
       'value': num.tryParse(_value.text.trim()) ?? 0,
-      'renewal_reminder_days': int.tryParse(_reminder.text.trim()) ?? 30,
+      'renewal_reminder_days': _reminderDays,
       'services': _services.text
           .split(',')
           .map((e) => e.trim())
@@ -663,9 +717,18 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
             if (_fetching)
               const AppCard(child: ShimmerBox(height: 120))
             else ...[
+              if (!_isEdit) ...[
+                _InfoBanner(
+                  text:
+                      'On creation — confirmation email sent to client automatically.',
+                ),
+                const SizedBox(height: 12),
+              ],
               _dropdownClient(),
               const SizedBox(height: 12),
               _field('Title *', _title, hint: 'Annual Maintenance'),
+              const SizedBox(height: 12),
+              _field('PO Number', _poNumber, hint: 'PO-1234'),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -700,14 +763,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: _field(
-                      'Reminder Days',
-                      _reminder,
-                      hint: '30',
-                      keyboard: TextInputType.number,
-                    ),
-                  ),
+                  Expanded(child: _reminderDropdown()),
                 ],
               ),
               const SizedBox(height: 12),
@@ -791,6 +847,36 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
               )
               .toList(),
           onChanged: _loading ? null : (v) => setState(() => _clientId = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _reminderDropdown() {
+    const options = [15, 30, 60, 90];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Renewal Reminder',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<int>(
+          initialValue: options.contains(_reminderDays) ? _reminderDays : 30,
+          isExpanded: true,
+          menuMaxHeight: 360,
+          borderRadius: BorderRadius.circular(14),
+          dropdownColor: Theme.of(context).colorScheme.surface,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          decoration: const InputDecoration(isDense: true),
+          items: [
+            for (final d in options)
+              DropdownMenuItem<int>(value: d, child: Text('$d days')),
+          ],
+          onChanged: _loading
+              ? null
+              : (v) => setState(() => _reminderDays = v ?? 30),
         ),
       ],
     );
@@ -883,6 +969,41 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDBEAFE),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: AppColors.blue600, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.blue600,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

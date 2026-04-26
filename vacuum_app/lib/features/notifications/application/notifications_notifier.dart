@@ -10,17 +10,22 @@ import '../data/notifications_repository.dart';
 import '../domain/app_notification.dart';
 import 'notifications_state.dart';
 
-final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) {
+final notificationsRepositoryProvider = Provider<NotificationsRepository>((
+  ref,
+) {
   return NotificationsRepository(dio: ref.read(dioProvider));
 });
 
 final notificationsProvider =
-    AsyncNotifierProvider<NotificationsNotifier, NotificationsState>(NotificationsNotifier.new);
+    AsyncNotifierProvider<NotificationsNotifier, NotificationsState>(
+      NotificationsNotifier.new,
+    );
 
 class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
   static const _wsUrl = 'wss://vaccumapi.onrender.com/ws';
 
-  NotificationsRepository get _repo => ref.read(notificationsRepositoryProvider);
+  NotificationsRepository get _repo =>
+      ref.read(notificationsRepositoryProvider);
 
   WebSocketChannel? _channel;
   StreamSubscription? _sub;
@@ -48,7 +53,11 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
         connected: false,
       );
     } catch (_) {
-      return const NotificationsState(items: [], unreadCount: 0, connected: false);
+      return const NotificationsState(
+        items: [],
+        unreadCount: 0,
+        connected: false,
+      );
     }
   }
 
@@ -57,7 +66,10 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final result = await _repo.fetch(limit: 30);
-      return current.copyWith(items: result.items, unreadCount: result.unreadCount);
+      return current.copyWith(
+        items: result.items,
+        unreadCount: result.unreadCount,
+      );
     });
   }
 
@@ -80,7 +92,8 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     state = AsyncData(
       current.copyWith(
         items: [
-          for (final it in current.items) if (it.id == n.id) it.copyWith(read: true) else it,
+          for (final it in current.items)
+            if (it.id == n.id) it.copyWith(read: true) else it,
         ],
         unreadCount: (current.unreadCount - 1).clamp(0, 1 << 30),
       ),
@@ -162,7 +175,9 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
       serverId: null,
       event: event,
       title: title.isNotEmpty ? title : meta.title,
-      message: message.isNotEmpty ? message : formatNotificationMessage(event, data),
+      message: message.isNotEmpty
+          ? message
+          : formatNotificationMessage(event, data),
       entityType: entityType,
       entityId: entityId,
       timestamp: ts,
@@ -171,7 +186,9 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     );
 
     final nextItems = [item, ...current.items].take(50).toList();
-    state = AsyncData(current.copyWith(items: nextItems, unreadCount: current.unreadCount + 1));
+    state = AsyncData(
+      current.copyWith(items: nextItems, unreadCount: current.unreadCount + 1),
+    );
   }
 
   void _scheduleReconnect(String token) {
@@ -203,7 +220,9 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
 
     if (!keepConnectedFlag) {
       final current = state.valueOrNull ?? NotificationsState.empty;
-      if (current.connected) state = AsyncData(current.copyWith(connected: false));
+      if (current.connected) {
+        state = AsyncData(current.copyWith(connected: false));
+      }
     }
   }
 

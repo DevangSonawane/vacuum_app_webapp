@@ -17,7 +17,7 @@ const EMPTY_FORM = {
   password:       "",
 };
 
-const SPECIALIZATIONS = ["HVAC", "Electrical", "Plumbing", "Carpentry", "Generator", "Civil", "IT"];
+const SPECIALIZATIONS = ["ITR"];
 const STATUSES        = ["Active", "On Leave", "Inactive"];
 
 export default function Technicians() {

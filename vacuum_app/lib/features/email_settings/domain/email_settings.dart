@@ -36,13 +36,13 @@ class EmailSettings {
   }
 
   Map<String, dynamic> toJson() => {
-        'smtpHost': smtpHost,
-        'smtpPort': smtpPort,
-        'fromEmail': fromEmail,
-        'fromName': fromName,
-        'password': password,
-        'notifications': notifications.toJson(),
-      };
+    'smtpHost': smtpHost,
+    'smtpPort': smtpPort,
+    'fromEmail': fromEmail,
+    'fromName': fromName,
+    'password': password,
+    'notifications': notifications.toJson(),
+  };
 
   String toJsonString() => jsonEncode(toJson());
 
@@ -58,9 +58,13 @@ class EmailSettings {
       smtpHost: s(json['smtpHost']),
       smtpPort: s(json['smtpPort']).isEmpty ? '587' : s(json['smtpPort']),
       fromEmail: s(json['fromEmail']),
-      fromName: s(json['fromName']).isEmpty ? 'VDTI Service Hub' : s(json['fromName']),
+      fromName: s(json['fromName']).isEmpty
+          ? 'VDTI Service Hub'
+          : s(json['fromName']),
       password: s(json['password']),
-      notifications: EmailNotificationTriggers.fromJson(m(json['notifications'])),
+      notifications: EmailNotificationTriggers.fromJson(
+        m(json['notifications']),
+      ),
     );
   }
 
@@ -121,13 +125,13 @@ class EmailNotificationTriggers {
   }
 
   Map<String, dynamic> toJson() => {
-        'jobRaised': jobRaised,
-        'jobAssigned': jobAssigned,
-        'jobCompleted': jobCompleted,
-        'reportApproved': reportApproved,
-        'amcRenewal': amcRenewal,
-        'quotationSent': quotationSent,
-      };
+    'jobRaised': jobRaised,
+    'jobAssigned': jobAssigned,
+    'jobCompleted': jobCompleted,
+    'reportApproved': reportApproved,
+    'amcRenewal': amcRenewal,
+    'quotationSent': quotationSent,
+  };
 
   static EmailNotificationTriggers fromJson(Map<String, dynamic> json) {
     bool b(Object? v) => v == true || v?.toString() == 'true';
@@ -150,4 +154,3 @@ class EmailNotificationTriggers {
     quotationSent: true,
   );
 }
-

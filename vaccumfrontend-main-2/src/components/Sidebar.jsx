@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Users, UserCog, Briefcase, ClipboardList,
   FileText, DollarSign, Mail, ShieldCheck, Clock, LogOut,
   ChevronRight, Menu, X, Search, Bell, HardHat,
-  User, Settings, Moon, Sun, CheckCheck, Trash2, Wifi, WifiOff
+  User, Settings, Moon, Sun, CheckCheck, Trash2, Wifi, WifiOff,
+  CalendarCheck
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -14,17 +15,16 @@ import { useNotifications } from "../context/NotificationContext";
 import { Avatar } from "./ui";
 
 const NAV_ITEMS = [
-  { id: "dashboard",   label: "Dashboard",       icon: LayoutDashboard, path: "/"            },
-  { id: "technicians", label: "Technicians",      icon: UserCog,         path: "/technicians" },
-  { id: "clients",     label: "Clients",          icon: Users,           path: "/clients"     },
-  { id: "jobs",        label: "Work Orders",      icon: Briefcase,       path: "/jobs"        },
-  { id: "reports",     label: "Service Reports",  icon: ClipboardList,   path: "/reports"     },
-  { id: "quotations",  label: "Quotations",       icon: DollarSign,      path: "/quotations"  },
-  { id: "amc",         label: "AMC Contracts",    icon: ShieldCheck,     path: "/amc"         },
-  { id: "attendance",  label: "Attendance",       icon: Clock,           path: "/attendance"  },
-  { id: "email",       label: "Email Settings",   icon: Mail,            path: "/email",      adminOnly: true },
-  { id: "activity",    label: "Activity History", icon: FileText,        path: "/activity",    adminOnly: true },
-  { id: "users",       label: "Users",            icon: Users,           path: "/users",      adminOnly: true },
+  { id: "dashboard",   label: "Dashboard",        icon: LayoutDashboard, path: "/"            },
+  { id: "technicians", label: "Technicians",       icon: UserCog,         path: "/technicians" },
+  { id: "clients",     label: "Clients",           icon: Users,           path: "/clients"     },
+  { id: "amc",         label: "AMC Contracts",     icon: ShieldCheck,     path: "/amc"         },
+  { id: "jobs",        label: "Visit Scheduled",   icon: CalendarCheck,   path: "/jobs"        },
+  { id: "reports",     label: "Service & Reports", icon: ClipboardList,   path: "/reports"     },
+  { id: "attendance",  label: "Attendance",        icon: Clock,           path: "/attendance"  },
+  { id: "email",       label: "Email Settings",    icon: Mail,            path: "/email",      adminOnly: true },
+  { id: "activity",    label: "Activity History",  icon: FileText,        path: "/activity",   adminOnly: true },
+  { id: "users",       label: "Users",             icon: Users,           path: "/users",      adminOnly: true },
 ];
 
 // ── Colour per notification event ────────────────────────────
@@ -168,17 +168,17 @@ export function TopBar({ setSidebarOpen }) {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // Current page label
+  // Current page label — matches updated NAV_ITEMS
   const currentNavItem = NAV_ITEMS.find(n =>
     n.path === location.pathname ||
     (n.path !== "/" && location.pathname.startsWith(n.path))
   );
   let label = currentNavItem?.label || "Dashboard";
-  if (location.pathname === "/profile")    label = "Profile";
-  if (location.pathname === "/settings")   label = "Settings";
-  if (location.pathname === "/users")      label = "User Management";
-  if (location.pathname.startsWith("/jobs/"))     label = "Job Detail";
-  if (location.pathname.startsWith("/reports/"))  label = "Report Detail";
+  if (location.pathname === "/profile")             label = "Profile";
+  if (location.pathname === "/settings")            label = "Settings";
+  if (location.pathname === "/users")               label = "User Management";
+  if (location.pathname.startsWith("/jobs/"))       label = "Visit Detail";
+  if (location.pathname.startsWith("/reports/"))    label = "Report Detail";
 
   const getInitials = (user) => {
     if (!user) return "?";
@@ -231,7 +231,7 @@ export function TopBar({ setSidebarOpen }) {
               </motion.span>
             )}
 
-            {/* WS connected indicator — tiny green dot */}
+            {/* WS connected indicator */}
             <span className={`absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white dark:border-gray-950 ${connected ? "bg-emerald-400" : "bg-gray-400"}`} />
           </button>
 
@@ -289,7 +289,7 @@ export function TopBar({ setSidebarOpen }) {
                   ) : (
                     <div className="divide-y divide-gray-50 dark:divide-gray-800">
                       {notifications.map(n => {
-                        const isClickable = !!n.entity_type && ["job","report","amc"].includes(n.entity_type);
+                        const isClickable = !!n.entity_type && ["job", "report", "amc"].includes(n.entity_type);
                         const handleClick = () => {
                           if (!n.read) markRead(n.id);
                           const paths = { job: `/jobs/${n.entity_id}`, report: `/reports/${n.entity_id}`, amc: "/amc" };

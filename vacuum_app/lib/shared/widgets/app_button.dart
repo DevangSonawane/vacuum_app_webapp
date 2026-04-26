@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
 enum AppButtonVariant { primary, secondary, danger, ghost, outline }
+
 enum AppButtonSize { sm, md, lg }
 
 class AppButton extends StatelessWidget {
@@ -50,7 +51,10 @@ class AppButton extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2, color: fg),
           )
         else if (leading != null)
-          IconTheme(data: IconThemeData(color: fg, size: 18), child: leading!),
+          IconTheme(
+            data: IconThemeData(color: fg, size: 18),
+            child: leading!,
+          ),
         if (leading != null || loading) const SizedBox(width: 10),
         Flexible(
           child: Text(
@@ -96,12 +100,16 @@ class AppButton extends StatelessWidget {
         return (
           isDark ? const Color(0xFF111827) : AppColors.gray100,
           isDark ? Colors.white : AppColors.gray700,
-          null
+          null,
         );
       case AppButtonVariant.danger:
         return (AppColors.red500, Colors.white, null);
       case AppButtonVariant.ghost:
-        return (Colors.transparent, isDark ? Colors.white : AppColors.gray700, null);
+        return (
+          Colors.transparent,
+          isDark ? Colors.white : AppColors.gray700,
+          null,
+        );
       case AppButtonVariant.outline:
         return (Colors.transparent, AppColors.blue600, AppColors.blue600);
     }

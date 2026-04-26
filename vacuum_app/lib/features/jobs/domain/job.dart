@@ -57,18 +57,28 @@ class Job {
       technicianId: (json['technician_id'] as num?)?.toInt(),
       images: l(json['images'])
           .whereType<Map>()
-          .map((e) => JobImage.fromJson(e.map((k, v) => MapEntry(k.toString(), v))))
+          .map(
+            (e) =>
+                JobImage.fromJson(e.map((k, v) => MapEntry(k.toString(), v))),
+          )
           .toList(),
       reports: l(json['reports'])
           .whereType<Map>()
-          .map((e) => JobReport.fromJson(e.map((k, v) => MapEntry(k.toString(), v))))
+          .map(
+            (e) =>
+                JobReport.fromJson(e.map((k, v) => MapEntry(k.toString(), v))),
+          )
           .toList(),
     );
   }
 }
 
 class JobImage {
-  const JobImage({required this.id, required this.fileUrl, required this.fileName});
+  const JobImage({
+    required this.id,
+    required this.fileUrl,
+    required this.fileName,
+  });
 
   final int id;
   final String fileUrl;
@@ -85,7 +95,11 @@ class JobImage {
 }
 
 class JobReport {
-  const JobReport({required this.id, required this.title, required this.status});
+  const JobReport({
+    required this.id,
+    required this.title,
+    required this.status,
+  });
 
   final String id;
   final String title;
@@ -93,7 +107,10 @@ class JobReport {
 
   static JobReport fromJson(Map<String, dynamic> json) {
     String s(Object? v) => v == null ? '' : v.toString();
-    return JobReport(id: s(json['id']), title: s(json['title']), status: s(json['status']));
+    return JobReport(
+      id: s(json['id']),
+      title: s(json['title']),
+      status: s(json['status']),
+    );
   }
 }
-

@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/email_settings.dart';
 
 final emailSettingsProvider =
-    AsyncNotifierProvider<EmailSettingsNotifier, EmailSettings>(EmailSettingsNotifier.new);
+    AsyncNotifierProvider<EmailSettingsNotifier, EmailSettings>(
+      EmailSettingsNotifier.new,
+    );
 
 class EmailSettingsNotifier extends AsyncNotifier<EmailSettings> {
   static const _prefsKey = 'vdti_email_settings';
@@ -26,4 +28,3 @@ class EmailSettingsNotifier extends AsyncNotifier<EmailSettings> {
     });
   }
 }
-

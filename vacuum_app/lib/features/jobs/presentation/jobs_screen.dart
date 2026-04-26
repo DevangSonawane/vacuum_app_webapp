@@ -686,12 +686,19 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     try {
       final clientsRepo = ClientsRepository(dio: widget.dio);
       final techRepo = TechniciansRepository(dio: widget.dio);
-      final clients = await clientsRepo.fetchClients(search: '', type: '');
-      final techs = await techRepo.fetchTechnicians(search: '');
+      final clients = await clientsRepo.fetchClients(
+        limit: 100,
+        search: '',
+        type: '',
+      );
+      final techs = await techRepo.fetchTechnicians(
+        limit: 100,
+        search: '',
+        status: 'Active',
+      );
 
-      final activeTechs = techs.where((t) => t.status == 'Active').toList();
       _clients = [for (final c in clients) (id: c.id, name: c.name)];
-      _techs = [for (final t in activeTechs) (id: t.id, name: t.name)];
+      _techs = [for (final t in techs) (id: t.id, name: t.name)];
       if (_clients.isNotEmpty) _clientId ??= _clients.first.id;
     } catch (_) {
       // ignore - will show empty dropdown

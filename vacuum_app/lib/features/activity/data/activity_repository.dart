@@ -7,21 +7,37 @@ class ActivityRepository {
 
   final Dio _dio;
 
-  Future<List<ActivityItem>> fetchActivity({String type = ''}) async {
+  Future<ActivityPage> fetchActivity({
+    required int page,
+    required int limit,
+    String type = '',
+  }) async {
     final response = await _dio.get(
       'activity',
       queryParameters: {
-        'limit': 50,
+        'page': page,
+        'limit': limit,
         if (type.isNotEmpty && type != 'All') 'type': type,
       },
     );
 
     final root = _asMap(response.data);
     final list = _asList(root['data']);
-    return list
+    final items = list
         .whereType<Map>()
-        .map((e) => ActivityItem.fromJson(e.map((k, v) => MapEntry(k.toString(), v))))
+        .map(
+          (e) =>
+              ActivityItem.fromJson(e.map((k, v) => MapEntry(k.toString(), v))),
+        )
         .toList();
+
+    final pagination = _asMap(root['pagination']);
+    return ActivityPage(
+      items: items,
+      page: (pagination['page'] as num?)?.toInt() ?? page,
+      totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
+      total: (pagination['total'] as num?)?.toInt() ?? items.length,
+    );
   }
 
   static Map<String, dynamic> _asMap(dynamic v) {
@@ -31,4 +47,18 @@ class ActivityRepository {
   }
 
   static List<dynamic> _asList(dynamic v) => v is List ? v : const [];
+}
+
+class ActivityPage {
+  const ActivityPage({
+    required this.items,
+    required this.page,
+    required this.totalPages,
+    required this.total,
+  });
+
+  final List<ActivityItem> items;
+  final int page;
+  final int totalPages;
+  final int total;
 }

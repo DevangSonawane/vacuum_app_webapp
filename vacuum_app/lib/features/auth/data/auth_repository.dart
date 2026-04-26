@@ -19,7 +19,9 @@ class AuthRepository {
         payload['email'] = trimmed;
       } else {
         final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-        payload['phone_number'] = digits.startsWith('91') ? '+$digits' : '+91$digits';
+        payload['phone_number'] = digits.startsWith('91')
+            ? '+$digits'
+            : '+91$digits';
       }
 
       final response = await _dio.post('auth/login', data: payload);
@@ -35,9 +37,13 @@ class AuthRepository {
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 401) {
-        throw const AuthException('Login failed. Wrong email/phone or password.');
+        throw const AuthException(
+          'Login failed. Wrong email/phone or password.',
+        );
       }
-      throw AuthException(_messageFromDio(e, fallback: 'Login failed. Please try again.'));
+      throw AuthException(
+        _messageFromDio(e, fallback: 'Login failed. Please try again.'),
+      );
     }
   }
 
@@ -50,18 +56,25 @@ class AuthRepository {
       if (user.id == 0) throw const AuthException('Invalid session response.');
       return user;
     } on DioException catch (e) {
-      throw AuthException(_messageFromDio(e, fallback: 'Session expired. Please sign in again.'));
+      throw AuthException(
+        _messageFromDio(e, fallback: 'Session expired. Please sign in again.'),
+      );
     }
   }
 
   Future<String?> forgotPassword({required String email}) async {
     try {
-      final response = await _dio.post('auth/forgot-password', data: {'email': email.trim()});
+      final response = await _dio.post(
+        'auth/forgot-password',
+        data: {'email': email.trim()},
+      );
       final data = _asMap(response.data);
       final token = data['dev_only_reset_token'];
       return (token as Object?)?.toString();
     } on DioException catch (e) {
-      throw AuthException(_messageFromDio(e, fallback: 'Failed to request reset token.'));
+      throw AuthException(
+        _messageFromDio(e, fallback: 'Failed to request reset token.'),
+      );
     }
   }
 
@@ -80,7 +93,9 @@ class AuthRepository {
         },
       );
     } on DioException catch (e) {
-      throw AuthException(_messageFromDio(e, fallback: 'Failed to reset password.'));
+      throw AuthException(
+        _messageFromDio(e, fallback: 'Failed to reset password.'),
+      );
     }
   }
 
@@ -101,7 +116,9 @@ class AuthRepository {
 
   static Map<String, dynamic> _asMap(dynamic value) {
     if (value is Map<String, dynamic>) return value;
-    if (value is Map) return value.map((key, val) => MapEntry(key.toString(), val));
+    if (value is Map) {
+      return value.map((key, val) => MapEntry(key.toString(), val));
+    }
     return <String, dynamic>{};
   }
 }

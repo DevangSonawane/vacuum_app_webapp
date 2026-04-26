@@ -56,10 +56,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       ),
       body: _job.when(
         loading: () => const _JobDetailSkeleton(),
-        error: (e, _) => EmptyState(icon: Icons.error_outline, title: 'Failed to load', description: e.toString()),
+        error: (e, _) => EmptyState(
+          icon: Icons.error_outline,
+          title: 'Failed to load',
+          description: e.toString(),
+        ),
         data: (job) {
           if (job == null) {
-            return const EmptyState(icon: Icons.work_outline, title: 'Not found', description: 'Job not available.');
+            return const EmptyState(
+              icon: Icons.work_outline,
+              title: 'Not found',
+              description: 'Job not available.',
+            );
           }
           final next = _nextStatus(job.status);
           return SingleChildScrollView(
@@ -72,44 +80,65 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                 _InfoGrid(job: job),
                 const SizedBox(height: 16),
                 if (job.description.isNotEmpty) ...[
-                  Text('Description', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Description',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 8),
                   AppCard(child: Text(job.description)),
                   const SizedBox(height: 16),
                 ],
-                Text('Pipeline', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Pipeline',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 _Stepper(current: job.status),
                 const SizedBox(height: 16),
-                Text('Verification Photos (${job.images.length})', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Verification Photos (${job.images.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 if (job.images.isEmpty)
-                  Text('No photos', style: TextStyle(color: Theme.of(context).hintColor))
+                  Text(
+                    'No photos',
+                    style: TextStyle(color: Theme.of(context).hintColor),
+                  )
                 else
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
                     itemCount: job.images.length,
                     itemBuilder: (context, i) => ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: CachedNetworkImage(
                         imageUrl: job.images[i].fileUrl,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => const ShimmerBox(height: 80),
-                        errorWidget: (context, url, error) => const Icon(Icons.broken_image_outlined),
+                        placeholder: (context, url) =>
+                            const ShimmerBox(height: 80),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.broken_image_outlined),
                       ),
                     ),
                   ),
                 const SizedBox(height: 16),
-                Text('Reports (${job.reports.length})', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Reports (${job.reports.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 if (job.reports.isEmpty)
-                  Text('No reports', style: TextStyle(color: Theme.of(context).hintColor))
+                  Text(
+                    'No reports',
+                    style: TextStyle(color: Theme.of(context).hintColor),
+                  )
                 else
                   Column(
                     children: [
@@ -131,7 +160,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Text(r.title, overflow: TextOverflow.ellipsis, maxLines: 1),
+                                  child: Text(
+                                    r.title,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
                                 ),
                                 StatusBadge(label: r.status),
                               ],
@@ -156,7 +189,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                         Expanded(
                           child: Text(
                             'This job is closed.',
-                            style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF065F46)),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF065F46),
+                            ),
                           ),
                         ),
                       ],
@@ -164,22 +200,34 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                   )
                 else if (canRaise && next != null)
                   AppButton(
-                    label: job.status == 'In Progress' ? 'Close Job with Verification' : 'Advance to $next',
+                    label: job.status == 'In Progress'
+                        ? 'Close Job with Verification'
+                        : 'Advance to $next',
                     expanded: true,
                     onPressed: () async {
                       if (job.status == 'In Progress') {
                         await _openCloseSheet(context, ref, job: job);
                         return;
                       }
-                      final ok = await ref.read(jobsProvider.notifier).advanceStatus(job.id, next);
+                      final ok = await ref
+                          .read(jobsProvider.notifier)
+                          .advanceStatus(job.id, next);
                       if (!context.mounted) return;
                       if (!ok) {
-                        AppToast.show(context, message: 'Failed to advance', type: AppToastType.error);
+                        AppToast.show(
+                          context,
+                          message: 'Failed to advance',
+                          type: AppToastType.error,
+                        );
                         return;
                       }
                       await _load();
                       if (!context.mounted) return;
-                      AppToast.show(context, message: 'Moved to $next', type: AppToastType.success);
+                      AppToast.show(
+                        context,
+                        message: 'Moved to $next',
+                        type: AppToastType.success,
+                      );
                     },
                   ),
               ],
@@ -191,13 +239,17 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
   }
 
   String? _nextStatus(String current) => switch (current) {
-        'Raised' => 'Assigned',
-        'Assigned' => 'In Progress',
-        'In Progress' => 'Closed',
-        _ => null,
-      };
+    'Raised' => 'Assigned',
+    'Assigned' => 'In Progress',
+    'In Progress' => 'Closed',
+    _ => null,
+  };
 
-  Future<void> _openCloseSheet(BuildContext context, WidgetRef ref, {required Job job}) async {
+  Future<void> _openCloseSheet(
+    BuildContext context,
+    WidgetRef ref, {
+    required Job job,
+  }) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -216,15 +268,23 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
           );
           if (!confirmed || !context.mounted) return;
 
-          final okUploads = await ref.read(jobsProvider.notifier).uploadAndLinkImages(job.id, files);
-          final okStatus = await ref.read(jobsProvider.notifier).advanceStatus(job.id, 'Closed');
+          final okUploads = await ref
+              .read(jobsProvider.notifier)
+              .uploadAndLinkImages(job.id, files);
+          final okStatus = await ref
+              .read(jobsProvider.notifier)
+              .advanceStatus(job.id, 'Closed');
 
           if (!context.mounted) return;
           Navigator.of(ctx).pop();
           AppToast.show(
             context,
-            message: (okUploads && okStatus) ? 'Job closed' : 'Failed to close job',
-            type: (okUploads && okStatus) ? AppToastType.success : AppToastType.error,
+            message: (okUploads && okStatus)
+                ? 'Job closed'
+                : 'Failed to close job',
+            type: (okUploads && okStatus)
+                ? AppToastType.success
+                : AppToastType.error,
           );
           if (okUploads && okStatus) {
             await _load();
@@ -255,7 +315,10 @@ class _HeaderCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(job.title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+          Text(
+            job.title,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+          ),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -264,12 +327,21 @@ class _HeaderCard extends StatelessWidget {
               StatusBadge(label: job.status),
               StatusBadge(label: job.priority),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(job.category, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                child: Text(
+                  job.category,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -289,12 +361,36 @@ class _InfoGrid extends StatelessWidget {
     final cols = width >= 600 ? 2 : 1;
 
     final items = <({String label, String value, IconData icon})>[
-      (label: 'Client', value: job.clientName.isNotEmpty ? job.clientName : '—', icon: Icons.groups_outlined),
-      (label: 'Technician', value: job.technicianName.isNotEmpty ? job.technicianName : '—', icon: Icons.engineering_outlined),
-      (label: 'Amount', value: '₹${job.amount.toStringAsFixed(0)}', icon: Icons.currency_rupee),
-      (label: 'Raised', value: _shortDate(job.raisedDate), icon: Icons.calendar_today_outlined),
-      (label: 'Scheduled', value: _shortDate(job.scheduledDate), icon: Icons.event_outlined),
-      (label: 'Closed', value: _shortDate(job.closedDate), icon: Icons.check_circle_outline),
+      (
+        label: 'Client',
+        value: job.clientName.isNotEmpty ? job.clientName : '—',
+        icon: Icons.groups_outlined,
+      ),
+      (
+        label: 'Technician',
+        value: job.technicianName.isNotEmpty ? job.technicianName : '—',
+        icon: Icons.engineering_outlined,
+      ),
+      (
+        label: 'Amount',
+        value: '₹${job.amount.toStringAsFixed(0)}',
+        icon: Icons.currency_rupee,
+      ),
+      (
+        label: 'Raised',
+        value: _shortDate(job.raisedDate),
+        icon: Icons.calendar_today_outlined,
+      ),
+      (
+        label: 'Scheduled',
+        value: _shortDate(job.scheduledDate),
+        icon: Icons.event_outlined,
+      ),
+      (
+        label: 'Closed',
+        value: _shortDate(job.closedDate),
+        icon: Icons.check_circle_outline,
+      ),
     ];
 
     return GridView.builder(
@@ -310,9 +406,13 @@ class _InfoGrid extends StatelessWidget {
       itemBuilder: (context, i) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF111827) : AppColors.gray50,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF111827)
+              : AppColors.gray50,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
         ),
         child: Row(
           children: [
@@ -333,10 +433,19 @@ class _InfoGrid extends StatelessWidget {
                 children: [
                   Text(
                     items[i].label.toUpperCase(),
-                    style: TextStyle(color: Theme.of(context).hintColor, fontSize: 10, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: Theme.of(context).hintColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  Text(items[i].value, overflow: TextOverflow.ellipsis, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    items[i].value,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ],
               ),
             ),
@@ -361,7 +470,9 @@ class _Stepper extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: i <= currentIndex ? const Color(0xFFDBEAFE) : Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                color: i <= currentIndex
+                    ? const Color(0xFFDBEAFE)
+                    : Theme.of(context).dividerColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -371,13 +482,23 @@ class _Stepper extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
-                    color: i <= currentIndex ? AppColors.blue600 : Theme.of(context).hintColor,
+                    color: i <= currentIndex
+                        ? AppColors.blue600
+                        : Theme.of(context).hintColor,
                   ),
                 ),
               ),
             ),
           ),
-          if (i != _pipeline.length - 1) const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.arrow_forward, size: 14, color: AppColors.gray400)),
+          if (i != _pipeline.length - 1)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6),
+              child: Icon(
+                Icons.arrow_forward,
+                size: 14,
+                color: AppColors.gray400,
+              ),
+            ),
         ],
       ],
     );

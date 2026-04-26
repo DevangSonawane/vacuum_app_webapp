@@ -5,7 +5,7 @@ import 'token_storage.dart';
 
 class SecureTokenStorage implements TokenStorage {
   SecureTokenStorage({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
@@ -19,4 +19,3 @@ class SecureTokenStorage implements TokenStorage {
   Future<void> writeToken(String token) =>
       _storage.write(key: AppConstants.tokenKey, value: token);
 }
-

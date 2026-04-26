@@ -18,15 +18,19 @@ class DashboardData {
   factory DashboardData.fromJson(Map<String, dynamic> json) {
     return DashboardData(
       stats: DashboardStats.fromJson(_asMap(json['stats'])),
-      jobStatusBreakdown: _asList(json['job_status_breakdown'])
-          .map((e) => JobStatusSlice.fromJson(_asMap(e)))
-          .toList(),
-      monthlyStats:
-          _asList(json['monthly_stats']).map((e) => MonthlyStat.fromJson(_asMap(e))).toList(),
-      revenueTrend:
-          _asList(json['revenue_trend']).map((e) => RevenueTrendPoint.fromJson(_asMap(e))).toList(),
+      jobStatusBreakdown: _asList(
+        json['job_status_breakdown'],
+      ).map((e) => JobStatusSlice.fromJson(_asMap(e))).toList(),
+      monthlyStats: _asList(
+        json['monthly_stats'],
+      ).map((e) => MonthlyStat.fromJson(_asMap(e))).toList(),
+      revenueTrend: _asList(
+        json['revenue_trend'],
+      ).map((e) => RevenueTrendPoint.fromJson(_asMap(e))).toList(),
       quickOverview: QuickOverview.fromJson(_asMap(json['quick_overview'])),
-      recentJobs: _asList(json['recent_jobs']).map((e) => RecentJob.fromJson(_asMap(e))).toList(),
+      recentJobs: _asList(
+        json['recent_jobs'],
+      ).map((e) => RecentJob.fromJson(_asMap(e))).toList(),
     );
   }
 }
@@ -130,9 +134,13 @@ class QuickOverview {
 
   factory QuickOverview.fromJson(Map<String, dynamic> json) {
     return QuickOverview(
-      jobsThisMonth: QuickOverviewItem.fromJson(_asMap(json['jobs_this_month'])),
+      jobsThisMonth: QuickOverviewItem.fromJson(
+        _asMap(json['jobs_this_month']),
+      ),
       jobsCompleted: QuickOverviewItem.fromJson(_asMap(json['jobs_completed'])),
-      activeTechnicians: QuickOverviewItem.fromJson(_asMap(json['active_technicians'])),
+      activeTechnicians: QuickOverviewItem.fromJson(
+        _asMap(json['active_technicians']),
+      ),
       amcActive: QuickOverviewItem.fromJson(_asMap(json['amc_active'])),
     );
   }
@@ -198,4 +206,3 @@ Map<String, dynamic> _asMap(Object? value) {
   if (value is Map) return value.map((k, v) => MapEntry(k.toString(), v));
   return <String, dynamic>{};
 }
-

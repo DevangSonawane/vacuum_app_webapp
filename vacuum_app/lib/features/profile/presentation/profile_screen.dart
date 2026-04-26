@@ -37,7 +37,9 @@ class ProfileScreen extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'My Profile',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
               AppButton(
@@ -86,14 +88,20 @@ class _LeftCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
             ),
             alignment: Alignment.center,
-            child: AppAvatar(initials: initialsFromName(user.fullName), size: AppAvatarSize.lg),
+            child: AppAvatar(
+              initials: initialsFromName(user.fullName),
+              size: AppAvatarSize.lg,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             user.fullName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, fontSize: 20),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -106,18 +114,29 @@ class _LeftCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+          Divider(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Text('Status', style: TextStyle(color: Theme.of(context).hintColor)),
+              Text(
+                'Status',
+                style: TextStyle(color: Theme.of(context).hintColor),
+              ),
               const Spacer(),
               Row(
                 children: const [
                   SizedBox(width: 8),
                   Icon(Icons.circle, size: 10, color: AppColors.emerald500),
                   SizedBox(width: 6),
-                  Text('Active', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.emerald500)),
+                  Text(
+                    'Active',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.emerald500,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -125,7 +144,10 @@ class _LeftCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Text('Member since', style: TextStyle(color: Theme.of(context).hintColor)),
+              Text(
+                'Member since',
+                style: TextStyle(color: Theme.of(context).hintColor),
+              ),
               const Spacer(),
               const Text('2024', style: TextStyle(fontWeight: FontWeight.w800)),
             ],
@@ -145,9 +167,23 @@ class _RightCard extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final cols = width >= 720 ? 2 : 1;
     final items = <({String label, String value, IconData icon})>[
-      (label: 'Email Address', value: (user.email ?? '').toString().isEmpty ? '—' : user.email, icon: Icons.mail_outline),
-      (label: 'Phone Number', value: (user.phoneNumber ?? '').toString().isEmpty ? '—' : user.phoneNumber, icon: Icons.phone_outlined),
-      (label: 'Role', value: (user.role ?? '—').toString(), icon: Icons.shield_outlined),
+      (
+        label: 'Email Address',
+        value: (user.email ?? '').toString().isEmpty ? '—' : user.email,
+        icon: Icons.mail_outline,
+      ),
+      (
+        label: 'Phone Number',
+        value: (user.phoneNumber ?? '').toString().isEmpty
+            ? '—'
+            : user.phoneNumber,
+        icon: Icons.phone_outlined,
+      ),
+      (
+        label: 'Role',
+        value: (user.role ?? '—').toString(),
+        icon: Icons.shield_outlined,
+      ),
       (label: 'Joining Date', value: '—', icon: Icons.calendar_today_outlined),
     ];
 
@@ -155,7 +191,10 @@ class _RightCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Personal Information', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Personal Information',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
@@ -180,7 +219,11 @@ class _RightCard extends StatelessWidget {
 }
 
 class _InfoItem extends StatelessWidget {
-  const _InfoItem({required this.label, required this.value, required this.icon});
+  const _InfoItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   final String label;
   final String value;
@@ -194,7 +237,9 @@ class _InfoItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF111827) : AppColors.gray50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+        ),
       ),
       child: Row(
         children: [
@@ -215,10 +260,18 @@ class _InfoItem extends StatelessWidget {
               children: [
                 Text(
                   label.toUpperCase(),
-                  style: TextStyle(color: Theme.of(context).hintColor, fontSize: 10, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: Theme.of(context).hintColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(value, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                  value,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ],
             ),
           ),
@@ -227,4 +280,3 @@ class _InfoItem extends StatelessWidget {
     );
   }
 }
-

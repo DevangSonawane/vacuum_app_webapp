@@ -54,7 +54,12 @@ class QuotationItem {
   final num rate;
   final num total;
 
-  QuotationItem copyWith({String? description, int? qty, num? rate, num? total}) {
+  QuotationItem copyWith({
+    String? description,
+    int? qty,
+    num? rate,
+    num? total,
+  }) {
     return QuotationItem(
       description: description ?? this.description,
       qty: qty ?? this.qty,
@@ -63,4 +68,3 @@ class QuotationItem {
     );
   }
 }
-

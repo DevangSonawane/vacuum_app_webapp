@@ -44,11 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           debugPrint('[Auth] Login failed: $message');
           setState(() => _errorMessage = message);
           if (context.mounted) {
-            AppToast.show(
-              context,
-              message: message,
-              type: AppToastType.error,
-            );
+            AppToast.show(context, message: message, type: AppToastType.error);
           }
         },
       );

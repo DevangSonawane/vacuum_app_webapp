@@ -14,9 +14,9 @@ class SimplePage extends StatelessWidget {
       body: EmptyState(
         icon: Icons.construction,
         title: title,
-        description: 'This screen is scaffolded. Next: implement full parity UI + data.',
+        description:
+            'This screen is scaffolded. Next: implement full parity UI + data.',
       ),
     );
   }
 }
-

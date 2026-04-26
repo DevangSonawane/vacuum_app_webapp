@@ -32,11 +32,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   bool get _mismatch =>
-      _newPassword.text.isNotEmpty && _confirm.text.isNotEmpty && _newPassword.text != _confirm.text;
+      _newPassword.text.isNotEmpty &&
+      _confirm.text.isNotEmpty &&
+      _newPassword.text != _confirm.text;
 
   Future<void> _submit() async {
     if (_loading) return;
-    if (_newPassword.text.trim().isEmpty || _confirm.text.trim().isEmpty) return;
+    if (_newPassword.text.trim().isEmpty || _confirm.text.trim().isEmpty) {
+      return;
+    }
     if (_mismatch) return;
 
     setState(() {
@@ -46,13 +50,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       final dio = ref.read(dioProvider);
-      await dio.post('auth/change-password', data: {
-        'new_password': _newPassword.text.trim(),
-        'confirm_password': _confirm.text.trim(),
-      });
+      await dio.post(
+        'auth/change-password',
+        data: {
+          'new_password': _newPassword.text.trim(),
+          'confirm_password': _confirm.text.trim(),
+        },
+      );
       if (!mounted) return;
       setState(() => _success = true);
-      AppToast.show(context, message: 'Password updated', type: AppToastType.success);
+      AppToast.show(
+        context,
+        message: 'Password updated',
+        type: AppToastType.success,
+      );
       _newPassword.clear();
       _confirm.clear();
     } on DioException catch (e) {
@@ -60,12 +71,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: status == 404 ? 'Change-password endpoint not available.' : (e.message ?? 'Operation failed'),
+        message: status == 404
+            ? 'Change-password endpoint not available.'
+            : (e.message ?? 'Operation failed'),
         type: AppToastType.error,
       );
     } catch (_) {
       if (!mounted) return;
-      AppToast.show(context, message: 'Operation failed', type: AppToastType.error);
+      AppToast.show(
+        context,
+        message: 'Operation failed',
+        type: AppToastType.error,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -99,11 +116,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         color: const Color(0xFFDBEAFE),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.palette_outlined, color: AppColors.blue600),
+                      child: const Icon(
+                        Icons.palette_outlined,
+                        color: AppColors.blue600,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     const Expanded(
-                      child: Text('Appearance', style: TextStyle(fontWeight: FontWeight.w900)),
+                      child: Text(
+                        'Appearance',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ],
                 ),
@@ -113,18 +136,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF111827) : AppColors.gray50,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.12),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(dark ? Icons.dark_mode_outlined : Icons.light_mode_outlined, color: AppColors.blue600),
+                      Icon(
+                        dark
+                            ? Icons.dark_mode_outlined
+                            : Icons.light_mode_outlined,
+                        color: AppColors.blue600,
+                      ),
                       const SizedBox(width: 10),
                       const Expanded(
-                        child: Text('Dark Mode', style: TextStyle(fontWeight: FontWeight.w800)),
+                        child: Text(
+                          'Dark Mode',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
                       ),
                       Switch(
                         value: dark,
-                        onChanged: (_) => ref.read(appSettingsProvider.notifier).toggleDarkMode(),
+                        onChanged: (_) => ref
+                            .read(appSettingsProvider.notifier)
+                            .toggleDarkMode(),
                       ),
                     ],
                   ),
@@ -146,11 +183,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         color: const Color(0xFFDBEAFE),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.lock_outline, color: AppColors.blue600),
+                      child: const Icon(
+                        Icons.lock_outline,
+                        color: AppColors.blue600,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     const Expanded(
-                      child: Text('Security — Change Password', style: TextStyle(fontWeight: FontWeight.w900)),
+                      child: Text(
+                        'Security — Change Password',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ],
                 ),
@@ -170,7 +213,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         Expanded(
                           child: Text(
                             'Password updated successfully.',
-                            style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF065F46)),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF065F46),
+                            ),
                           ),
                         ),
                       ],
@@ -194,14 +240,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 if (_mismatch) ...[
                   const SizedBox(height: 8),
-                  const Text('Passwords do not match', style: TextStyle(color: AppColors.red500, fontWeight: FontWeight.w700)),
+                  const Text(
+                    'Passwords do not match',
+                    style: TextStyle(
+                      color: AppColors.red500,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 12),
                 AppButton(
                   label: 'Update Password',
                   expanded: true,
                   loading: _loading,
-                  onPressed: (_loading || _mismatch || _newPassword.text.trim().isEmpty || _confirm.text.trim().isEmpty)
+                  onPressed:
+                      (_loading ||
+                          _mismatch ||
+                          _newPassword.text.trim().isEmpty ||
+                          _confirm.text.trim().isEmpty)
                       ? null
                       : _submit,
                 ),

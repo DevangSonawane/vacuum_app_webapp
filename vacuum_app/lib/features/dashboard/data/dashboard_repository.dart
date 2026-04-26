@@ -12,7 +12,9 @@ class DashboardRepository {
     final root = _asMap(response.data);
     final success = root['success'] == true;
     if (!success) {
-      throw Exception((root['message'] ?? 'Failed to load dashboard').toString());
+      throw Exception(
+        (root['message'] ?? 'Failed to load dashboard').toString(),
+      );
     }
     final data = _asMap(root['data']);
     return DashboardData.fromJson(data);

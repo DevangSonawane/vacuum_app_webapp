@@ -66,8 +66,10 @@ class _ToastOverlayState extends State<_ToastOverlay>
       top: media.padding.top + 12,
       right: 12,
       child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
-            .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut)),
+        position: Tween<Offset>(
+          begin: const Offset(1, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut)),
         child: Material(
           color: Colors.transparent,
           child: Container(
@@ -93,9 +95,9 @@ class _ToastOverlayState extends State<_ToastOverlay>
                   child: Text(
                     widget.message,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: fg,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: fg,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),

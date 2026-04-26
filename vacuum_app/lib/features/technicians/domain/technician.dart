@@ -50,21 +50,20 @@ class Technician {
   }
 
   Map<String, dynamic> toCreatePayload() => {
-        'name': name,
-        'phone': phone,
-        'specialization': specialization,
-        'status': status,
-        if (email.isNotEmpty) 'email': email,
-        if (joinDate != null && joinDate!.isNotEmpty) 'join_date': joinDate,
-      };
+    'name': name,
+    'phone': phone,
+    'specialization': specialization,
+    'status': status,
+    if (email.isNotEmpty) 'email': email,
+    if (joinDate != null && joinDate!.isNotEmpty) 'join_date': joinDate,
+  };
 
   Map<String, dynamic> toUpdatePayload() => {
-        'name': name,
-        'phone': phone,
-        'specialization': specialization,
-        'status': status,
-        if (email.isNotEmpty) 'email': email,
-        if (joinDate != null && joinDate!.isNotEmpty) 'join_date': joinDate,
-      };
+    'name': name,
+    'phone': phone,
+    'specialization': specialization,
+    'status': status,
+    if (email.isNotEmpty) 'email': email,
+    if (joinDate != null && joinDate!.isNotEmpty) 'join_date': joinDate,
+  };
 }
-

@@ -30,8 +30,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     return auth.when(
       loading: () => AuthGuardStatus.loading,
       error: (error, stackTrace) => AuthGuardStatus.unauthenticated,
-      data: (value) =>
-          value.isAuthenticated ? AuthGuardStatus.authenticated : AuthGuardStatus.unauthenticated,
+      data: (value) => value.isAuthenticated
+          ? AuthGuardStatus.authenticated
+          : AuthGuardStatus.unauthenticated,
     );
   }
 
@@ -42,7 +43,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     refreshListenable: _GoRouterRefresh(ref),
     redirect: (context, state) {
       final s = status();
-      final isAuthRoute = state.matchedLocation == '/login' ||
+      final isAuthRoute =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/forgot-password';
 
       if (s == AuthGuardStatus.loading) {
@@ -57,7 +59,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (isAuthRoute || state.matchedLocation == '/splash') return '/';
 
       final userRole = role();
-      final adminOnly = state.matchedLocation == '/users' ||
+      final adminOnly =
+          state.matchedLocation == '/users' ||
           state.matchedLocation == '/email' ||
           state.matchedLocation == '/activity';
       if (adminOnly && userRole != 'admin') return '/';
@@ -65,14 +68,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (context, state) => const PageLoader(),
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: '/splash', builder: (context, state) => const PageLoader()),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
@@ -110,7 +107,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/jobs/:id',
-            builder: (context, state) => JobDetailScreen(id: state.pathParameters['id']!),
+            builder: (context, state) =>
+                JobDetailScreen(id: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/reports',
@@ -122,7 +120,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/reports/:id',
-            builder: (context, state) => ReportDetailScreen(id: state.pathParameters['id']!),
+            builder: (context, state) =>
+                ReportDetailScreen(id: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/quotations',
@@ -132,10 +131,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/quotations/new',
             builder: (context, state) => const QuotationCreateScreen(),
           ),
-          GoRoute(
-            path: '/amc',
-            builder: (context, state) => const AmcScreen(),
-          ),
+          GoRoute(path: '/amc', builder: (context, state) => const AmcScreen()),
           GoRoute(
             path: '/amc/new',
             builder: (context, state) => const AmcCreateScreen(),

@@ -19,7 +19,10 @@ class AmcRepository {
     final list = _asList(root['data']);
     return list
         .whereType<Map>()
-        .map((e) => AmcContract.fromJson(e.map((k, v) => MapEntry(k.toString(), v))))
+        .map(
+          (e) =>
+              AmcContract.fromJson(e.map((k, v) => MapEntry(k.toString(), v))),
+        )
         .toList();
   }
 
@@ -28,8 +31,10 @@ class AmcRepository {
     return AmcContract.fromJson(_asMap(_asMap(response.data)['data']));
   }
 
-  Future<void> create(Map<String, dynamic> payload) => _dio.post('amc', data: payload);
-  Future<void> update(String id, Map<String, dynamic> payload) => _dio.put('amc/$id', data: payload);
+  Future<void> create(Map<String, dynamic> payload) =>
+      _dio.post('amc', data: payload);
+  Future<void> update(String id, Map<String, dynamic> payload) =>
+      _dio.put('amc/$id', data: payload);
   Future<void> delete(String id) => _dio.delete('amc/$id');
 
   static Map<String, dynamic> _asMap(dynamic v) {

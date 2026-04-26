@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, ShieldCheck, Calendar, RefreshCw, AlertTriangle,
   X, Building2, DollarSign, Clock, ChevronRight,
-  Loader2, ExternalLink, Pencil, Trash2
+  Loader2, ExternalLink, Pencil, Trash2, Package
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -20,20 +20,16 @@ const STATUS_GRAD = {
   "Expiring Soon": "from-orange-500 to-orange-700",
   Expired:         "from-gray-400   to-gray-600",
 };
-const STATUS_LIGHT = {
-  Active:          "bg-blue-50   dark:bg-blue-900/20   border-blue-200  dark:border-blue-800   text-blue-700  dark:text-blue-300",
-  "Expiring Soon": "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300",
-  Expired:         "bg-gray-50   dark:bg-gray-800       border-gray-200  dark:border-gray-700   text-gray-600  dark:text-gray-400",
-};
 
 const EMPTY_FORM = {
   client_id:             "",
   title:                 "",
+  po_number:             "",
   start_date:            "",
   end_date:              "",
   value:                 "",
   renewal_reminder_days: 30,
-  services_raw:          "",   // comma-separated string → array on submit
+  services_raw:          "",
   next_service_date:     "",
 };
 
@@ -47,17 +43,14 @@ export default function AMC() {
   const [loading, setLoading]     = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // Create / edit modal
   const [modalOpen, setModalOpen]   = useState(false);
   const [editId, setEditId]         = useState(null);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
 
-  // Detail panel
-  const [detail, setDetail]             = useState(null);
+  const [detail, setDetail]               = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Delete confirm
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => { fetchContracts(); fetchClients(); }, []);
@@ -91,7 +84,6 @@ export default function AMC() {
     } catch {}
   };
 
-  // ── Detail — GET /amc/:id ─────────────────────────────────
   const openDetail = async (amc) => {
     setDetail({ ...amc });
     setDetailLoading(true);
@@ -108,7 +100,6 @@ export default function AMC() {
     }
   };
 
-  // ── Open create/edit modal ────────────────────────────────
   const f = (field) => (e) => setForm(p => ({ ...p, [field]: e.target.value }));
 
   const openAdd = () => {
@@ -121,6 +112,7 @@ export default function AMC() {
     setForm({
       client_id:             amc.client_id             || "",
       title:                 amc.title                 || "",
+      po_number:             amc.po_number             || "",
       start_date:            amc.start_date?.slice(0, 10) || "",
       end_date:              amc.end_date?.slice(0, 10)   || "",
       value:                 amc.value                 || "",
@@ -147,6 +139,7 @@ export default function AMC() {
         value:                 parseFloat(form.value),
         renewal_reminder_days: parseInt(form.renewal_reminder_days),
         services,
+        po_number:             form.po_number.trim() || undefined,
       };
 
       if (editId) {
@@ -165,7 +158,7 @@ export default function AMC() {
         await axios.post(`${API_BASE_URL}/amc`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        showToast("AMC contract created!");
+        showToast("AMC contract created! Confirmation email sent to client.");
       }
       setModalOpen(false);
       fetchContracts();
@@ -195,7 +188,6 @@ export default function AMC() {
 
   const canEdit    = !["technician", "labour"].includes(currentUser?.role);
   const totalValue = contracts.reduce((s, a) => s + Number(a.value || 0), 0);
-
   const STATUS_TABS = ["All", "Active", "Expiring Soon", "Expired"];
 
   return (
@@ -229,9 +221,7 @@ export default function AMC() {
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition
                 ${statusFilter === s ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
-            >
-              {s}
-            </button>
+            >{s}</button>
           ))}
         </div>
 
@@ -280,6 +270,15 @@ export default function AMC() {
                             <Badge label={amc.status} />
                           </div>
 
+                          {/* PO Number badge */}
+                          {amc.po_number && (
+                            <div className="mb-3">
+                              <span className="inline-flex items-center gap-1 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-full font-medium">
+                                <Package size={11} /> {amc.po_number}
+                              </span>
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-2 gap-3 mb-4">
                             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
                               <p className="text-xs text-gray-400">Contract Value</p>
@@ -317,9 +316,7 @@ export default function AMC() {
                                 {amc.services.slice(0, 3).map(s => (
                                   <span key={s} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full">{s}</span>
                                 ))}
-                                {amc.services.length > 3 && (
-                                  <span className="text-xs text-gray-400">+{amc.services.length - 3} more</span>
-                                )}
+                                {amc.services.length > 3 && <span className="text-xs text-gray-400">+{amc.services.length - 3} more</span>}
                               </div>
                             </div>
                           )}
@@ -343,7 +340,6 @@ export default function AMC() {
                 transition={{ type: "spring", damping: 28, stiffness: 280 }}
                 className="w-full lg:w-96 flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg overflow-hidden sticky top-4"
               >
-                {/* Header */}
                 <div className={`h-1.5 bg-gradient-to-r ${STATUS_GRAD[detail.status] || STATUS_GRAD.Expired}`} />
                 <div className="p-5 border-b border-gray-100 dark:border-gray-700">
                   <div className="flex items-start justify-between">
@@ -356,8 +352,13 @@ export default function AMC() {
                       <X size={16} />
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
                     <Badge label={detail.status} />
+                    {detail.po_number && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded-full">
+                        <Package size={10} /> {detail.po_number}
+                      </span>
+                    )}
                     {detailLoading && <Loader2 size={12} className="animate-spin text-gray-400" />}
                   </div>
                 </div>
@@ -405,6 +406,14 @@ export default function AMC() {
                     </div>
                   )}
 
+                  {/* Email reminders info */}
+                  <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3 space-y-1.5">
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Auto Email Reminders</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">✉️ Creation confirmation sent to client</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">⚠️ Renewal reminder {detail.renewal_reminder_days} days before expiry</p>
+                    {detail.next_service_date && <p className="text-xs text-gray-500 dark:text-gray-400">🔔 Service reminder 10 days before {detail.next_service_date?.slice(0, 10)}</p>}
+                  </div>
+
                   {/* Actions */}
                   {canEdit && (
                     <div className="flex gap-2 pt-1">
@@ -431,6 +440,13 @@ export default function AMC() {
                   options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
               )}
               <Input label="Contract Title" value={form.title} onChange={f("title")} required className="col-span-2" />
+              <Input
+                label="PO Number"
+                value={form.po_number}
+                onChange={f("po_number")}
+                placeholder="PO-2025-001"
+                className="col-span-2"
+              />
               {!editId && <Input label="Start Date" type="date" value={form.start_date} onChange={f("start_date")} required />}
               <Input label="End Date"   type="date" value={form.end_date}   onChange={f("end_date")}   required={!editId} />
               <Input label="Contract Value (₹)" type="number" value={form.value} onChange={f("value")} required />
@@ -442,6 +458,14 @@ export default function AMC() {
                   placeholder="HVAC Servicing, Filter Replacement, Emergency Support" />
               </div>
             </div>
+
+            {!editId && (
+              <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3">
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">📧 Automatic Emails</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">On creation — confirmation email sent to the client. Renewal reminder and service reminders are sent automatically by the system.</p>
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1" disabled={submitting}>
                 {submitting ? "Saving…" : (editId ? "Update AMC" : "Create AMC")}

@@ -10,8 +10,9 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(dio: dio);
 });
 
-final authProvider =
-    AsyncNotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authProvider = AsyncNotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);
 
 class AuthNotifier extends AsyncNotifier<AuthState> {
   TokenStorage get _tokenStorage => ref.read(tokenStorageProvider);
@@ -36,9 +37,16 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final result = await _repo.login(identifier: identifier, password: password);
+      final result = await _repo.login(
+        identifier: identifier,
+        password: password,
+      );
       await _tokenStorage.writeToken(result.token);
-      return AuthState(user: result.user, isAuthenticated: true, resetToken: null);
+      return AuthState(
+        user: result.user,
+        isAuthenticated: true,
+        resetToken: null,
+      );
     });
   }
 
@@ -73,4 +81,3 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     });
   }
 }
-

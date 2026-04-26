@@ -27,9 +27,7 @@ class AppNotification {
   final bool read;
   final bool fromDb;
 
-  AppNotification copyWith({
-    bool? read,
-  }) {
+  AppNotification copyWith({bool? read}) {
     return AppNotification(
       id: id,
       serverId: serverId,
@@ -48,19 +46,47 @@ class AppNotification {
 ({String title, Color color, IconData icon}) notificationMeta(String event) {
   switch (event) {
     case 'job_raised':
-      return (title: 'New Job Raised', color: AppColors.blue600, icon: Icons.work_outline);
+      return (
+        title: 'New Job Raised',
+        color: AppColors.blue600,
+        icon: Icons.work_outline,
+      );
     case 'job_status':
-      return (title: 'Job Status Updated', color: AppColors.amber500, icon: Icons.sync_alt);
+      return (
+        title: 'Job Status Updated',
+        color: AppColors.amber500,
+        icon: Icons.sync_alt,
+      );
     case 'report_submitted':
-      return (title: 'Report Submitted', color: AppColors.gray500, icon: Icons.description_outlined);
+      return (
+        title: 'Report Submitted',
+        color: AppColors.gray500,
+        icon: Icons.description_outlined,
+      );
     case 'report_reviewed':
-      return (title: 'Report Reviewed', color: AppColors.emerald500, icon: Icons.verified_outlined);
+      return (
+        title: 'Report Reviewed',
+        color: AppColors.emerald500,
+        icon: Icons.verified_outlined,
+      );
     case 'amc_expiring':
-      return (title: 'AMC Renewal Reminder', color: AppColors.orange500, icon: Icons.schedule_outlined);
+      return (
+        title: 'AMC Renewal Reminder',
+        color: AppColors.orange500,
+        icon: Icons.schedule_outlined,
+      );
     case 'amc_created':
-      return (title: 'New AMC Contract', color: AppColors.blue600, icon: Icons.verified_user_outlined);
+      return (
+        title: 'New AMC Contract',
+        color: AppColors.blue600,
+        icon: Icons.verified_user_outlined,
+      );
     default:
-      return (title: 'Notification', color: AppColors.blue600, icon: Icons.notifications_none);
+      return (
+        title: 'Notification',
+        color: AppColors.blue600,
+        icon: Icons.notifications_none,
+      );
   }
 }
 
@@ -71,13 +97,17 @@ String formatNotificationMessage(String event, Map<String, dynamic> data) {
       return '${s(data['entity_id']).isEmpty ? 'A new job' : s(data['entity_id'])} was raised';
     case 'job_status':
       final id = s(data['entity_id']).isEmpty ? 'Job' : s(data['entity_id']);
-      final status = s(data['status']).isEmpty ? 'new status' : s(data['status']);
+      final status = s(data['status']).isEmpty
+          ? 'new status'
+          : s(data['status']);
       return '$id moved to "$status"';
     case 'report_submitted':
       return '${s(data['entity_id']).isEmpty ? 'A report' : s(data['entity_id'])} submitted for review';
     case 'report_reviewed':
       final id = s(data['entity_id']).isEmpty ? 'Report' : s(data['entity_id']);
-      final status = s(data['status']).isEmpty ? 'reviewed' : s(data['status']).toLowerCase();
+      final status = s(data['status']).isEmpty
+          ? 'reviewed'
+          : s(data['status']).toLowerCase();
       return '$id was $status';
     case 'amc_expiring':
       return '${s(data['entity_id']).isEmpty ? 'An AMC' : s(data['entity_id'])} is expiring soon';

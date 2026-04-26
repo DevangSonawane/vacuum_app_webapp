@@ -11,6 +11,8 @@ class AmcContract {
     required this.renewalReminderDays,
     required this.services,
     required this.nextServiceDate,
+    this.daysLeft,
+    this.poNumber,
   });
 
   final String id;
@@ -24,6 +26,8 @@ class AmcContract {
   final int renewalReminderDays;
   final List<String> services;
   final String? nextServiceDate;
+  final int? daysLeft; // json: days_left
+  final String? poNumber; // json: po_number
 
   static AmcContract fromJson(Map<String, dynamic> json) {
     String s(Object? v) => v == null ? '' : v.toString();
@@ -32,6 +36,13 @@ class AmcContract {
       if (v is int) return v;
       if (v is num) return v.toInt();
       return int.tryParse(s(v)) ?? 0;
+    }
+
+    int? iOrNull(Object? v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(s(v));
     }
 
     List<dynamic> l(Object? v) => v is List ? v : const [];
@@ -48,7 +59,8 @@ class AmcContract {
       renewalReminderDays: i(json['renewal_reminder_days'] ?? 30),
       services: l(json['services']).map((e) => e.toString()).toList(),
       nextServiceDate: json['next_service_date']?.toString(),
+      daysLeft: iOrNull(json['days_left']),
+      poNumber: (json['po_number'] as Object?)?.toString(),
     );
   }
 }
-

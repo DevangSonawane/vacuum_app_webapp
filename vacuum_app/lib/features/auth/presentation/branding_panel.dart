@@ -32,7 +32,11 @@ class BrandingPanel extends StatelessWidget {
                   color: AppColors.blue600,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.construction, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.construction,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -41,12 +45,19 @@ class BrandingPanel extends StatelessWidget {
                   children: [
                     const Text(
                       'VDTI Service Hub',
-                      style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(color: AppColors.blue400, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: AppColors.blue400,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -56,12 +67,21 @@ class BrandingPanel extends StatelessWidget {
           const SizedBox(height: 30),
           Text(
             title,
-            style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.w900, height: 1.05),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 44,
+              fontWeight: FontWeight.w900,
+              height: 1.05,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             'Internal CRM & field operations dashboard for Vacuum Drying Technology India LLP.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.72), fontSize: 14, height: 1.5),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 14,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 28),
           for (final bullet in bullets) ...[
@@ -71,7 +91,10 @@ class BrandingPanel extends StatelessWidget {
           const Spacer(),
           Text(
             '© 2024 Vacuum Drying Technology India LLP.',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -80,7 +103,11 @@ class BrandingPanel extends StatelessWidget {
 }
 
 class _Bullet extends StatelessWidget {
-  const _Bullet({required this.icon, required this.title, required this.description});
+  const _Bullet({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 
   final IconData icon;
   final String title;
@@ -107,12 +134,19 @@ class _Bullet extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 description,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.72), fontSize: 13, height: 1.4),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
               ),
             ],
           ),

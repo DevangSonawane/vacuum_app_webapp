@@ -11,11 +11,7 @@ class AuthState {
   final bool isAuthenticated;
   final String? resetToken;
 
-  AuthState copyWith({
-    User? user,
-    bool? isAuthenticated,
-    String? resetToken,
-  }) {
+  AuthState copyWith({User? user, bool? isAuthenticated, String? resetToken}) {
     return AuthState(
       user: user ?? this.user,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -29,4 +25,3 @@ class AuthState {
     resetToken: null,
   );
 }
-

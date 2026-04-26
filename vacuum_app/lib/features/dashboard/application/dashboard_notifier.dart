@@ -10,7 +10,9 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
 });
 
 final dashboardProvider =
-    AsyncNotifierProvider<DashboardNotifier, DashboardData>(DashboardNotifier.new);
+    AsyncNotifierProvider<DashboardNotifier, DashboardData>(
+      DashboardNotifier.new,
+    );
 
 class DashboardNotifier extends AsyncNotifier<DashboardData> {
   DashboardRepository get _repo => ref.read(dashboardRepositoryProvider);
@@ -25,4 +27,3 @@ class DashboardNotifier extends AsyncNotifier<DashboardData> {
     state = await AsyncValue.guard(() => _repo.fetchDashboard());
   }
 }
-

@@ -39,7 +39,45 @@ class ReportsRepository {
   Future<void> updateStatus(String id, String status) =>
       _dio.patch('reports/$id/status', data: {'status': status});
 
-  Future<String?> uploadImage(String reportId, String filePath, String filename) async {
+  Future<List<TechnicalReportFile>> uploadTechnicalReports(
+    List<({String path, String name})> files,
+  ) async {
+    final formData = FormData();
+    for (final f in files) {
+      formData.files.add(
+        MapEntry(
+          'files',
+          await MultipartFile.fromFile(f.path, filename: f.name),
+        ),
+      );
+    }
+
+    final response = await _dio.post(
+      'upload/technical-reports',
+      data: formData,
+    );
+    final uploaded = _asList(_asMap(response.data)['data']);
+    return uploaded
+        .whereType<Map>()
+        .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+        .map(TechnicalReportFile.fromJson)
+        .toList();
+  }
+
+  Future<String?> uploadImage(
+    String reportId,
+    String filePath,
+    String filename,
+  ) async {
+    final meta = await uploadImageMeta(reportId, filePath, filename);
+    return meta?['file_url']?.toString();
+  }
+
+  Future<Map<String, dynamic>?> uploadImageMeta(
+    String reportId,
+    String filePath,
+    String filename,
+  ) async {
     final formData = FormData.fromMap({
       'images': await MultipartFile.fromFile(filePath, filename: filename),
     });
@@ -50,7 +88,7 @@ class ReportsRepository {
     );
     final uploaded = _asList(_asMap(response.data)['data']);
     if (uploaded.isEmpty) return null;
-    return _asMap(uploaded.first)['file_url']?.toString();
+    return _asMap(uploaded.first);
   }
 
   Future<void> linkImage(String reportId, Map<String, dynamic> data) =>

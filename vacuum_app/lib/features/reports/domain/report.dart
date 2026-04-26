@@ -11,6 +11,14 @@ class Report {
     required this.findings,
     required this.recommendations,
     required this.approvedAt,
+    this.clientEmail,
+    this.comments,
+    this.poNumber,
+    this.location,
+    this.serialNo,
+    this.clientId,
+    this.technicalReportCount = 0,
+    this.technicalReports = const [],
     this.imageCount = 0,
     this.images = const [],
   });
@@ -26,6 +34,14 @@ class Report {
   final String findings;
   final String recommendations;
   final String? approvedAt;
+  final String? clientEmail; // json: client_email
+  final String? comments; // json: comments
+  final String? poNumber; // json: po_number
+  final String? location; // json: location
+  final String? serialNo; // json: serial_no
+  final String? clientId; // json: client_id
+  final int technicalReportCount; // json: technical_report_count
+  final List<TechnicalReportFile> technicalReports; // json: technical_reports
   final int imageCount;
   final List<ReportImage> images;
 
@@ -51,17 +67,37 @@ class Report {
       findings: s(json['findings']),
       recommendations: s(json['recommendations']),
       approvedAt: json['approved_at']?.toString(),
+      clientEmail: (json['client_email'] as Object?)?.toString(),
+      comments: (json['comments'] as Object?)?.toString(),
+      poNumber: (json['po_number'] as Object?)?.toString(),
+      location: (json['location'] as Object?)?.toString(),
+      serialNo: (json['serial_no'] as Object?)?.toString(),
+      clientId: (json['client_id'] as Object?)?.toString(),
+      technicalReportCount: i(json['technical_report_count']),
+      technicalReports: l(json['technical_reports'])
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+          .map(TechnicalReportFile.fromJson)
+          .toList(),
       imageCount: i(json['image_count']),
       images: l(json['images'])
           .whereType<Map>()
-          .map((e) => ReportImage.fromJson(e.map((k, v) => MapEntry(k.toString(), v))))
+          .map(
+            (e) => ReportImage.fromJson(
+              e.map((k, v) => MapEntry(k.toString(), v)),
+            ),
+          )
           .toList(),
     );
   }
 }
 
 class ReportImage {
-  const ReportImage({required this.id, required this.fileUrl, required this.fileName});
+  const ReportImage({
+    required this.id,
+    required this.fileUrl,
+    required this.fileName,
+  });
 
   final int id;
   final String fileUrl;
@@ -77,3 +113,29 @@ class ReportImage {
   }
 }
 
+class TechnicalReportFile {
+  const TechnicalReportFile({
+    required this.id,
+    required this.fileName,
+    required this.fileUrl,
+    required this.mimeType,
+    required this.fileSizeBytes,
+  });
+
+  final int id;
+  final String fileName;
+  final String fileUrl;
+  final String? mimeType;
+  final int? fileSizeBytes;
+
+  static TechnicalReportFile fromJson(Map<String, dynamic> json) {
+    String s(Object? v) => v == null ? '' : v.toString();
+    return TechnicalReportFile(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      fileName: s(json['file_name']),
+      fileUrl: s(json['file_url']),
+      mimeType: json['mime_type']?.toString(),
+      fileSizeBytes: (json['file_size_bytes'] as num?)?.toInt(),
+    );
+  }
+}

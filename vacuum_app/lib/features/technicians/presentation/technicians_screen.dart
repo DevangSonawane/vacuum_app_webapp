@@ -20,15 +20,7 @@ import '../../auth/application/auth_notifier.dart';
 import '../application/technicians_notifier.dart';
 import '../domain/technician.dart';
 
-const _specializations = [
-  'HVAC',
-  'Electrical',
-  'Plumbing',
-  'Carpentry',
-  'Generator',
-  'Civil',
-  'IT',
-];
+const _specializations = ['ITR'];
 const _statuses = ['Active', 'On Leave', 'Inactive'];
 
 class TechniciansScreen extends ConsumerStatefulWidget {
@@ -472,7 +464,7 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
       _name.text = t.name;
       _email.text = t.email;
       _phone.text = t.phone;
-      _specialization = _specializations.contains(t.specialization)
+      _specialization = t.specialization.isNotEmpty
           ? t.specialization
           : _specializations.first;
       _status = _statuses.contains(t.status) ? t.status : _statuses.first;
@@ -507,7 +499,7 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     _name.text = latest.name;
     _email.text = latest.email;
     _phone.text = latest.phone;
-    _specialization = _specializations.contains(latest.specialization)
+    _specialization = latest.specialization.isNotEmpty
         ? latest.specialization
         : _specializations.first;
     _status = _statuses.contains(latest.status)
@@ -531,12 +523,12 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     setState(() => _loading = true);
     final payload = <String, dynamic>{
       'name': _name.text.trim(),
-      'email': _email.text.trim(),
       'phone': _phone.text.trim(),
       'specialization': _specialization,
       'status': _status,
       if (_joinDate != null)
         'join_date': _joinDate!.toIso8601String().substring(0, 10),
+      if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
     };
     await widget.onSubmit(
       payload,
@@ -634,7 +626,10 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
                     child: _dropdown(
                       'Specialization',
                       _specialization,
-                      _specializations,
+                      (_specialization.isNotEmpty &&
+                              !_specializations.contains(_specialization))
+                          ? [..._specializations, _specialization]
+                          : _specializations,
                       (v) => setState(
                         () => _specialization = v ?? _specializations.first,
                       ),

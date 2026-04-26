@@ -15,12 +15,17 @@ class TechniciansState {
   final String search;
 
   TechniciansState copyWith({List<Technician>? items, String? search}) {
-    return TechniciansState(items: items ?? this.items, search: search ?? this.search);
+    return TechniciansState(
+      items: items ?? this.items,
+      search: search ?? this.search,
+    );
   }
 }
 
 final techniciansProvider =
-    AsyncNotifierProvider<TechniciansNotifier, TechniciansState>(TechniciansNotifier.new);
+    AsyncNotifierProvider<TechniciansNotifier, TechniciansState>(
+      TechniciansNotifier.new,
+    );
 
 class TechniciansNotifier extends AsyncNotifier<TechniciansState> {
   TechniciansRepository get _repo => ref.read(techniciansRepositoryProvider);

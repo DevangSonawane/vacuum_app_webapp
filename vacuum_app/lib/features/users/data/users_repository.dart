@@ -32,7 +32,7 @@ class UsersRepository {
   }
 
   Future<void> createUser(Map<String, dynamic> payload) async {
-    await _dio.post('users', data: payload);
+    await _dio.post('auth/register', data: payload);
   }
 
   Future<AppUser> fetchById(int id) async {
@@ -47,7 +47,9 @@ class UsersRepository {
 
   static Map<String, dynamic> _asMap(dynamic value) {
     if (value is Map<String, dynamic>) return value;
-    if (value is Map) return value.map((key, val) => MapEntry(key.toString(), val));
+    if (value is Map) {
+      return value.map((key, val) => MapEntry(key.toString(), val));
+    }
     return <String, dynamic>{};
   }
 }

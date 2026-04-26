@@ -310,8 +310,8 @@ export default function Jobs() {
     <PageTransition>
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <SectionHeader
-          title="Work Orders"
-          subtitle={`${activeCount} active orders`}
+          title="Visit Schedule"
+          subtitle={`${activeCount} active jobs`} 
           action={canRaise && (
             <Button onClick={() => setModalOpen(true)}><Plus size={16} /> Raise Job</Button>
           )}

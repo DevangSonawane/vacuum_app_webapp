@@ -7,8 +7,13 @@ class NotificationsRepository {
 
   final Dio _dio;
 
-  Future<({List<AppNotification> items, int unreadCount})> fetch({int limit = 30}) async {
-    final response = await _dio.get('notifications', queryParameters: {'limit': limit});
+  Future<({List<AppNotification> items, int unreadCount})> fetch({
+    int limit = 30,
+  }) async {
+    final response = await _dio.get(
+      'notifications',
+      queryParameters: {'limit': limit},
+    );
     final root = _asMap(response.data);
 
     final unread = _asInt(root['unread_count']);

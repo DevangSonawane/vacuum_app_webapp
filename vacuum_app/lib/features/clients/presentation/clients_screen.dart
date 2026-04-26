@@ -854,6 +854,7 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
   final _contact = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
+  final _gstNo = TextEditingController();
   final _address = TextEditingController();
   final _contractValue = TextEditingController();
 
@@ -872,6 +873,7 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
       _contact.text = c.contactPerson;
       _email.text = c.email;
       _phone.text = c.phone;
+      _gstNo.text = c.gstNo;
       _address.text = c.address;
       _contractValue.text = c.contractValue == 0
           ? ''
@@ -889,6 +891,7 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
     _contact.dispose();
     _email.dispose();
     _phone.dispose();
+    _gstNo.dispose();
     _address.dispose();
     _contractValue.dispose();
     super.dispose();
@@ -913,6 +916,7 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
       contactPerson: _contact.text.trim(),
       email: _email.text.trim(),
       phone: _phone.text.trim(),
+      gstNo: _gstNo.text.trim(),
       address: _address.text.trim(),
       type: _type,
       status: _status,
@@ -998,6 +1002,8 @@ class _ClientFormSheetState extends State<_ClientFormSheet> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            _field('GST No', _gstNo, hint: '27AAECS1234F1Z5'),
             const SizedBox(height: 12),
             Row(
               children: [

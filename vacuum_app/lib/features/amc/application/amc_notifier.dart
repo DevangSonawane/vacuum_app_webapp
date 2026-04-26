@@ -15,11 +15,16 @@ class AmcState {
   final String statusFilter;
 
   AmcState copyWith({List<AmcContract>? items, String? statusFilter}) {
-    return AmcState(items: items ?? this.items, statusFilter: statusFilter ?? this.statusFilter);
+    return AmcState(
+      items: items ?? this.items,
+      statusFilter: statusFilter ?? this.statusFilter,
+    );
   }
 }
 
-final amcProvider = AsyncNotifierProvider<AmcNotifier, AmcState>(AmcNotifier.new);
+final amcProvider = AsyncNotifierProvider<AmcNotifier, AmcState>(
+  AmcNotifier.new,
+);
 
 class AmcNotifier extends AsyncNotifier<AmcState> {
   AmcRepository get _repo => ref.read(amcRepositoryProvider);
@@ -85,4 +90,3 @@ class AmcNotifier extends AsyncNotifier<AmcState> {
     }
   }
 }
-

@@ -3,4 +3,3 @@ String fmtRevenue(num v) {
   if (v >= 1000) return '₹${(v / 1000).toStringAsFixed(0)}k';
   return '₹${v.toStringAsFixed(0)}';
 }
-

@@ -10,8 +10,9 @@ final usersRepositoryProvider = Provider<UsersRepository>((ref) {
   return UsersRepository(dio: dio);
 });
 
-final usersProvider =
-    AsyncNotifierProvider<UsersNotifier, UsersState>(UsersNotifier.new);
+final usersProvider = AsyncNotifierProvider<UsersNotifier, UsersState>(
+  UsersNotifier.new,
+);
 
 class UsersNotifier extends AsyncNotifier<UsersState> {
   UsersRepository get _repo => ref.read(usersRepositoryProvider);
@@ -24,21 +25,27 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
   Future<void> refresh() async {
     final current = state.valueOrNull ?? UsersState.empty;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetch(page: current.page, query: current.query));
+    state = await AsyncValue.guard(
+      () => _fetch(page: current.page, query: current.query),
+    );
   }
 
   Future<void> nextPage() async {
     final current = state.valueOrNull ?? UsersState.empty;
     if (current.page >= current.totalPages) return;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetch(page: current.page + 1, query: current.query));
+    state = await AsyncValue.guard(
+      () => _fetch(page: current.page + 1, query: current.query),
+    );
   }
 
   Future<void> prevPage() async {
     final current = state.valueOrNull ?? UsersState.empty;
     if (current.page <= 1) return;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetch(page: current.page - 1, query: current.query));
+    state = await AsyncValue.guard(
+      () => _fetch(page: current.page - 1, query: current.query),
+    );
   }
 
   Future<UsersState> _fetch({required int page, required String query}) async {
@@ -101,13 +108,11 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
   List<AppUser> _applyQuery(List<AppUser> users, String query) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return users;
-    return users
-        .where((u) {
-          final name = u.fullName.toLowerCase();
-          final email = u.email.toLowerCase();
-          final phone = (u.phoneNumber ?? '').toLowerCase();
-          return name.contains(q) || email.contains(q) || phone.contains(q);
-        })
-        .toList();
+    return users.where((u) {
+      final name = u.fullName.toLowerCase();
+      final email = u.email.toLowerCase();
+      final phone = (u.phoneNumber ?? '').toLowerCase();
+      return name.contains(q) || email.contains(q) || phone.contains(q);
+    }).toList();
   }
 }

@@ -31,4 +31,3 @@ class AppColors {
   static const darkCard = Color(0xFF1F2937); // gray-800
   static const sidebar = Color(0xFF0F172A); // navy
 }
-

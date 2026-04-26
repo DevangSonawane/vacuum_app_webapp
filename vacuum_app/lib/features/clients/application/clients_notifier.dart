@@ -9,13 +9,21 @@ final clientsRepositoryProvider = Provider<ClientsRepository>((ref) {
 });
 
 class ClientsState {
-  const ClientsState({required this.items, this.search = '', this.typeFilter = 'All'});
+  const ClientsState({
+    required this.items,
+    this.search = '',
+    this.typeFilter = 'All',
+  });
 
   final List<Client> items;
   final String search;
   final String typeFilter;
 
-  ClientsState copyWith({List<Client>? items, String? search, String? typeFilter}) {
+  ClientsState copyWith({
+    List<Client>? items,
+    String? search,
+    String? typeFilter,
+  }) {
     return ClientsState(
       items: items ?? this.items,
       search: search ?? this.search,
@@ -24,7 +32,9 @@ class ClientsState {
   }
 }
 
-final clientsProvider = AsyncNotifierProvider<ClientsNotifier, ClientsState>(ClientsNotifier.new);
+final clientsProvider = AsyncNotifierProvider<ClientsNotifier, ClientsState>(
+  ClientsNotifier.new,
+);
 
 class ClientsNotifier extends AsyncNotifier<ClientsState> {
   ClientsRepository get _repo => ref.read(clientsRepositoryProvider);
@@ -50,8 +60,15 @@ class ClientsNotifier extends AsyncNotifier<ClientsState> {
     final current = state.valueOrNull ?? const ClientsState(items: []);
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final items = await _repo.fetchClients(search: current.search, type: current.typeFilter);
-      return ClientsState(items: items, search: current.search, typeFilter: current.typeFilter);
+      final items = await _repo.fetchClients(
+        search: current.search,
+        type: current.typeFilter,
+      );
+      return ClientsState(
+        items: items,
+        search: current.search,
+        typeFilter: current.typeFilter,
+      );
     });
   }
 
@@ -93,4 +110,3 @@ class ClientsNotifier extends AsyncNotifier<ClientsState> {
     }
   }
 }
-

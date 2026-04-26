@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -51,10 +52,18 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       ),
       body: _report.when(
         loading: () => const _ReportDetailSkeleton(),
-        error: (e, _) => EmptyState(icon: Icons.error_outline, title: 'Failed to load', description: e.toString()),
+        error: (e, _) => EmptyState(
+          icon: Icons.error_outline,
+          title: 'Failed to load',
+          description: e.toString(),
+        ),
         data: (report) {
           if (report == null) {
-            return const EmptyState(icon: Icons.description_outlined, title: 'Not found', description: 'Report not available.');
+            return const EmptyState(
+              icon: Icons.description_outlined,
+              title: 'Not found',
+              description: 'Report not available.',
+            );
           }
 
           return SingleChildScrollView(
@@ -90,7 +99,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                         report.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(height: 10),
                       StatusBadge(label: report.status),
@@ -100,22 +113,36 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                 const SizedBox(height: 16),
                 _InfoGrid(report: report),
                 const SizedBox(height: 16),
-                Text('Findings', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Findings',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 AppCard(
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF111827) : AppColors.gray50,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF111827)
+                          : AppColors.gray50,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
+                      ),
                     ),
-                    child: Text(report.findings.isEmpty ? '—' : report.findings),
+                    child: Text(
+                      report.findings.isEmpty ? '—' : report.findings,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Recommendations', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Recommendations',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 AppCard(
                   child: Container(
@@ -126,31 +153,113 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFFDBEAFE)),
                     ),
-                    child: Text(report.recommendations.isEmpty ? '—' : report.recommendations),
+                    child: Text(
+                      report.recommendations.isEmpty
+                          ? '—'
+                          : report.recommendations,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Attached Photos (${report.images.length})', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Comments',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                AppCard(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF111827)
+                          : AppColors.gray50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
+                      ),
+                    ),
+                    child: Text(
+                      (report.comments ?? '').trim().isEmpty
+                          ? '—'
+                          : report.comments!.trim(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Technical Reports (${report.technicalReports.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                if (report.technicalReports.isEmpty)
+                  Text(
+                    'No documents',
+                    style: TextStyle(color: Theme.of(context).hintColor),
+                  )
+                else
+                  AppCard(
+                    padding: EdgeInsets.zero,
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: report.technicalReports.length,
+                      separatorBuilder: (context, i) => Divider(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
+                        height: 1,
+                      ),
+                      itemBuilder: (context, i) {
+                        final f = report.technicalReports[i];
+                        final size = _fmtBytes(f.fileSizeBytes);
+                        return ListTile(
+                          leading: const Icon(Icons.description_outlined),
+                          title: Text(
+                            f.fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: size == null ? null : Text(size),
+                          trailing: const Icon(Icons.open_in_new, size: 18),
+                          onTap: () => _openUrl(context, f.fileUrl),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  'Attached Photos (${report.images.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
                 if (report.images.isEmpty)
-                  Text('No photos', style: TextStyle(color: Theme.of(context).hintColor))
+                  Text(
+                    'No photos',
+                    style: TextStyle(color: Theme.of(context).hintColor),
+                  )
                 else
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
                     itemCount: report.images.length,
                     itemBuilder: (context, i) => ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: CachedNetworkImage(
                         imageUrl: report.images[i].fileUrl,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => const ShimmerBox(height: 80),
-                        errorWidget: (context, url, error) => const Icon(Icons.broken_image_outlined),
+                        placeholder: (context, url) =>
+                            const ShimmerBox(height: 80),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.broken_image_outlined),
                       ),
                     ),
                   ),
@@ -183,9 +292,17 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           variant: AppButtonVariant.primary,
                           expanded: true,
                           onPressed: () async {
-                            final ok = await ref.read(reportsProvider.notifier).updateStatus(report.id, 'Approved');
+                            final ok = await ref
+                                .read(reportsProvider.notifier)
+                                .updateStatus(report.id, 'Approved');
                             if (!context.mounted) return;
-                            AppToast.show(context, message: ok ? 'Approved' : 'Operation failed', type: ok ? AppToastType.success : AppToastType.error);
+                            AppToast.show(
+                              context,
+                              message: ok ? 'Approved' : 'Operation failed',
+                              type: ok
+                                  ? AppToastType.success
+                                  : AppToastType.error,
+                            );
                             await _load();
                           },
                         ),
@@ -197,9 +314,17 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           variant: AppButtonVariant.danger,
                           expanded: true,
                           onPressed: () async {
-                            final ok = await ref.read(reportsProvider.notifier).updateStatus(report.id, 'Rejected');
+                            final ok = await ref
+                                .read(reportsProvider.notifier)
+                                .updateStatus(report.id, 'Rejected');
                             if (!context.mounted) return;
-                            AppToast.show(context, message: ok ? 'Rejected' : 'Operation failed', type: ok ? AppToastType.success : AppToastType.error);
+                            AppToast.show(
+                              context,
+                              message: ok ? 'Rejected' : 'Operation failed',
+                              type: ok
+                                  ? AppToastType.success
+                                  : AppToastType.error,
+                            );
                             await _load();
                           },
                         ),
@@ -228,9 +353,49 @@ class _InfoGrid extends StatelessWidget {
       (label: 'Job', value: report.jobId, icon: Icons.work_outline),
       (label: 'Job Title', value: report.jobTitle, icon: Icons.title),
       (label: 'Client', value: report.clientName, icon: Icons.groups_outlined),
-      (label: 'Technician', value: report.technicianName, icon: Icons.engineering_outlined),
-      (label: 'Date', value: _shortDate(report.reportDate), icon: Icons.calendar_today_outlined),
-      (label: 'Approved At', value: _shortDate(report.approvedAt), icon: Icons.check_circle_outline),
+      (
+        label: 'Client Email',
+        value: (report.clientEmail ?? '').trim().isEmpty
+            ? '—'
+            : report.clientEmail!.trim(),
+        icon: Icons.mail_outline,
+      ),
+      (
+        label: 'Technician',
+        value: report.technicianName,
+        icon: Icons.engineering_outlined,
+      ),
+      (
+        label: 'PO Number',
+        value: (report.poNumber ?? '').trim().isEmpty
+            ? '—'
+            : report.poNumber!.trim(),
+        icon: Icons.receipt_long_outlined,
+      ),
+      (
+        label: 'Serial No',
+        value: (report.serialNo ?? '').trim().isEmpty
+            ? '—'
+            : report.serialNo!.trim(),
+        icon: Icons.qr_code_2_outlined,
+      ),
+      (
+        label: 'Location',
+        value: (report.location ?? '').trim().isEmpty
+            ? '—'
+            : report.location!.trim(),
+        icon: Icons.place_outlined,
+      ),
+      (
+        label: 'Date',
+        value: _shortDate(report.reportDate),
+        icon: Icons.calendar_today_outlined,
+      ),
+      (
+        label: 'Approved At',
+        value: _shortDate(report.approvedAt),
+        icon: Icons.check_circle_outline,
+      ),
     ];
 
     return GridView.builder(
@@ -246,9 +411,13 @@ class _InfoGrid extends StatelessWidget {
       itemBuilder: (context, i) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF111827) : AppColors.gray50,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF111827)
+              : AppColors.gray50,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.12)),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
         ),
         child: Row(
           children: [
@@ -269,10 +438,19 @@ class _InfoGrid extends StatelessWidget {
                 children: [
                   Text(
                     items[i].label.toUpperCase(),
-                    style: TextStyle(color: Theme.of(context).hintColor, fontSize: 10, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: Theme.of(context).hintColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  Text(items[i].value, overflow: TextOverflow.ellipsis, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    items[i].value,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ],
               ),
             ),
@@ -287,6 +465,37 @@ String _shortDate(String? value) {
   final v = (value ?? '').trim();
   if (v.isEmpty) return '—';
   return v.length >= 10 ? v.substring(0, 10) : v;
+}
+
+String? _fmtBytes(int? bytes) {
+  if (bytes == null) return null;
+  if (bytes < 1024) return '$bytes B';
+  final kb = bytes / 1024;
+  if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+  final mb = kb / 1024;
+  if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+  final gb = mb / 1024;
+  return '${gb.toStringAsFixed(1)} GB';
+}
+
+Future<void> _openUrl(BuildContext context, String url) async {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null) {
+    AppToast.show(
+      context,
+      message: 'Invalid file URL',
+      type: AppToastType.error,
+    );
+    return;
+  }
+  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!ok && context.mounted) {
+    AppToast.show(
+      context,
+      message: 'Could not open link',
+      type: AppToastType.error,
+    );
+  }
 }
 
 class _Banner extends StatelessWidget {
@@ -320,7 +529,10 @@ class _Banner extends StatelessWidget {
           Icon(icon, color: iconColor),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text, style: TextStyle(fontWeight: FontWeight.w800, color: textColor)),
+            child: Text(
+              text,
+              style: TextStyle(fontWeight: FontWeight.w800, color: textColor),
+            ),
           ),
         ],
       ),
@@ -348,4 +560,3 @@ class _ReportDetailSkeleton extends StatelessWidget {
     );
   }
 }
-

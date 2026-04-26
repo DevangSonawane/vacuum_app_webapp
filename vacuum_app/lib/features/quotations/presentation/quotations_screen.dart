@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
@@ -15,7 +14,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
-import '../../clients/data/clients_repository.dart';
+import '../../clients/application/clients_notifier.dart';
 import '../application/quotations_notifier.dart';
 import '../domain/quotation.dart';
 
@@ -131,8 +130,9 @@ class _QuotationCreateScreenState extends ConsumerState<QuotationCreateScreen> {
   Future<void> _loadClients() async {
     setState(() => _loadingClients = true);
     try {
-      final repo = ClientsRepository(dio: ref.read(dioProvider));
-      final list = await repo.fetchClients(search: '', type: '');
+      final list = await ref
+          .read(clientsRepositoryProvider)
+          .fetchClients(limit: 100);
       _clients = [for (final c in list) (id: c.id, name: c.name)];
     } catch (_) {
       _clients = const [];

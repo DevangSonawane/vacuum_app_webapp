@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Users, Phone, Mail, MapPin, Building2,
-  X, Briefcase, ShieldCheck, TrendingUp, ChevronRight, Loader2,
-  Calendar, DollarSign
+  X, Briefcase, ShieldCheck, TrendingUp, Loader2,
+  Calendar, DollarSign, FileText
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -12,7 +12,7 @@ import {
   SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
+const API_BASE_URL = "https://vaccumapi.onrender.com/api";
 
 const EMPTY = {
   name:           "",
@@ -20,10 +20,12 @@ const EMPTY = {
   email:          "",
   phone:          "",
   address:        "",
+  gst_no:         "",
   type:           "Corporate",
   status:         "Active",
   contract_value: "",
 };
+
 const TYPES = ["Corporate", "Residential", "Commercial", "Healthcare", "Government"];
 
 const TYPE_COLORS = {
@@ -43,31 +45,26 @@ export default function Clients() {
   const [search, setSearch]         = useState("");
   const [filterType, setFilterType] = useState("All");
 
-  // Modal states
   const [modalOpen, setModalOpen]   = useState(false);
   const [editId, setEditId]         = useState(null);
   const [form, setForm]             = useState(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId]     = useState(null);
 
-  // Detail panel
-  const [detailClient, setDetailClient] = useState(null);   // full detail data from GET /:id
+  const [detailClient, setDetailClient]   = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => { fetchClients(); }, []);
 
-  // ── Fetch list ────────────────────────────────────────────
   const fetchClients = async (searchTerm = "", type = "All") => {
     setLoading(true);
     try {
-      const token  = localStorage.getItem('token');
+      const token  = localStorage.getItem("token");
       const params = { limit: 50 };
       if (searchTerm)     params.search = searchTerm;
       if (type !== "All") params.type   = type;
-
       const res = await axios.get(`${API_BASE_URL}/clients`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params,
+        headers: { Authorization: `Bearer ${token}` }, params,
       });
       if (res.data.success) setClients(res.data.data || []);
     } catch (err) {
@@ -82,32 +79,25 @@ export default function Clients() {
     return () => clearTimeout(t);
   }, [search, filterType]);
 
-  // ── Fetch client detail (GET /clients/:id) ────────────────
   const openDetail = async (client) => {
-    // Show panel immediately with list data, then refresh from detail API
     setDetailClient({ ...client, stats: null });
     setDetailLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const res   = await axios.get(`${API_BASE_URL}/clients/${client.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) setDetailClient(res.data.data);
-    } catch (err) {
+    } catch {
       showToast("Could not load full client details.", "error");
     } finally {
       setDetailLoading(false);
     }
   };
 
-  // ── Open Edit modal ───────────────────────────────────────
   const f = (field) => (e) => setForm(p => ({ ...p, [field]: e.target.value }));
 
-  const openAdd = () => {
-    setForm(EMPTY);
-    setEditId(null);
-    setModalOpen(true);
-  };
+  const openAdd = () => { setForm(EMPTY); setEditId(null); setModalOpen(true); };
 
   const openEdit = (c) => {
     setForm({
@@ -116,6 +106,7 @@ export default function Clients() {
       email:          c.email          || "",
       phone:          c.phone          || "",
       address:        c.address        || "",
+      gst_no:         c.gst_no         || "",
       type:           c.type           || "Corporate",
       status:         c.status         || "Active",
       contract_value: c.contract_value || "",
@@ -124,12 +115,10 @@ export default function Clients() {
     setModalOpen(true);
   };
 
-  // ── Create / Update ───────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const token = localStorage.getItem('token');
-
+    const token = localStorage.getItem("token");
     try {
       const payload = {
         name:           form.name.trim(),
@@ -140,6 +129,7 @@ export default function Clients() {
       if (form.email)          payload.email          = form.email.trim().toLowerCase();
       if (form.phone)          payload.phone          = form.phone.trim();
       if (form.address)        payload.address        = form.address.trim();
+      if (form.gst_no)         payload.gst_no         = form.gst_no.trim().toUpperCase();
       if (form.contract_value) payload.contract_value = parseFloat(form.contract_value);
 
       if (editId) {
@@ -147,7 +137,6 @@ export default function Clients() {
           headers: { Authorization: `Bearer ${token}` },
         });
         showToast("Client updated!");
-        // Refresh detail panel if currently open for this client
         if (detailClient?.id === editId) openDetail({ id: editId });
       } else {
         await axios.post(`${API_BASE_URL}/clients`, payload, {
@@ -164,9 +153,8 @@ export default function Clients() {
     }
   };
 
-  // ── Delete ────────────────────────────────────────────────
   const handleDelete = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     try {
       await axios.delete(`${API_BASE_URL}/clients/${deleteId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -212,10 +200,10 @@ export default function Clients() {
           </div>
         </div>
 
-        {/* Main layout — list + detail panel side by side */}
+        {/* Main layout */}
         <div className={`flex gap-5 transition-all ${detailClient ? "items-start" : ""}`}>
 
-          {/* ── Client Cards ─────────────────────────────── */}
+          {/* Client Cards */}
           <div className={`${detailClient ? "flex-1 min-w-0" : "w-full"}`}>
             {loading ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -266,6 +254,12 @@ export default function Clients() {
                         {c.email   && <div className="flex items-center gap-2"><Mail   size={12} />{c.email}</div>}
                         {c.phone   && <div className="flex items-center gap-2"><Phone  size={12} />{c.phone}</div>}
                         {c.address && <div className="flex items-center gap-2"><MapPin size={12} />{c.address}</div>}
+                        {c.gst_no  && (
+                          <div className="flex items-center gap-2">
+                            <FileText size={12} />
+                            <span className="font-mono">GST: {c.gst_no}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
@@ -295,7 +289,7 @@ export default function Clients() {
             )}
           </div>
 
-          {/* ── Detail Panel ─────────────────────────────── */}
+          {/* Detail Panel */}
           <AnimatePresence>
             {detailClient && (
               <motion.div
@@ -306,7 +300,7 @@ export default function Clients() {
                 transition={{ type: "spring", damping: 28, stiffness: 280 }}
                 className="w-full lg:w-96 flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg overflow-hidden sticky top-4"
               >
-                {/* Panel Header */}
+                {/* Header */}
                 <div className="flex items-start justify-between p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-br from-blue-600 to-blue-800">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -317,17 +311,14 @@ export default function Clients() {
                       <p className="text-blue-200 text-xs">{detailClient.contact_person}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setDetailClient(null)}
-                    className="text-white/70 hover:text-white transition p-1"
-                  >
+                  <button onClick={() => setDetailClient(null)} className="text-white/70 hover:text-white transition p-1">
                     <X size={18} />
                   </button>
                 </div>
 
                 <div className="p-5 space-y-5 max-h-[calc(100vh-200px)] overflow-y-auto">
 
-                  {/* Status + Type badges */}
+                  {/* Status + Type */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge label={detailClient.status} />
                     <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${TYPE_COLORS[detailClient.type] || "bg-gray-100 text-gray-600"}`}>
@@ -335,7 +326,7 @@ export default function Clients() {
                     </span>
                   </div>
 
-                  {/* Stats row — from GET /clients/:id */}
+                  {/* Stats */}
                   {detailLoading ? (
                     <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
                       <Loader2 size={16} className="animate-spin" /> Loading stats…
@@ -343,9 +334,9 @@ export default function Clients() {
                   ) : detailClient.stats ? (
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { icon: Briefcase,   label: "Total Jobs",   value: detailClient.stats.total_jobs },
-                        { icon: TrendingUp,  label: "Open Jobs",    value: detailClient.stats.open_jobs },
-                        { icon: ShieldCheck, label: "Active AMC",   value: detailClient.stats.active_amc_count },
+                        { icon: Briefcase,   label: "Total Jobs",  value: detailClient.stats.total_jobs },
+                        { icon: TrendingUp,  label: "Open Jobs",   value: detailClient.stats.open_jobs },
+                        { icon: ShieldCheck, label: "Active AMC",  value: detailClient.stats.active_amc_count },
                       ].map(s => (
                         <div key={s.label} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 text-center">
                           <s.icon size={16} className="text-blue-500 mx-auto mb-1" />
@@ -356,7 +347,7 @@ export default function Clients() {
                     </div>
                   ) : null}
 
-                  {/* Contact details */}
+                  {/* Contact */}
                   <div className="space-y-2.5">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contact</p>
                     {detailClient.email && (
@@ -383,9 +374,17 @@ export default function Clients() {
                         <span className="leading-snug">{detailClient.address}</span>
                       </div>
                     )}
+                    {detailClient.gst_no && (
+                      <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+                        <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+                          <FileText size={13} className="text-amber-500" />
+                        </div>
+                        <span className="font-mono text-xs">GST: {detailClient.gst_no}</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Contract info */}
+                  {/* Contract */}
                   <div className="space-y-2.5">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contract</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -413,16 +412,10 @@ export default function Clients() {
                   {/* Actions */}
                   {canEdit && (
                     <div className="flex gap-2 pt-1">
-                      <Button
-                        className="flex-1"
-                        onClick={() => { openEdit(detailClient); }}
-                      >
+                      <Button className="flex-1" onClick={() => openEdit(detailClient)}>
                         <Pencil size={14} className="mr-1.5" /> Edit Client
                       </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => setDeleteId(detailClient.id)}
-                      >
+                      <Button variant="danger" onClick={() => setDeleteId(detailClient.id)}>
                         <Trash2 size={14} />
                       </Button>
                     </div>
@@ -441,6 +434,7 @@ export default function Clients() {
               <Input label="Contact Person"     value={form.contact_person} onChange={f("contact_person")} required />
               <Input label="Email"              type="email" value={form.email}  onChange={f("email")} />
               <Input label="Phone"              value={form.phone}          onChange={f("phone")} />
+              <Input label="GST No."            value={form.gst_no}         onChange={f("gst_no")}         placeholder="22AAAAA0000A1Z5" />
               <Input label="Contract Value (₹)" type="number" value={form.contract_value} onChange={f("contract_value")} />
               <Select label="Type"   value={form.type}   onChange={f("type")}   options={TYPES} />
               <Select label="Status" value={form.status} onChange={f("status")} options={["Active", "Inactive"]} />

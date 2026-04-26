@@ -15,10 +15,10 @@ class AppAvatar extends StatelessWidget {
   final AppAvatarSize size;
 
   double get _dimension => switch (size) {
-        AppAvatarSize.sm => 28,
-        AppAvatarSize.md => 36,
-        AppAvatarSize.lg => 48,
-      };
+    AppAvatarSize.sm => 28,
+    AppAvatarSize.md => 36,
+    AppAvatarSize.lg => 48,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -45,4 +45,3 @@ class AppAvatar extends StatelessWidget {
     );
   }
 }
-

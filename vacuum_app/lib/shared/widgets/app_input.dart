@@ -44,7 +44,9 @@ class _AppInputState extends State<AppInput> {
           )
         : widget.suffix;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final labelColor = isDark ? const Color(0xFFE5E7EB) : const Color(0xFF374151);
+    final labelColor = isDark
+        ? const Color(0xFFE5E7EB)
+        : const Color(0xFF374151);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,15 +55,18 @@ class _AppInputState extends State<AppInput> {
           text: TextSpan(
             text: widget.label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: labelColor,
-                ),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: labelColor,
+            ),
             children: widget.required
                 ? const [
                     TextSpan(
                       text: ' *',
-                      style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ]
                 : const [],
@@ -88,9 +93,9 @@ class _AppInputState extends State<AppInput> {
           const SizedBox(height: 6),
           Text(
             widget.helperText!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).hintColor,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Theme.of(context).hintColor),
           ),
         ],
       ],
