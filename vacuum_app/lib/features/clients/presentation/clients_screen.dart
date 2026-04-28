@@ -329,7 +329,8 @@ class _ClientsGrid extends StatelessWidget {
         crossAxisCount: cols,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: cols == 1 ? 1.55 : 1.35,
+        // Slightly taller cards to avoid RenderFlex overflow on smaller heights.
+        childAspectRatio: cols == 1 ? 1.30 : 1.18,
       ),
       itemCount: items.length,
       itemBuilder: (context, i) => _ClientCard(
@@ -1152,7 +1153,8 @@ class _ClientsSkeleton extends StatelessWidget {
         crossAxisCount: cols,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: cols == 1 ? 1.55 : 1.35,
+        // Keep skeleton sizing consistent with the real cards.
+        childAspectRatio: cols == 1 ? 1.30 : 1.18,
       ),
       itemCount: 6,
       itemBuilder: (context, i) => const AppCard(

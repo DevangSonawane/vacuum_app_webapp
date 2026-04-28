@@ -14,7 +14,13 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../application/users_notifier.dart';
+import '../application/users_state.dart';
 import '../domain/app_user.dart';
+
+String _titleCase(String value) {
+  if (value.isEmpty) return value;
+  return value[0].toUpperCase() + value.substring(1);
+}
 
 class UsersScreen extends ConsumerWidget {
   const UsersScreen({super.key});
@@ -56,278 +62,26 @@ class UsersScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: const InputDecoration(
-                            hintText: 'Search users…',
-                            prefixIcon: Icon(Icons.search),
-                            isDense: true,
-                          ),
-                          onChanged: (query) =>
-                              ref.read(usersProvider.notifier).search(query),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('User')),
-                        DataColumn(label: Text('Role')),
-                        DataColumn(label: Text('Contact')),
-                        DataColumn(label: Text('Status')),
-                        DataColumn(label: Text('Actions')),
-                      ],
-                      rows: [
-                        for (final u in data.users)
-                          DataRow(
-                            cells: [
-                              DataCell(
-                                Row(
-                                  children: [
-                                    AppAvatar(
-                                      initials: initialsFromName(u.fullName),
-                                      size: AppAvatarSize.md,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          u.fullName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          u.email,
-                                          style: TextStyle(
-                                            color: Theme.of(context).hintColor,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.shield_outlined,
-                                      size: 18,
-                                      color: AppColors.blue600,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(_titleCase(u.role)),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  u.phoneNumber?.isNotEmpty == true
-                                      ? u.phoneNumber!
-                                      : '—',
-                                ),
-                              ),
-                              DataCell(
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(999),
-                                    color:
-                                        (u.isActive
-                                                ? AppColors.emerald500
-                                                : AppColors.red500)
-                                            .withValues(alpha: 0.15),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        u.isActive
-                                            ? Icons.check_circle_outline
-                                            : Icons.cancel_outlined,
-                                        size: 16,
-                                        color: u.isActive
-                                            ? AppColors.emerald500
-                                            : AppColors.red500,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        u.isActive ? 'Active' : 'Inactive',
-                                        style: TextStyle(
-                                          color: u.isActive
-                                              ? AppColors.emerald500
-                                              : AppColors.red500,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      tooltip: 'Edit',
-                                      onPressed: () =>
-                                          _openUserSheet(context, ref, u),
-                                      icon: const Icon(
-                                        Icons.edit_outlined,
-                                        color: AppColors.blue600,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      tooltip: 'Deactivate',
-                                      onPressed: u.isActive
-                                          ? () => _confirmDeactivate(
-                                              context,
-                                              ref,
-                                              u,
-                                            )
-                                          : null,
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: AppColors.red500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final showing =
-                          'Showing ${data.users.length} of ${data.total} users';
-                      final pageText =
-                          'Page ${data.page} of ${data.totalPages}';
-                      final effectiveWidth = constraints.maxWidth.isFinite
-                          ? constraints.maxWidth
-                          : MediaQuery.sizeOf(context).width;
-                      final compact = effectiveWidth < 420;
-
-                      if (compact) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(showing),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AppButton(
-                                    label: 'Prev',
-                                    size: AppButtonSize.sm,
-                                    variant: AppButtonVariant.secondary,
-                                    onPressed: data.page <= 1
-                                        ? null
-                                        : () => ref
-                                              .read(usersProvider.notifier)
-                                              .prevPage(),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: AppButton(
-                                    label: 'Next',
-                                    size: AppButtonSize.sm,
-                                    variant: AppButtonVariant.secondary,
-                                    onPressed: data.page >= data.totalPages
-                                        ? null
-                                        : () => ref
-                                              .read(usersProvider.notifier)
-                                              .nextPage(),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              pageText,
-                              style: TextStyle(
-                                color: Theme.of(context).hintColor,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              showing,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          AppButton(
-                            label: 'Previous',
-                            size: AppButtonSize.sm,
-                            variant: AppButtonVariant.secondary,
-                            onPressed: data.page <= 1
-                                ? null
-                                : () => ref
-                                      .read(usersProvider.notifier)
-                                      .prevPage(),
-                          ),
-                          const SizedBox(width: 10),
-                          Flexible(
-                            child: Text(
-                              pageText,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          AppButton(
-                            label: 'Next',
-                            size: AppButtonSize.sm,
-                            variant: AppButtonVariant.secondary,
-                            onPressed: data.page >= data.totalPages
-                                ? null
-                                : () => ref
-                                      .read(usersProvider.notifier)
-                                      .nextPage(),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+              padding: EdgeInsets.zero,
+              child: _UsersPremiumTable(
+                data: data,
+                onSearch: (query) => ref
+                    .read(usersProvider.notifier)
+                    .search(query.trim()),
+                onPrev: data.page <= 1
+                    ? null
+                    : () => ref.read(usersProvider.notifier).prevPage(),
+                onNext: data.page >= data.totalPages
+                    ? null
+                    : () => ref.read(usersProvider.notifier).nextPage(),
+                onEdit: (u) => _openUserSheet(context, ref, u),
+                onDeactivate: (u) => _confirmDeactivate(context, ref, u),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _titleCase(String value) {
-    if (value.isEmpty) return value;
-    return value[0].toUpperCase() + value.substring(1);
   }
 
   Future<void> _confirmDeactivate(
@@ -389,6 +143,403 @@ class UsersScreen extends ConsumerWidget {
 }
 
 const _roles = ['admin', 'manager', 'engineer', 'technician', 'labour'];
+
+class _UsersPremiumTable extends StatelessWidget {
+  const _UsersPremiumTable({
+    required this.data,
+    required this.onSearch,
+    required this.onPrev,
+    required this.onNext,
+    required this.onEdit,
+    required this.onDeactivate,
+  });
+
+  final UsersState data;
+  final ValueChanged<String> onSearch;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
+  final ValueChanged<AppUser> onEdit;
+  final ValueChanged<AppUser> onDeactivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final headerBg = isDark ? const Color(0xFF0B1220) : AppColors.gray50;
+    final borderColor =
+        Theme.of(context).dividerColor.withValues(alpha: isDark ? 0.22 : 0.16);
+    final rowHover =
+        (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04);
+    final rowAlt = isDark ? const Color(0xFF0F172A) : const Color(0xFFF9FAFB);
+
+    final showing = 'Showing ${data.users.length} of ${data.total} users';
+    final pageText = 'Page ${data.page} of ${data.totalPages}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search users…',
+                    prefixIcon: const Icon(Icons.search),
+                    isDense: true,
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF0B1220) : AppColors.gray50,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.blue600),
+                    ),
+                  ),
+                  onChanged: onSearch,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor),
+                  color: isDark ? const Color(0xFF0B1220) : Colors.white,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.people_outline, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${data.total}',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Users',
+                      style: TextStyle(color: Theme.of(context).hintColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final effectiveWidth = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : MediaQuery.sizeOf(context).width;
+              final compact = effectiveWidth < 460;
+
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(showing),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: 'Prev',
+                            size: AppButtonSize.sm,
+                            variant: AppButtonVariant.secondary,
+                            onPressed: onPrev,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: AppButton(
+                            label: 'Next',
+                            size: AppButtonSize.sm,
+                            variant: AppButtonVariant.secondary,
+                            onPressed: onNext,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      pageText,
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(showing, overflow: TextOverflow.ellipsis),
+                  ),
+                  AppButton(
+                    label: 'Previous',
+                    size: AppButtonSize.sm,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: onPrev,
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(pageText, overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(width: 10),
+                  AppButton(
+                    label: 'Next',
+                    size: AppButtonSize.sm,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: onNext,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: borderColor),
+                left: BorderSide(color: borderColor),
+                right: BorderSide(color: borderColor),
+                bottom: BorderSide(color: borderColor),
+              ),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                showCheckboxColumn: false,
+                headingRowHeight: 44,
+                dataRowMinHeight: 56,
+                dataRowMaxHeight: 68,
+                dividerThickness: 0.8,
+                horizontalMargin: 16,
+                columnSpacing: 22,
+                headingRowColor: WidgetStatePropertyAll(headerBg),
+                dataRowColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.hovered)
+                      ? rowHover
+                      : null,
+                ),
+                headingTextStyle: TextStyle(
+                  color: Theme.of(context).hintColor,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+                columns: const [
+                  DataColumn(label: Text('User')),
+                  DataColumn(label: Text('Role')),
+                  DataColumn(label: Text('Contact')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('')),
+                ],
+                rows: [
+                  for (var i = 0; i < data.users.length; i++)
+                    _userRow(
+                      context,
+                      user: data.users[i],
+                      index: i,
+                      altColor: rowAlt,
+                      onEdit: onEdit,
+                      onDeactivate: onDeactivate,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
+
+  DataRow _userRow(
+    BuildContext context, {
+    required AppUser user,
+    required int index,
+    required Color altColor,
+    required ValueChanged<AppUser> onEdit,
+    required ValueChanged<AppUser> onDeactivate,
+  }) {
+    final roleColors = _roleColors(user.role);
+    final statusColors = user.isActive
+        ? (AppColors.emerald500.withValues(alpha: 0.14), AppColors.emerald500)
+        : (AppColors.red500.withValues(alpha: 0.14), AppColors.red500);
+
+    return DataRow(
+      color: WidgetStateProperty.resolveWith(
+        (states) => index.isEven ? altColor.withValues(alpha: 0.35) : null,
+      ),
+      cells: [
+        DataCell(
+          Row(
+            children: [
+              AppAvatar(
+                initials: initialsFromName(user.fullName),
+                size: AppAvatarSize.md,
+              ),
+              const SizedBox(width: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 260),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      user.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      user.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: roleColors.$1,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  size: 16,
+                  color: roleColors.$2,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _titleCase(user.role),
+                  style: TextStyle(
+                    color: roleColors.$2,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        DataCell(
+          Text(user.phoneNumber?.isNotEmpty == true ? user.phoneNumber! : '—'),
+        ),
+        DataCell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              color: statusColors.$1,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  user.isActive
+                      ? Icons.check_circle_outline
+                      : Icons.cancel_outlined,
+                  size: 16,
+                  color: statusColors.$2,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  user.isActive ? 'Active' : 'Inactive',
+                  style: TextStyle(
+                    color: statusColors.$2,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        DataCell(
+          Align(
+            alignment: Alignment.centerRight,
+            child: PopupMenuButton<_UserAction>(
+              tooltip: 'Actions',
+              icon: const Icon(Icons.more_horiz),
+              onSelected: (action) {
+                switch (action) {
+                  case _UserAction.edit:
+                    onEdit(user);
+                  case _UserAction.deactivate:
+                    onDeactivate(user);
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _UserAction.edit,
+                  child: Row(
+                    children: const [
+                      Icon(Icons.edit_outlined, size: 18),
+                      SizedBox(width: 10),
+                      Text('Edit user'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _UserAction.deactivate,
+                  enabled: user.isActive,
+                  child: Row(
+                    children: const [
+                      Icon(Icons.block_outlined, size: 18),
+                      SizedBox(width: 10),
+                      Text('Deactivate'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static (Color, Color) _roleColors(String role) {
+    return switch (role) {
+      'admin' => (const Color(0xFFFEE2E2), const Color(0xFFDC2626)),
+      'manager' => (const Color(0xFFE0E7FF), const Color(0xFF4F46E5)),
+      'engineer' => (const Color(0xFFDBEAFE), const Color(0xFF2563EB)),
+      'technician' => (const Color(0xFFDCFCE7), const Color(0xFF16A34A)),
+      'labour' => (const Color(0xFFFFEDD5), const Color(0xFFEA580C)),
+      _ => (AppColors.gray100, AppColors.gray700),
+    };
+  }
+}
+
+enum _UserAction { edit, deactivate }
 
 class _UserFormSheet extends StatefulWidget {
   const _UserFormSheet({

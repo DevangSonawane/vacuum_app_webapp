@@ -617,7 +617,7 @@ class _RecentJobsCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Recent Work Orders',
+                  'Recent Visit Scheduled',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),

@@ -173,7 +173,7 @@ class _TopBar extends ConsumerWidget {
     if (location == '/clients/new') return 'Add Client';
     if (location.startsWith('/clients')) return 'Clients';
     if (location == '/jobs/new') return 'Raise Work Order';
-    if (location.startsWith('/jobs')) return 'Work Orders';
+    if (location.startsWith('/jobs')) return 'Visit Scheduled';
     if (location == '/reports/new') return 'New Report';
     if (location.startsWith('/reports')) return 'Service Reports';
     if (location == '/quotations/new') return 'Create Quotation';
@@ -492,7 +492,7 @@ const _navItems = <_NavDescriptor>[
     adminOnly: false,
   ),
   _NavDescriptor(
-    label: 'Work Orders',
+    label: 'Visit Scheduled',
     route: '/jobs',
     icon: Icons.work_outline,
     adminOnly: false,
@@ -501,12 +501,6 @@ const _navItems = <_NavDescriptor>[
     label: 'Service Reports',
     route: '/reports',
     icon: Icons.assignment_outlined,
-    adminOnly: false,
-  ),
-  _NavDescriptor(
-    label: 'Quotations',
-    route: '/quotations',
-    icon: Icons.request_quote_outlined,
     adminOnly: false,
   ),
   _NavDescriptor(

@@ -58,7 +58,7 @@ class JobsScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeader(
-              title: 'Work Orders',
+              title: 'Visit Scheduled',
               subtitle: state.whenOrNull(
                 data: (d) =>
                     '${d.items.where((j) => j.status != "Closed").length} active orders',
