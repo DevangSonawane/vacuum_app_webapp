@@ -10,6 +10,7 @@ import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -523,58 +524,34 @@ class _MarkAttendanceSheetState extends ConsumerState<_MarkAttendanceSheet> {
                 description: 'Add a technician before marking attendance.',
               )
             else ...[
-              const Text(
-                'Technician',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<int>(
-                initialValue: _techId,
-                isExpanded: true,
-                menuMaxHeight: 360,
-                borderRadius: BorderRadius.circular(14),
-                dropdownColor: Theme.of(context).colorScheme.surface,
-                icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                decoration: const InputDecoration(isDense: true),
-                items: _techs
-                    .map(
-                      (t) => DropdownMenuItem<int>(
-                        value: t.id,
-                        child: Text(t.name, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _loading ? null : (v) => setState(() => _techId = v),
+              AppDropdownField<int>(
+                label: 'Technician',
+                value: _techId,
+                items: [
+                  for (final t in _techs)
+                    AppDropdownItem(value: t.id, label: t.name),
+                ],
+                enabled: !_loading,
+                onChanged: (v) => setState(() => _techId = v),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Status',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                initialValue: _status,
-                isExpanded: true,
-                menuMaxHeight: 360,
-                borderRadius: BorderRadius.circular(14),
-                dropdownColor: Theme.of(context).colorScheme.surface,
-                icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                decoration: const InputDecoration(isDense: true),
+              AppDropdownField<String>(
+                label: 'Status',
+                value: _status,
                 items: const [
-                  DropdownMenuItem(value: 'Present', child: Text('Present')),
-                  DropdownMenuItem(value: 'Late', child: Text('Late')),
-                  DropdownMenuItem(value: 'Absent', child: Text('Absent')),
+                  AppDropdownItem(value: 'Present', label: 'Present'),
+                  AppDropdownItem(value: 'Late', label: 'Late'),
+                  AppDropdownItem(value: 'Absent', label: 'Absent'),
                 ],
-                onChanged: _loading
-                    ? null
-                    : (v) {
-                        setState(() => _status = v ?? 'Present');
-                        if (_status == 'Absent') {
-                          _checkIn.clear();
-                          _checkOut.clear();
-                          _hours.text = '0';
-                        }
-                      },
+                enabled: !_loading,
+                onChanged: (v) {
+                  setState(() => _status = v ?? 'Present');
+                  if (_status == 'Absent') {
+                    _checkIn.clear();
+                    _checkOut.clear();
+                    _hours.text = '0';
+                  }
+                },
               ),
               if (_status != 'Absent') ...[
                 const SizedBox(height: 12),

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -542,40 +543,21 @@ class _CreateQuotationSheetState extends State<_CreateQuotationSheet> {
   }
 
   Widget _clientDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Client *',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: _clientId,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          decoration: const InputDecoration(isDense: true),
-          items: widget.clients
-              .map(
-                (c) => DropdownMenuItem<int>(
-                  value: c.id,
-                  child: Text(c.name, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: (v) {
-            setState(() {
-              _clientId = v;
-              _clientName = widget.clients
-                  .firstWhere((e) => e.id == v, orElse: () => (id: 0, name: ''))
-                  .name;
-            });
-          },
-        ),
+    return AppDropdownField<int>(
+      label: 'Client *',
+      value: _clientId,
+      items: [
+        for (final c in widget.clients)
+          AppDropdownItem(value: c.id, label: c.name),
       ],
+      onChanged: (v) {
+        setState(() {
+          _clientId = v;
+          _clientName = widget.clients
+              .firstWhere((e) => e.id == v, orElse: () => (id: 0, name: ''))
+              .name;
+        });
+      },
     );
   }
 

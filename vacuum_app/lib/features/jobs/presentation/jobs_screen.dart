@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
@@ -17,6 +18,8 @@ import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
+import '../../amc/data/amc_repository.dart';
+import '../../amc/domain/amc_contract.dart';
 import '../../clients/data/clients_repository.dart';
 import '../../technicians/data/technicians_repository.dart';
 import '../application/jobs_notifier.dart';
@@ -660,11 +663,13 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
 
   int? _clientId;
   int? _techId;
+  String? _amcId;
   String _priority = _priorities[1];
   String _category = _categories.first;
 
   List<({int id, String name})> _clients = const [];
   List<({int id, String name})> _techs = const [];
+  List<AmcContract> _amcContracts = const [];
   bool _fetching = true;
 
   @override
@@ -686,6 +691,7 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     try {
       final clientsRepo = ClientsRepository(dio: widget.dio);
       final techRepo = TechniciansRepository(dio: widget.dio);
+      final amcRepo = AmcRepository(dio: widget.dio);
       final clients = await clientsRepo.fetchClients(
         limit: 100,
         search: '',
@@ -696,9 +702,11 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
         search: '',
         status: 'Active',
       );
+      final amcContracts = await amcRepo.fetchContracts(limit: 200);
 
       _clients = [for (final c in clients) (id: c.id, name: c.name)];
       _techs = [for (final t in techs) (id: t.id, name: t.name)];
+      _amcContracts = amcContracts;
       if (_clients.isNotEmpty) _clientId ??= _clients.first.id;
     } catch (_) {
       // ignore - will show empty dropdown
@@ -725,6 +733,7 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
       'priority': _priority,
       'category': _category,
       if (_techId != null) 'technician_id': _techId,
+      if (_amcId != null && _amcId!.trim().isNotEmpty) 'amc_id': _amcId,
       if (_description.text.trim().isNotEmpty)
         'description': _description.text.trim(),
       if (_scheduledDate != null)
@@ -746,6 +755,19 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
         nav.pop();
       } else {
         context.go('/jobs');
+      }
+    }
+
+    final visibleAmcContracts = [..._amcContracts]
+      ..sort((a, b) => a.id.compareTo(b.id));
+    AmcContract? selectedAmc;
+    final selId = _amcId?.trim();
+    if (selId != null && selId.isNotEmpty) {
+      for (final a in _amcContracts) {
+        if (a.id == selId) {
+          selectedAmc = a;
+          break;
+        }
       }
     }
 
@@ -794,7 +816,11 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
                 label: 'Client *',
                 value: _clientId,
                 items: _clients,
-                onChanged: (v) => setState(() => _clientId = v),
+                onChanged: (v) {
+                  setState(() {
+                    _clientId = v;
+                  });
+                },
               ),
               const SizedBox(height: 12),
               _dropdownInt(
@@ -837,6 +863,17 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
                 hint: '12000',
                 keyboard: TextInputType.number,
               ),
+              const SizedBox(height: 12),
+              _dropdownAmc(
+                label: 'Linked AMC Contract (optional)',
+                value: _amcId,
+                items: visibleAmcContracts,
+                onChanged: (v) => setState(() => _amcId = v),
+              ),
+              if (selectedAmc != null) ...[
+                const SizedBox(height: 8),
+                _amcBadgeStrip(selectedAmc),
+              ],
               const SizedBox(height: 12),
               _field('Description', _description, hint: 'Notes…', lines: 3),
               const SizedBox(height: 20),
@@ -912,34 +949,12 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
-    final surface = Theme.of(context).colorScheme.surface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: value,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          decoration: const InputDecoration(isDense: true),
-          items: items
-              .map(
-                (o) => DropdownMenuItem(
-                  value: o,
-                  child: Text(o, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: _loading ? null : onChanged,
-        ),
-      ],
+    return AppDropdownField<String>(
+      label: label,
+      value: value,
+      items: [for (final o in items) AppDropdownItem(value: o, label: o)],
+      enabled: !_loading,
+      onChanged: onChanged,
     );
   }
 
@@ -950,38 +965,100 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     required ValueChanged<int?> onChanged,
     bool allowNull = false,
   }) {
-    final surface = Theme.of(context).colorScheme.surface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return AppDropdownField<int>(
+      label: label,
+      value: value,
+      allowNull: allowNull,
+      nullLabel: '— Please select —',
+      items: [
+        for (final o in items) AppDropdownItem(value: o.id, label: o.name),
+      ],
+      enabled: !_loading,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _dropdownAmc({
+    required String label,
+    required String? value,
+    required List<AmcContract> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return AppDropdownField<String>(
+      label: label,
+      value: (value?.trim().isEmpty ?? true) ? null : value,
+      allowNull: true,
+      nullLabel: '— Not linked to an AMC —',
+      items: [for (final a in items) AppDropdownItem(value: a.id, label: _amcLabel(a))],
+      enabled: !_loading,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _amcBadgeStrip(AmcContract a) {
+    Color statusBg;
+    Color statusFg;
+    switch (a.status) {
+      case 'Active':
+        statusBg = const Color(0xFFECFDF5);
+        statusFg = const Color(0xFF047857);
+        break;
+      case 'Expiring Soon':
+        statusBg = const Color(0xFFFFFBEB);
+        statusFg = const Color(0xFFB45309);
+        break;
+      default:
+        statusBg = const Color(0xFFF3F4F6);
+        statusFg = const Color(0xFF6B7280);
+        break;
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chipBg = isDark ? const Color(0xFF111827) : Colors.white;
+
+    Widget chip(String text, {Color? bg, Color? fg}) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg ?? chipBg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: fg,
+        ),
+      ),
+    );
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: value,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          decoration: const InputDecoration(isDense: true),
-          items: [
-            if (allowNull)
-              const DropdownMenuItem<int>(value: null, child: Text('—')),
-            ...items.map(
-              (o) => DropdownMenuItem<int>(
-                value: o.id,
-                child: Text(o.name, overflow: TextOverflow.ellipsis),
-              ),
-            ),
-          ],
-          onChanged: _loading ? null : onChanged,
-        ),
+        if ((a.poNumber ?? '').trim().isNotEmpty)
+          chip('PO: ${a.poNumber}', bg: const Color(0xFFF5F3FF), fg: const Color(0xFF6D28D9)),
+        chip(a.status, bg: statusBg, fg: statusFg),
+        if ((a.endDate ?? '').trim().isNotEmpty)
+          chip(
+            'Expires: ${_shortDate(a.endDate!)}',
+            fg: AppColors.gray500,
+          ),
       ],
     );
   }
+
+  static String _amcLabel(AmcContract a) {
+    final po = (a.poNumber ?? '').trim().isEmpty ? '' : ' | PO: ${a.poNumber}';
+    final client =
+        a.clientName.trim().isEmpty ? '' : ' — ${a.clientName.trim()}';
+    return '${a.id}$po — ${a.title}$client';
+  }
+
+  static String _shortDate(String v) => v.length >= 10 ? v.substring(0, 10) : v;
 
   Widget _datePicker(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

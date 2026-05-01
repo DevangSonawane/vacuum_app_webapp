@@ -12,6 +12,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -1031,115 +1032,53 @@ class _NewReportSheetState extends State<_NewReportSheet> {
   }
 
   Widget _dropdownJob() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Linked Job *',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: _jobId,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          decoration: const InputDecoration(isDense: true),
-          items: _jobs
-              .map(
-                (j) => DropdownMenuItem<String>(
-                  value: j.id,
-                  child: Text(
-                    '${j.id} — ${j.title}',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: _loading
-              ? null
-              : (v) => setState(() {
-                  _jobId = v;
-                  if (v != null) _applyJob(v);
-                }),
-        ),
+    return AppDropdownField<String>(
+      label: 'Linked Job *',
+      value: _jobId,
+      items: [
+        for (final j in _jobs)
+          AppDropdownItem(value: j.id, label: '${j.id} — ${j.title}'),
       ],
+      enabled: !_loading,
+      onChanged: (v) => setState(() {
+        _jobId = v;
+        if (v != null) _applyJob(v);
+      }),
     );
   }
 
   Widget _dropdownTech() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Technician *',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: _techId,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          decoration: const InputDecoration(isDense: true),
-          items: _techs
-              .map(
-                (t) => DropdownMenuItem<int>(
-                  value: t.id,
-                  child: Text(t.name, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: _loading ? null : (v) => setState(() => _techId = v),
-        ),
+    return AppDropdownField<int>(
+      label: 'Technician *',
+      value: _techId,
+      items: [
+        for (final t in _techs) AppDropdownItem(value: t.id, label: t.name),
       ],
+      enabled: !_loading,
+      onChanged: (v) => setState(() => _techId = v),
     );
   }
 
   Widget _dropdownClient() {
-    final surface = Theme.of(context).colorScheme.surface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Client',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: _clientId,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          decoration: const InputDecoration(isDense: true),
-          items: _clients
-              .map(
-                (c) => DropdownMenuItem<int>(
-                  value: c.id,
-                  child: Text(c.name, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: _loading
-              ? null
-              : (v) {
-                  final selected = _findClient(v);
-                  setState(() {
-                    _clientId = v;
-                    _clientName = selected?.name ?? _clientName;
-                    if (selected != null && selected.email.trim().isNotEmpty) {
-                      _clientEmail.text = selected.email.trim();
-                    }
-                  });
-                },
-        ),
+    return AppDropdownField<int>(
+      label: 'Client',
+      value: _clientId,
+      allowNull: true,
+      nullLabel: '— Please select —',
+      items: [
+        for (final c in _clients) AppDropdownItem(value: c.id, label: c.name),
       ],
+      enabled: !_loading,
+      onChanged: (v) {
+        final selected = _findClient(v);
+        setState(() {
+          _clientId = v;
+          _clientName = selected?.name ?? _clientName;
+          if (selected != null && selected.email.trim().isNotEmpty) {
+            _clientEmail.text = selected.email.trim();
+          }
+        });
+      },
     );
   }
 }

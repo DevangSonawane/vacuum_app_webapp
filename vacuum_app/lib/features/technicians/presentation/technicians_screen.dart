@@ -9,6 +9,7 @@ import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
@@ -737,33 +738,12 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     List<String> options,
     ValueChanged<String?> onChanged,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          initialValue: value,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          decoration: const InputDecoration(isDense: true),
-          items: options
-              .map(
-                (o) => DropdownMenuItem(
-                  value: o,
-                  child: Text(o, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: _loading ? null : onChanged,
-        ),
-      ],
+    return AppDropdownField<String>(
+      label: label,
+      value: value,
+      items: [for (final o in options) AppDropdownItem(value: o, label: o)],
+      enabled: !_loading,
+      onChanged: onChanged,
     );
   }
 

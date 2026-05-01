@@ -8,6 +8,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/revenue.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
@@ -822,63 +823,25 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   }
 
   Widget _dropdownClient() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Client *',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: _clientId,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          decoration: const InputDecoration(isDense: true),
-          items: _clients
-              .map(
-                (c) => DropdownMenuItem<int>(
-                  value: c.id,
-                  child: Text(c.name, overflow: TextOverflow.ellipsis),
-                ),
-              )
-              .toList(),
-          onChanged: _loading ? null : (v) => setState(() => _clientId = v),
-        ),
+    return AppDropdownField<int>(
+      label: 'Client *',
+      value: _clientId,
+      items: [
+        for (final c in _clients) AppDropdownItem(value: c.id, label: c.name),
       ],
+      enabled: !_loading,
+      onChanged: (v) => setState(() => _clientId = v),
     );
   }
 
   Widget _reminderDropdown() {
     const options = [15, 30, 60, 90];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Renewal Reminder',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          initialValue: options.contains(_reminderDays) ? _reminderDays : 30,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(14),
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          decoration: const InputDecoration(isDense: true),
-          items: [
-            for (final d in options)
-              DropdownMenuItem<int>(value: d, child: Text('$d days')),
-          ],
-          onChanged: _loading
-              ? null
-              : (v) => setState(() => _reminderDays = v ?? 30),
-        ),
-      ],
+    return AppDropdownField<int>(
+      label: 'Renewal Reminder',
+      value: options.contains(_reminderDays) ? _reminderDays : 30,
+      items: [for (final d in options) AppDropdownItem(value: d, label: '$d days')],
+      enabled: !_loading,
+      onChanged: (v) => setState(() => _reminderDays = v ?? 30),
     );
   }
 

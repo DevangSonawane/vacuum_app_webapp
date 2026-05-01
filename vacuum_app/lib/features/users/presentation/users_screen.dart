@@ -6,6 +6,7 @@ import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_input.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
@@ -742,42 +743,16 @@ class _UserFormSheetState extends State<_UserFormSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Role *',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        DropdownButtonFormField<String>(
-                          initialValue: _role,
-                          isExpanded: true,
-                          menuMaxHeight: 360,
-                          borderRadius: BorderRadius.circular(14),
-                          dropdownColor: Theme.of(context).colorScheme.surface,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                          decoration: const InputDecoration(isDense: true),
-                          items: _roles
-                              .map(
-                                (r) => DropdownMenuItem(
-                                  value: r,
-                                  child: Text(
-                                    r,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: _loading
-                              ? null
-                              : (v) =>
-                                    setState(() => _role = v ?? _roles.first),
-                        ),
+                    child: AppDropdownField<String>(
+                      label: 'Role *',
+                      value: _role,
+                      items: [
+                        for (final r in _roles)
+                          AppDropdownItem(value: r, label: r),
                       ],
+                      enabled: !_loading,
+                      onChanged: (v) =>
+                          setState(() => _role = v ?? _roles.first),
                     ),
                   ),
                   const SizedBox(width: 12),

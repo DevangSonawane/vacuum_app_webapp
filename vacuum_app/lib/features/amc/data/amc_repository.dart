@@ -7,11 +7,14 @@ class AmcRepository {
 
   final Dio _dio;
 
-  Future<List<AmcContract>> fetchContracts({String status = ''}) async {
+  Future<List<AmcContract>> fetchContracts({
+    String status = '',
+    int limit = 100,
+  }) async {
     final response = await _dio.get(
       'amc',
       queryParameters: {
-        'limit': 100,
+        'limit': limit,
         if (status.isNotEmpty && status != 'All') 'status': status,
       },
     );

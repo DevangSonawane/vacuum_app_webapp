@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Briefcase, ArrowRight, Calendar, User, X,
   CheckCircle, Loader2, Upload, Image as ImageIcon,
-  Trash2, Eye, Camera, ExternalLink
+  Trash2, Eye, Camera, ExternalLink, ShieldCheck
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -37,6 +37,7 @@ const EMPTY_FORM = {
   title: "", client_id: "", technician_id: "",
   priority: "Medium", category: "Maintenance",
   description: "", scheduled_date: "", amount: "",
+  amc_id: "",
 };
 
 export default function Jobs() {
@@ -47,6 +48,7 @@ export default function Jobs() {
   const [jobs, setJobs]               = useState([]);
   const [clients, setClients]         = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [amcContracts, setAmcContracts] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [filter, setFilter]           = useState("All");
 
@@ -70,6 +72,7 @@ export default function Jobs() {
     fetchJobs();
     fetchClients();
     fetchTechnicians();
+    fetchAmcContracts();
   }, []);
 
   useEffect(() => { fetchJobs(); }, [filter]);
@@ -81,7 +84,16 @@ export default function Jobs() {
       const token  = localStorage.getItem("token");
       const params = { limit: 100 };
       if (filter !== "All") params.status = filter;
-      const res = await axios.get(`${API_BASE_URL}/jobs`, {
+
+      let url;
+      if (currentUser?.role === "technician" && currentUser?.id) {
+        // Technicians only see their own assigned jobs
+        url = `${API_BASE_URL}/jobs/by-user/${currentUser.id}`;
+      } else {
+        url = `${API_BASE_URL}/jobs`;
+      }
+
+      const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }, params,
       });
       if (res.data.success) setJobs(res.data.data || []);
@@ -107,9 +119,20 @@ export default function Jobs() {
       const token = localStorage.getItem("token");
       const res   = await axios.get(`${API_BASE_URL}/technicians`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 100, status: "Active" },
+        params: { limit: 200 },
       });
       if (res.data.success) setTechnicians(res.data.data || []);
+    } catch {}
+  };
+
+  const fetchAmcContracts = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res   = await axios.get(`${API_BASE_URL}/amc`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 200 },
+      });
+      if (res.data.success) setAmcContracts(res.data.data || []);
     } catch {}
   };
 
@@ -148,11 +171,12 @@ export default function Jobs() {
       if (form.description)    payload.description    = form.description.trim();
       if (form.scheduled_date) payload.scheduled_date = form.scheduled_date;
       if (form.amount)         payload.amount         = parseFloat(form.amount);
+      if (form.amc_id)         payload.amc_id         = form.amc_id;
 
       await axios.post(`${API_BASE_URL}/jobs`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      showToast("Work order raised!");
+      showToast("Visit scheduled!");
       setModalOpen(false);
       setForm(EMPTY_FORM);
       fetchJobs();
@@ -310,8 +334,8 @@ export default function Jobs() {
     <PageTransition>
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <SectionHeader
-          title="Visit Schedule"
-          subtitle={`${activeCount} active jobs`} 
+          title="Visit Scheduled"
+          subtitle={`${activeCount} active visits`}
           action={canRaise && (
             <Button onClick={() => setModalOpen(true)}><Plus size={16} /> Raise Job</Button>
           )}
@@ -459,6 +483,7 @@ export default function Jobs() {
                       { label: "Raised",    value: detailJob.raised_date     ? detailJob.raised_date.slice(0, 10)     : "—" },
                       { label: "Scheduled", value: detailJob.scheduled_date  ? detailJob.scheduled_date.slice(0, 10)  : "—" },
                       { label: "Closed",    value: detailJob.closed_date     ? detailJob.closed_date.slice(0, 10)     : "—" },
+                      { label: "AMC",       value: detailJob.amc_title || (detailJob.amc_id ? detailJob.amc_id : "—") },
                     ].map(item => (
                       <div key={item.label} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
                         <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{item.label}</p>
@@ -567,7 +592,7 @@ export default function Jobs() {
         </div>
 
         {/* ── Raise Job Modal ────────────────────────────────── */}
-        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Raise New Work Order" size="lg">
+        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Schedule New Visit" size="lg">
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Input label="Job Title" value={form.title} onChange={f("title")} required className="col-span-2" />
@@ -583,6 +608,52 @@ export default function Jobs() {
               <Select label="Category" value={form.category} onChange={f("category")} options={CATEGORIES} />
               <Input label="Scheduled Date" type="date" value={form.scheduled_date} onChange={f("scheduled_date")} />
               <Input label="Amount (₹)"     type="number" value={form.amount}        onChange={f("amount")} />
+              {/* AMC dropdown — shows ID, PO number, title */}
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Linked AMC Contract <span className="text-gray-400 font-normal">(optional)</span>
+                </p>
+                <select
+                  value={form.amc_id}
+                  onChange={e => setForm(p => ({ ...p, amc_id: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  <option value="">— Not linked to an AMC —</option>
+                  {amcContracts.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.id}{a.po_number ? ` | PO: ${a.po_number}` : ""} — {a.title}
+                    </option>
+                  ))}
+                </select>
+                {/* Inline badge strip when an AMC is selected */}
+                {form.amc_id && (() => {
+                  const sel = amcContracts.find(a => a.id === form.amc_id);
+                  if (!sel) return null;
+                  return (
+                    <div className="mt-2 flex flex-wrap gap-2 items-center">
+                      {sel.po_number && (
+                        <span className="inline-flex items-center gap-1 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-full font-medium">
+                          PO: {sel.po_number}
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium ${
+                        sel.status === "Active"
+                          ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
+                          : sel.status === "Expiring Soon"
+                          ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-500"
+                      }`}>
+                        {sel.status}
+                      </span>
+                      {sel.end_date && (
+                        <span className="text-xs text-gray-400">
+                          Expires: {sel.end_date.slice(0, 10)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
               <Textarea
                 label="Description"
                 value={form.description}
@@ -592,7 +663,7 @@ export default function Jobs() {
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1" disabled={submitting}>
-                {submitting ? "Raising…" : "Raise Work Order"}
+                {submitting ? "Raising…" : "Schedule Visit"}
               </Button>
               <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
             </div>
@@ -757,6 +828,7 @@ function JobCard({ job, onDetail, onAdvance, canRaise, isSelected = false, horiz
           {job.client_name     && <div className="flex items-center gap-1.5"><User     size={11} />{job.client_name}</div>}
           {job.technician_name && <div className="flex items-center gap-1.5"><User     size={11} className="text-blue-400" />{job.technician_name}</div>}
           {job.scheduled_date  && <div className="flex items-center gap-1.5"><Calendar size={11} />{job.scheduled_date?.slice(0, 10)}</div>}
+          {job.amc_id          && <div className="flex items-center gap-1.5 text-purple-500 dark:text-purple-400"><ShieldCheck size={11} />{job.amc_title || job.amc_id}</div>}
         </div>
       </div>
       {horizontal && (
