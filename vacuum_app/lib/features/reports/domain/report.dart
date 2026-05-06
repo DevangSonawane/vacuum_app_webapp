@@ -11,6 +11,17 @@ class Report {
     required this.findings,
     required this.recommendations,
     required this.approvedAt,
+    this.companyName,
+    this.contactPerson,
+    this.modelSerialInstallation,
+    this.operatingHoursPerDay,
+    this.applicationProcessDescription,
+    this.remarks,
+    this.vdtRepresentativeName,
+    this.clientRepresentativeName,
+    this.checklistItems = const [],
+    this.issueObservations = const [],
+    this.mandatorySpares = const [],
     this.clientEmail,
     this.comments,
     this.poNumber,
@@ -34,6 +45,17 @@ class Report {
   final String findings;
   final String recommendations;
   final String? approvedAt;
+  final String? companyName; // json: company_name
+  final String? contactPerson; // json: contact_person
+  final String? modelSerialInstallation; // json: model_serial_installation
+  final String? operatingHoursPerDay; // json: operating_hours_per_day
+  final String? applicationProcessDescription; // json: application_process_description
+  final String? remarks; // json: remarks
+  final String? vdtRepresentativeName; // json: vdt_representative_name
+  final String? clientRepresentativeName; // json: client_representative_name
+  final List<ChecklistItem> checklistItems; // json: checklist_items
+  final List<IssueObservation> issueObservations; // json: issue_observations
+  final List<MandatorySpare> mandatorySpares; // json: mandatory_spares
   final String? clientEmail; // json: client_email
   final String? comments; // json: comments
   final String? poNumber; // json: po_number
@@ -54,6 +76,11 @@ class Report {
     }
 
     List<dynamic> l(Object? v) => v is List ? v : const [];
+    Map<String, dynamic> m(Object? v) {
+      if (v is Map<String, dynamic>) return v;
+      if (v is Map) return v.map((k, val) => MapEntry(k.toString(), val));
+      return <String, dynamic>{};
+    }
 
     return Report(
       id: s(json['id']),
@@ -67,6 +94,31 @@ class Report {
       findings: s(json['findings']),
       recommendations: s(json['recommendations']),
       approvedAt: json['approved_at']?.toString(),
+      companyName: (json['company_name'] as Object?)?.toString(),
+      contactPerson: (json['contact_person'] as Object?)?.toString(),
+      modelSerialInstallation:
+          (json['model_serial_installation'] as Object?)?.toString(),
+      operatingHoursPerDay:
+          (json['operating_hours_per_day'] as Object?)?.toString(),
+      applicationProcessDescription:
+          (json['application_process_description'] as Object?)?.toString(),
+      remarks: (json['remarks'] as Object?)?.toString(),
+      vdtRepresentativeName:
+          (json['vdt_representative_name'] as Object?)?.toString(),
+      clientRepresentativeName:
+          (json['client_representative_name'] as Object?)?.toString(),
+      checklistItems: l(json['checklist_items'])
+          .whereType<Map>()
+          .map((e) => ChecklistItem.fromJson(m(e)))
+          .toList(),
+      issueObservations: l(json['issue_observations'])
+          .whereType<Map>()
+          .map((e) => IssueObservation.fromJson(m(e)))
+          .toList(),
+      mandatorySpares: l(json['mandatory_spares'])
+          .whereType<Map>()
+          .map((e) => MandatorySpare.fromJson(m(e)))
+          .toList(),
       clientEmail: (json['client_email'] as Object?)?.toString(),
       comments: (json['comments'] as Object?)?.toString(),
       poNumber: (json['po_number'] as Object?)?.toString(),
@@ -88,6 +140,78 @@ class Report {
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class ChecklistItem {
+  const ChecklistItem({
+    required this.sr,
+    required this.description,
+    required this.status,
+  });
+
+  final int sr;
+  final String description;
+  final String status;
+
+  static ChecklistItem fromJson(Map<String, dynamic> json) {
+    String s(Object? v) => v == null ? '' : v.toString();
+    return ChecklistItem(
+      sr: (json['sr'] as num?)?.toInt() ?? 0,
+      description: s(json['description']),
+      status: s(json['status']),
+    );
+  }
+}
+
+class IssueObservation {
+  const IssueObservation({
+    required this.sr,
+    required this.issue,
+    required this.observation,
+    required this.impactOnPump,
+    required this.severity,
+    required this.recommendedSpares,
+  });
+
+  final int sr;
+  final String issue;
+  final String observation;
+  final String impactOnPump; // json: impact_on_pump
+  final String severity;
+  final String recommendedSpares; // json: recommended_spares
+
+  static IssueObservation fromJson(Map<String, dynamic> json) {
+    String s(Object? v) => v == null ? '' : v.toString();
+    return IssueObservation(
+      sr: (json['sr'] as num?)?.toInt() ?? 0,
+      issue: s(json['issue']),
+      observation: s(json['observation']),
+      impactOnPump: s(json['impact_on_pump']),
+      severity: s(json['severity']),
+      recommendedSpares: s(json['recommended_spares']),
+    );
+  }
+}
+
+class MandatorySpare {
+  const MandatorySpare({
+    required this.spareName,
+    required this.pumpModel,
+    required this.totalToOrder,
+  });
+
+  final String spareName; // json: spare_name
+  final String pumpModel; // json: pump_model
+  final String totalToOrder; // json: total_to_order
+
+  static MandatorySpare fromJson(Map<String, dynamic> json) {
+    String s(Object? v) => v == null ? '' : v.toString();
+    return MandatorySpare(
+      spareName: s(json['spare_name']),
+      pumpModel: s(json['pump_model']),
+      totalToOrder: s(json['total_to_order']),
     );
   }
 }

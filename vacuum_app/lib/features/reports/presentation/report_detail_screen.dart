@@ -189,6 +189,213 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (report.checklistItems.isNotEmpty) ...[
+                  Text(
+                    'Checklist (${report.checklistItems.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  AppCard(
+                    child: Column(
+                      children: [
+                        for (final item in report.checklistItems) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? const Color(0xFF111827)
+                                  : AppColors.gray50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).dividerColor.withValues(alpha: 0.12),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDBEAFE),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    '${item.sr}',
+                                    style: const TextStyle(
+                                      color: AppColors.blue600,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    item.description.isEmpty
+                                        ? '—'
+                                        : item.description,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  item.status.trim().isEmpty
+                                      ? '—'
+                                      : item.status.trim(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: item.status.trim().isEmpty
+                                        ? Theme.of(context).hintColor
+                                        : AppColors.emerald500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (report.issueObservations.isNotEmpty) ...[
+                  Text(
+                    'Issues (${report.issueObservations.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  AppCard(
+                    padding: EdgeInsets.zero,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('SR')),
+                          DataColumn(label: Text('Issue')),
+                          DataColumn(label: Text('Observation')),
+                          DataColumn(label: Text('Impact')),
+                          DataColumn(label: Text('Severity')),
+                          DataColumn(label: Text('Recommended Spares')),
+                        ],
+                        rows: [
+                          for (final obs in report.issueObservations)
+                            DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(obs.sr == 0 ? '—' : '${obs.sr}'),
+                                ),
+                                DataCell(Text(obs.issue.isEmpty ? '—' : obs.issue)),
+                                DataCell(Text(obs.observation.isEmpty ? '—' : obs.observation)),
+                                DataCell(Text(obs.impactOnPump.isEmpty ? '—' : obs.impactOnPump)),
+                                DataCell(Text(obs.severity.isEmpty ? '—' : obs.severity)),
+                                DataCell(Text(obs.recommendedSpares.isEmpty ? '—' : obs.recommendedSpares)),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if ((report.remarks ?? '').trim().isNotEmpty) ...[
+                  Text(
+                    'Remarks',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  AppCard(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF111827)
+                            : AppColors.gray50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Text((report.remarks ?? '').trim()),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (report.mandatorySpares.isNotEmpty) ...[
+                  Text(
+                    'Mandatory Spares (${report.mandatorySpares.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  AppCard(
+                    padding: EdgeInsets.zero,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Spare Name')),
+                          DataColumn(label: Text('Pump Model')),
+                          DataColumn(label: Text('Total To Order')),
+                        ],
+                        rows: [
+                          for (final s in report.mandatorySpares)
+                            DataRow(
+                              cells: [
+                                DataCell(Text(s.spareName.isEmpty ? '—' : s.spareName)),
+                                DataCell(Text(s.pumpModel.isEmpty ? '—' : s.pumpModel)),
+                                DataCell(Text(s.totalToOrder.isEmpty ? '—' : s.totalToOrder)),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if ((report.vdtRepresentativeName ?? '').trim().isNotEmpty ||
+                    (report.clientRepresentativeName ?? '').trim().isNotEmpty) ...[
+                  Text(
+                    'Signatures',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppCard(
+                          child: _signatureCard(
+                            title: 'VDT Representative',
+                            name: (report.vdtRepresentativeName ?? '').trim(),
+                            date: report.reportDate,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppCard(
+                          child: _signatureCard(
+                            title: 'Client Representative',
+                            name:
+                                (report.clientRepresentativeName ?? '').trim(),
+                            date: report.reportDate,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Text(
                   'Technical Reports (${report.technicalReports.length})',
                   style: Theme.of(context).textTheme.titleMedium,
@@ -339,6 +546,38 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       ),
     );
   }
+
+  Widget _signatureCard({
+    required String title,
+    required String name,
+    required String? date,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            color: Theme.of(context).hintColor,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          name.isEmpty ? '—' : name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Date: ${_shortDate(date) ?? '—'}',
+          style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+        ),
+      ],
+    );
+  }
 }
 
 class _InfoGrid extends StatelessWidget {
@@ -353,6 +592,20 @@ class _InfoGrid extends StatelessWidget {
       (label: 'Job', value: report.jobId, icon: Icons.work_outline),
       (label: 'Job Title', value: report.jobTitle, icon: Icons.title),
       (label: 'Client', value: report.clientName, icon: Icons.groups_outlined),
+      (
+        label: 'Company',
+        value: (report.companyName ?? '').trim().isEmpty
+            ? '—'
+            : report.companyName!.trim(),
+        icon: Icons.business_outlined,
+      ),
+      (
+        label: 'Contact',
+        value: (report.contactPerson ?? '').trim().isEmpty
+            ? '—'
+            : report.contactPerson!.trim(),
+        icon: Icons.person_outline,
+      ),
       (
         label: 'Client Email',
         value: (report.clientEmail ?? '').trim().isEmpty
@@ -371,6 +624,20 @@ class _InfoGrid extends StatelessWidget {
             ? '—'
             : report.poNumber!.trim(),
         icon: Icons.receipt_long_outlined,
+      ),
+      (
+        label: 'Model / S/N / Year',
+        value: (report.modelSerialInstallation ?? '').trim().isEmpty
+            ? '—'
+            : report.modelSerialInstallation!.trim(),
+        icon: Icons.precision_manufacturing_outlined,
+      ),
+      (
+        label: 'Operating Hrs/Day',
+        value: (report.operatingHoursPerDay ?? '').trim().isEmpty
+            ? '—'
+            : report.operatingHoursPerDay!.trim(),
+        icon: Icons.schedule_outlined,
       ),
       (
         label: 'Serial No',

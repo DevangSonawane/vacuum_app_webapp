@@ -119,6 +119,8 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
               'file_size_bytes': f.fileSizeBytes,
             },
         ];
+      } else {
+        next['technical_reports'] = const [];
       }
 
       final id = await _repo.create(next);

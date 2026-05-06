@@ -24,6 +24,7 @@ import Quotations     from "./pages/Quotations";
 import AMC            from "./pages/AMC";
 import Attendance     from "./pages/Attendance";
 import EmailSettings  from "./pages/EmailSettings";
+import CreateReport from "./pages/CreateReport";
 import ActivityHistory from "./pages/ActivityHistory";
 import { PageLoader, PageTransition } from "./components/ui";
 
@@ -104,6 +105,7 @@ function AppContent() {
         <Route path="/jobs/:id" element={<PL><JobDetail /></PL>} />
 
         {/* Reports + detail */}
+        <Route path="/reports/create" element={<PL><CreateReport /></PL>} />
         <Route path="/reports"     element={<PL><Reports /></PL>} />
         <Route path="/reports/:id" element={<PL><ReportDetail /></PL>} />
 

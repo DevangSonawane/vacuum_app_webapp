@@ -10,7 +10,7 @@ import axios from "axios";
 import { useApp } from "../context/AppContext";
 import {
   PageTransition, Card, Badge, Button, Modal, Input,
-  Select, SectionHeader, EmptyState, useToast, Toast
+  Select, DatePicker, SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
 const API_BASE_URL = "https://vaccumapi.onrender.com/api";
@@ -447,10 +447,10 @@ export default function AMC() {
                 placeholder="PO-2025-001"
                 className="col-span-2"
               />
-              {!editId && <Input label="Start Date" type="date" value={form.start_date} onChange={f("start_date")} required />}
-              <Input label="End Date"   type="date" value={form.end_date}   onChange={f("end_date")}   required={!editId} />
+              {!editId && <DatePicker label="Start Date" value={form.start_date} onChange={f("start_date")} required />}
+              <DatePicker label="End Date" value={form.end_date} onChange={f("end_date")} required={!editId} />
               <Input label="Contract Value (₹)" type="number" value={form.value} onChange={f("value")} required />
-              <Input label="Next Service Date"  type="date"   value={form.next_service_date} onChange={f("next_service_date")} />
+              <DatePicker label="Next Service Date" value={form.next_service_date} onChange={f("next_service_date")} />
               <Select label="Renewal Reminder (days)" value={form.renewal_reminder_days} onChange={f("renewal_reminder_days")} className="col-span-2"
                 options={[{ value: 15, label: "15 days" }, { value: 30, label: "30 days" }, { value: 60, label: "60 days" }, { value: 90, label: "90 days" }]} />
               <div className="col-span-2">

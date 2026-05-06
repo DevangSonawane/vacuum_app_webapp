@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Clock, UserCheck, UserX, AlertCircle, Plus } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { PageTransition, Card, Badge, Button, Modal, Select, SectionHeader, StatCard } from "../components/ui";
+import { PageTransition, Card, Badge, Button, Modal, Select, DatePicker, SectionHeader, StatCard } from "../components/ui";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -62,9 +62,7 @@ export default function Attendance() {
 
         {/* Date picker */}
         <div className="flex items-center gap-3 mb-5">
-          <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Date:</label>
-          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} max={today}
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <DatePicker label="Date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
         </div>
 
         {/* Attendance Table */}

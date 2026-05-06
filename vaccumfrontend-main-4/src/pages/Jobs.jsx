@@ -10,7 +10,7 @@ import axios from "axios";
 import { useApp } from "../context/AppContext";
 import {
   PageTransition, Card, Badge, Button, Modal, Input,
-  Select, Textarea, SectionHeader, EmptyState, useToast, Toast
+  Select, DatePicker, Textarea, SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
 const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
@@ -394,7 +394,7 @@ export default function Jobs() {
                         <JobCard
                           key={job.id} job={job}
                           isSelected={detailJob?.id === job.id}
-                          onDetail={() => openDetail(job)}
+                          onDetail={() => navigate(`/jobs/${job.id}`)}
                           onAdvance={() => advanceStatus(job)}
                           canRaise={canRaise}
                         />
@@ -416,7 +416,7 @@ export default function Jobs() {
                   <JobCard
                     key={job.id} job={job} horizontal
                     isSelected={detailJob?.id === job.id}
-                    onDetail={() => openDetail(job)}
+                    onDetail={() => navigate(`/jobs/${job.id}`)}
                     onAdvance={() => advanceStatus(job)}
                     canRaise={canRaise}
                   />
@@ -606,25 +606,20 @@ export default function Jobs() {
               />
               <Select label="Priority" value={form.priority} onChange={f("priority")} options={PRIORITIES} />
               <Select label="Category" value={form.category} onChange={f("category")} options={CATEGORIES} />
-              <Input label="Scheduled Date" type="date" value={form.scheduled_date} onChange={f("scheduled_date")} />
+              <DatePicker label="Scheduled Date" value={form.scheduled_date} onChange={f("scheduled_date")} />
               <Input label="Amount (₹)"     type="number" value={form.amount}        onChange={f("amount")} />
               {/* AMC dropdown — shows ID, PO number, title */}
               <div className="col-span-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Linked AMC Contract <span className="text-gray-400 font-normal">(optional)</span>
-                </p>
-                <select
+                <Select
+                  label="Linked AMC Contract"
+                  placeholder="— Not linked to an AMC —"
                   value={form.amc_id}
                   onChange={e => setForm(p => ({ ...p, amc_id: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                >
-                  <option value="">— Not linked to an AMC —</option>
-                  {amcContracts.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.id}{a.po_number ? ` | PO: ${a.po_number}` : ""} — {a.title}
-                    </option>
-                  ))}
-                </select>
+                  options={amcContracts.map(a => ({
+                    value: a.id,
+                    label: `${a.id}${a.po_number ? ` | PO: ${a.po_number}` : ""} — ${a.title}`
+                  }))}
+                />
                 {/* Inline badge strip when an AMC is selected */}
                 {form.amc_id && (() => {
                   const sel = amcContracts.find(a => a.id === form.amc_id);

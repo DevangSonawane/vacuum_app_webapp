@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Star, UserCog, Phone, Mail, Search, Loader2, Eye, EyeOff } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
-import { PageTransition, Card, Badge, Avatar, Button, Modal, Input, Select, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
+import { PageTransition, Card, Badge, Avatar, Button, Modal, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
 
 const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
 
@@ -291,7 +291,7 @@ export default function Technicians() {
                   required
                 />
                 <Select label="Status" value={form.status} onChange={f("status")} options={STATUSES} />
-                <Input label="Join Date" type="date" value={form.join_date} onChange={f("join_date")} className="col-span-2" />
+                <DatePicker label="Join Date" value={form.join_date} onChange={f("join_date")} className="col-span-2" />
               </div>
 
               {/* Password — only on create */}

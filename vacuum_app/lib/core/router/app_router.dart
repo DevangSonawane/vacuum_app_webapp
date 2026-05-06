@@ -17,6 +17,7 @@ import '../../features/jobs/presentation/jobs_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/quotations/presentation/quotations_screen.dart';
 import '../../features/reports/presentation/report_detail_screen.dart';
+import '../../features/reports/presentation/report_create_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/technicians/presentation/technicians_screen.dart';

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
-import { useState } from "react";
+import { X, CheckCircle, AlertCircle, Info, ChevronDown, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 
 // ── Page wrapper with transition ──────────────────────────────────────────
 export function PageTransition({ children }) {
@@ -180,20 +180,260 @@ export function Input({ label, type = "text", value, onChange, placeholder, clas
 }
 
 // ── Select ────────────────────────────────────────────────────────────────
-export function Select({ label, value, onChange, options, className = "", required = false }) {
+export function Select({ label, value, onChange, options, className = "", required = false, placeholder = "Select..." }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => (o.value ?? o) === value);
+  const displayLabel = selectedOption ? (selectedOption.label ?? selectedOption) : placeholder;
+
+  const handleSelect = (option) => {
+    const val = option.value ?? option;
+    onChange({ target: { value: val } });
+    setIsOpen(false);
+  };
+
   return (
-    <div className={className}>
-      {label && <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
-      <select
-        value={value}
-        onChange={onChange}
-        required={required}
-        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+    <div className={`relative ${className}`} ref={containerRef}>
+      {label && (
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {label}{required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
+      
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          w-full px-3 py-2 rounded-xl border cursor-pointer flex items-center justify-between transition-all
+          ${isOpen 
+            ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800" 
+            : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"}
+          text-gray-900 dark:text-gray-100 text-sm
+        `}
       >
-        {options.map(o => (
-          <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>
-        ))}
-      </select>
+        <span className={!selectedOption ? "text-gray-400" : ""}>{displayLabel}</span>
+        <ChevronDown 
+          size={16} 
+          className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} 
+        />
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.1 }}
+            className="absolute z-[100] left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="max-h-60 overflow-y-auto py-1 custom-scrollbar">
+              {options.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-gray-400 text-center italic">No options</div>
+              ) : (
+                options.map((option, idx) => {
+                  const val = option.value ?? option;
+                  const lbl = option.label ?? option;
+                  const isSelected = val === value;
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => handleSelect(option)}
+                      className={`
+                        px-4 py-2.5 text-sm cursor-pointer transition-colors flex items-center justify-between
+                        ${isSelected 
+                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold" 
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"}
+                      `}
+                    >
+                      <span>{lbl}</span>
+                      {isSelected && <CheckCircle size={14} className="text-blue-500" />}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── DatePicker ────────────────────────────────────────────────────────────
+export function DatePicker({ label, value, onChange, className = "", required = false, placeholder = "Select date..." }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    return d.toISOString().split("T")[0];
+  };
+
+  const displayDate = value ? new Date(value).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }) : placeholder;
+
+  const handleSelect = (day) => {
+    const selectedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    // Adjust for timezone to ensure the correct date is sent
+    const offset = selectedDate.getTimezoneOffset();
+    const adjustedDate = new Date(selectedDate.getTime() - (offset * 60 * 1000));
+    onChange({ target: { value: adjustedDate.toISOString().split("T")[0] } });
+    setIsOpen(false);
+  };
+
+  const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+
+  const days = [];
+  const totalDays = daysInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+  const startDay = firstDayOfMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+
+  // Padding for start of month
+  for (let i = 0; i < startDay; i++) days.push(null);
+  for (let i = 1; i <= totalDays; i++) days.push(i);
+
+  const isToday = (day) => {
+    const today = new Date();
+    return day === today.getDate() && 
+           currentMonth.getMonth() === today.getMonth() && 
+           currentMonth.getFullYear() === today.getFullYear();
+  };
+
+  const isSelected = (day) => {
+    if (!value) return false;
+    const d = new Date(value);
+    return day === d.getDate() && 
+           currentMonth.getMonth() === d.getMonth() && 
+           currentMonth.getFullYear() === d.getFullYear();
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      {label && (
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          {label}{required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
+      
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          w-full px-3 py-2 rounded-xl border cursor-pointer flex items-center justify-between transition-all
+          ${isOpen 
+            ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800" 
+            : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"}
+          text-gray-900 dark:text-gray-100 text-sm
+        `}
+      >
+        <span className={!value ? "text-gray-400" : ""}>{displayDate}</span>
+        <Calendar size={16} className="text-gray-400" />
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.1 }}
+            className="absolute z-[110] left-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl p-4"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+                {currentMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+              </h4>
+              <div className="flex gap-1">
+                <button type="button" onClick={prevMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                  <ChevronLeft size={16} />
+                </button>
+                <button type="button" onClick={nextMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => (
+                <div key={d} className="text-center text-[10px] font-bold text-gray-400 uppercase">{d}</div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {days.map((day, i) => (
+                <div key={i} className="aspect-square flex items-center justify-center">
+                  {day && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(day)}
+                      className={`
+                        w-8 h-8 rounded-lg text-xs font-medium transition-all
+                        ${isSelected(day)
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40"
+                          : isToday(day)
+                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
+                      `}
+                    >
+                      {day}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between">
+              <button
+                type="button"
+                onClick={() => { onChange({ target: { value: "" } }); setIsOpen(false); }}
+                className="text-[11px] font-bold text-red-500 hover:text-red-600 transition"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const today = new Date();
+                  onChange({ target: { value: today.toISOString().split("T")[0] } });
+                  setIsOpen(false);
+                }}
+                className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition"
+              >
+                Today
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

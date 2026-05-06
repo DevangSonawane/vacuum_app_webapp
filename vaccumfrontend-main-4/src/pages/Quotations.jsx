@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, DollarSign, Trash2, Check, X, FileText } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { PageTransition, Card, Badge, Button, Modal, Input, Select, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
+import { PageTransition, Card, Badge, Button, Modal, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
 
 const EMPTY_FORM = { clientId: "", title: "", validTill: "", items: [{ description: "", qty: 1, rate: "", total: 0 }] };
 
@@ -95,7 +95,7 @@ export default function Quotations() {
               <Select label="Client" value={form.clientId} onChange={e => setForm(p => ({ ...p, clientId: e.target.value }))} required
                 options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
               <Input label="Quotation Title" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} required />
-              <Input label="Valid Till" type="date" value={form.validTill} onChange={e => setForm(p => ({ ...p, validTill: e.target.value }))} className="col-span-2" />
+              <DatePicker label="Valid Till" value={form.validTill} onChange={e => setForm(p => ({ ...p, validTill: e.target.value }))} className="col-span-2" />
             </div>
 
             {/* Line Items */}

@@ -6,7 +6,7 @@ import {
   Mail, Phone, Eye, EyeOff
 } from "lucide-react";
 import axios from "axios";
-import { PageTransition, Card, Button, Input, useToast, Toast } from "../components/ui";
+import { PageTransition, Card, Button, Input, Select, useToast, Toast } from "../components/ui";
 
 const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
 
@@ -415,16 +415,12 @@ export default function UserManagement() {
 
                   {/* Role dropdown — includes technician */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">User Role</label>
-                    <select
+                    <Select
+                      label="User Role"
                       value={formData.role}
                       onChange={e => setFormData({ ...formData, role: e.target.value })}
-                      className="w-full px-5 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                    >
-                      {ROLES.map(r => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
+                      options={ROLES}
+                    />
                     {formData.role === "technician" && !editingUser && (
                       <p className="text-xs text-amber-500">
                         💡 To give this technician a field profile (rating, jobs, specialization), also create them in the Technicians module.

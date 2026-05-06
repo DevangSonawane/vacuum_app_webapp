@@ -174,7 +174,7 @@ export default function JobDetail() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="p-4 md:p-8 max-w-5xl mx-auto">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-xl" />
             <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-2xl" />
@@ -205,7 +205,7 @@ export default function JobDetail() {
 
   return (
     <PageTransition>
-      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
 
         {/* Back + header */}
         <div className="flex items-start gap-4">
