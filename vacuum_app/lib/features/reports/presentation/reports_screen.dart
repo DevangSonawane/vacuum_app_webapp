@@ -82,6 +82,9 @@ class ReportsScreen extends ConsumerWidget {
                         builder: (context) {
                           final width = MediaQuery.sizeOf(context).width;
                           final cols = width >= 720 ? 2 : 1;
+                          // Use a fixed tile height so cards don't overflow on
+                          // smaller devices / with more metadata pills.
+                          final tileHeight = cols == 1 ? 235.0 : 210.0;
                           return GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -90,8 +93,7 @@ class ReportsScreen extends ConsumerWidget {
                                   crossAxisCount: cols,
                                   crossAxisSpacing: 12,
                                   mainAxisSpacing: 12,
-                                  // Taller tiles to avoid card content overflow
-                                  childAspectRatio: cols == 1 ? 1.25 : 1.15,
+                                  mainAxisExtent: tileHeight,
                                 ),
                             itemCount: data.items.length,
                             itemBuilder: (context, i) {
@@ -240,167 +242,118 @@ class _ReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final findingsPreview = report.findings.replaceAll('\n', ' ').trim();
     final docCount = report.technicalReportCount > 0
         ? report.technicalReportCount
         : report.technicalReports.length;
+    final pills = <Widget>[
+      if ((report.poNumber ?? '').trim().isNotEmpty)
+        _Pill(
+          label: 'PO-${report.poNumber!.trim()}',
+          icon: Icons.inventory_2_outlined,
+          bg: const Color(0xFFF3E8FF),
+          fg: AppColors.purple500,
+        ),
+      if ((report.location ?? '').trim().isNotEmpty)
+        _Pill(
+          label: report.location!.trim(),
+          icon: Icons.place_outlined,
+          bg: const Color(0xFFD1FAE5),
+          fg: AppColors.emerald500,
+        ),
+      if ((report.serialNo ?? '').trim().isNotEmpty)
+        _Pill(
+          label: report.serialNo!.trim(),
+          icon: Icons.tag_outlined,
+          bg: const Color(0xFFF3F4F6),
+          fg: AppColors.gray700,
+        ),
+      if (report.jobTitle.trim().isNotEmpty)
+        _Pill(
+          label: report.jobTitle.trim(),
+          icon: Icons.handyman_outlined,
+          bg: const Color(0xFFEFF6FF),
+          fg: AppColors.blue600,
+        ),
+    ];
     return AppCard(
       hover: true,
       onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      report.id,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.blue600,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const Spacer(),
-                    StatusBadge(label: report.status),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  report.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${report.clientName} • ${report.jobTitle}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Theme.of(context).hintColor,
-                    fontSize: 12,
-                  ),
-                ),
-                if ((report.clientEmail ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 2),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
                   Text(
-                    report.clientEmail!.trim(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    report.id,
                     style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.blue600,
                       fontSize: 12,
-                      color: AppColors.gray500,
                     ),
                   ),
+                  const Spacer(),
+                  StatusBadge(label: report.status),
                 ],
-                if ((report.poNumber ?? '').trim().isNotEmpty ||
-                    (report.location ?? '').trim().isNotEmpty ||
-                    (report.serialNo ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if ((report.poNumber ?? '').trim().isNotEmpty)
-                        _Pill(
-                          label: 'PO ${report.poNumber!.trim()}',
-                          bg: const Color(0xFFF3E8FF),
-                          fg: AppColors.purple500,
-                        ),
-                      if ((report.location ?? '').trim().isNotEmpty)
-                        _Pill(
-                          label: report.location!.trim(),
-                          bg: const Color(0xFFD1FAE5),
-                          fg: AppColors.emerald500,
-                        ),
-                      if ((report.serialNo ?? '').trim().isNotEmpty)
-                        _Pill(
-                          label: 'SN ${report.serialNo!.trim()}',
-                          bg: const Color(0xFFF3F4F6),
-                          fg: AppColors.gray500,
-                        ),
-                    ],
-                  ),
-                ],
-                if (findingsPreview.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Flexible(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF111827)
-                            : AppColors.gray50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.12),
-                        ),
-                      ),
-                      child: Text(
-                        findingsPreview,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ),
-                ],
-                if (report.imageCount > 0 || report.images.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.image_outlined,
-                        size: 16,
-                        color: AppColors.gray400,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${report.imageCount > 0 ? report.imageCount : report.images.length} photos',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.gray500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (docCount > 0) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.description_outlined,
-                        size: 16,
-                        color: AppColors.gray400,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$docCount docs',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.gray500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                report.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                report.clientName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Theme.of(context).hintColor,
+                  fontSize: 12,
+                ),
+              ),
+              if (pills.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(spacing: 8, runSpacing: 8, children: pills),
               ],
-            ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (report.imageCount > 0 || report.images.isNotEmpty)
+                    _Meta(
+                      icon: Icons.image_outlined,
+                      text:
+                          '${report.imageCount > 0 ? report.imageCount : report.images.length} photos',
+                    ),
+                  if ((report.clientEmail ?? '').trim().isNotEmpty)
+                    _Meta(
+                      icon: Icons.mail_outline,
+                      text: report.clientEmail!.trim(),
+                    ),
+                  if (docCount > 0)
+                    _Meta(
+                      icon: Icons.description_outlined,
+                      text: '$docCount docs',
+                    ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 2),
           Divider(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+            height: 1,
+            thickness: 1,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           Row(
             children: [
               Expanded(
@@ -414,20 +367,48 @@ class _ReportCard extends StatelessWidget {
                 ),
               ),
               if (canApprove) ...[
-                IconButton(
-                  tooltip: 'Approve',
+                TextButton.icon(
                   onPressed: onApprove,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    minimumSize: const Size(0, 26),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: const VisualDensity(
+                      horizontal: -4,
+                      vertical: -4,
+                    ),
+                    foregroundColor: AppColors.emerald500,
+                  ),
                   icon: const Icon(
                     Icons.check_circle_outline,
                     color: AppColors.emerald500,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Approve',
+                    style: TextStyle(color: AppColors.emerald500, fontSize: 12),
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Reject',
+                TextButton.icon(
                   onPressed: onReject,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    minimumSize: const Size(0, 26),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: const VisualDensity(
+                      horizontal: -4,
+                      vertical: -4,
+                    ),
+                    foregroundColor: AppColors.red500,
+                  ),
                   icon: const Icon(
                     Icons.cancel_outlined,
                     color: AppColors.red500,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Reject',
+                    style: TextStyle(color: AppColors.red500, fontSize: 12),
                   ),
                 ),
               ],
@@ -439,12 +420,42 @@ class _ReportCard extends StatelessWidget {
   }
 }
 
+class _Meta extends StatelessWidget {
+  const _Meta({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: AppColors.gray400),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+        ),
+      ],
+    );
+  }
+}
+
 class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.bg, required this.fg});
+  const _Pill({
+    required this.label,
+    required this.bg,
+    required this.fg,
+    this.icon,
+  });
 
   final String label;
   final Color bg;
   final Color fg;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -455,11 +466,24 @@ class _Pill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: fg.withValues(alpha: 0.18)),
       ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: fg),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: fg,
+            ),
+          ),
+        ],
       ),
     );
   }

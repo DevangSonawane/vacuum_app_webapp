@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../data/reports_repository.dart';
@@ -75,6 +76,34 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
   Future<Report?> fetchDetail(String id) async {
     try {
       return await _repo.fetchById(id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Uint8List?> fetchPdf(String id) async {
+    try {
+      return await _repo.fetchReportPdf(id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> downloadPdf(String id, String savePath) async {
+    try {
+      final result = await _repo.downloadReportPdf(id, savePath);
+      return result.mimeType == 'application/pdf';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<({String path, String mimeType})?> downloadPdfWithType(
+    String id,
+    String savePath,
+  ) async {
+    try {
+      return await _repo.downloadReportPdf(id, savePath);
     } catch (_) {
       return null;
     }

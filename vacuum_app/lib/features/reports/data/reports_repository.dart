@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../domain/report.dart';
 
@@ -93,6 +96,114 @@ class ReportsRepository {
 
   Future<void> linkImage(String reportId, Map<String, dynamic> data) =>
       _dio.post('reports/$reportId/images', data: data);
+
+  Future<Uint8List> fetchReportPdf(String id) async {
+    final response = await _dio.get<List<int>>(
+      'reports/$id/pdf',
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: const {'Accept': 'application/pdf'},
+      ),
+    );
+    final bytes = response.data;
+    if (bytes == null) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        error: 'Empty PDF response',
+      );
+    }
+    return Uint8List.fromList(bytes);
+  }
+
+  Future<({String path, String mimeType})> downloadReportPdf(
+    String id,
+    String savePath,
+  ) async {
+    Response<List<int>> response;
+    try {
+      response = await _dio.get<List<int>>(
+        'reports/$id/pdf',
+        options: Options(
+          responseType: ResponseType.bytes,
+          receiveTimeout: const Duration(minutes: 1),
+          headers: const {
+            'Accept': 'application/pdf, text/html;q=0.9, */*;q=0.8',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      debugPrint('[PDF] download failed: ${e.type} ${e.message}');
+      rethrow;
+    } catch (e) {
+      debugPrint('[PDF] download failed: $e');
+      rethrow;
+    }
+
+    final rawBytes = response.data;
+    if (rawBytes == null || rawBytes.isEmpty) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        error: 'Empty response body',
+      );
+    }
+
+    final file = File(savePath);
+    await file.writeAsBytes(rawBytes, flush: true);
+    final bytes = Uint8List.fromList(rawBytes);
+    final probeLen = bytes.length < 1024 ? bytes.length : 1024;
+    final isPdf = _containsPdfHeader(bytes, probeLen);
+    if (isPdf) {
+      return (path: savePath, mimeType: 'application/pdf');
+    }
+
+    final isHtml = _looksLikeHtml(bytes, probeLen);
+    if (isHtml) {
+      final htmlPath = savePath.endsWith('.pdf')
+          ? '${savePath.substring(0, savePath.length - 4)}.html'
+          : '$savePath.html';
+      try {
+        await file.rename(htmlPath);
+      } catch (_) {
+        // If rename fails, still return the original path.
+        return (path: savePath, mimeType: 'text/html');
+      }
+      return (path: htmlPath, mimeType: 'text/html');
+    }
+
+    {
+      try {
+        await file.delete();
+      } catch (_) {}
+      throw DioException(
+        requestOptions: RequestOptions(path: 'reports/$id/pdf'),
+        error: 'Downloaded file is neither PDF nor HTML',
+      );
+    }
+  }
+
+  static bool _containsPdfHeader(Uint8List bytes, int limit) {
+    if (limit < 4) return false;
+    for (int i = 0; i <= limit - 4; i++) {
+      if (bytes[i] == 0x25 && // %
+          bytes[i + 1] == 0x50 && // P
+          bytes[i + 2] == 0x44 && // D
+          bytes[i + 3] == 0x46) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool _looksLikeHtml(Uint8List bytes, int limit) {
+    if (limit <= 0) return false;
+    final prefix = String.fromCharCodes(bytes.take(limit)).toLowerCase();
+    final trimmed = prefix.trimLeft();
+    return trimmed.startsWith('<!doctype html') ||
+        trimmed.startsWith('<html') ||
+        trimmed.contains('<head') ||
+        trimmed.contains('<body');
+  }
 
   static Map<String, dynamic> _asMap(dynamic v) {
     if (v is Map<String, dynamic>) return v;

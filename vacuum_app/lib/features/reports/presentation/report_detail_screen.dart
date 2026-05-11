@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -27,6 +31,8 @@ class ReportDetailScreen extends ConsumerStatefulWidget {
 
 class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   AsyncValue<Report?> _report = const AsyncLoading();
+  bool _downloadingPdf = false;
+  bool _updatingStatus = false;
 
   @override
   void initState() {
@@ -45,11 +51,74 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canApprove = role == 'admin';
+    final report = _report.valueOrNull;
+    final showBottomActions = canApprove && report?.status == 'Pending';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.id, style: const TextStyle(fontFamily: 'monospace')),
+        leading: BackButton(
+          onPressed: () => context.go('/reports'),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Download PDF',
+            onPressed: _downloadingPdf ? null : _downloadPdf,
+            icon: _downloadingPdf
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_outlined),
+          ),
+        ],
       ),
+      bottomNavigationBar: showBottomActions
+          ? SafeArea(
+              top: false,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(alpha: 0.12),
+                    ),
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Approve',
+                        variant: AppButtonVariant.primary,
+                        expanded: true,
+                        loading: _updatingStatus,
+                        onPressed: _updatingStatus
+                            ? null
+                            : () => _updateStatus('Approved'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Reject',
+                        variant: AppButtonVariant.danger,
+                        expanded: true,
+                        loading: _updatingStatus,
+                        onPressed: _updatingStatus
+                            ? null
+                            : () => _updateStatus('Rejected'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       body: _report.when(
         loading: () => const _ReportDetailSkeleton(),
         error: (e, _) => EmptyState(
@@ -67,7 +136,12 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + (showBottomActions ? 92 : 0),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -489,62 +563,89 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                     text: 'Rejected',
                     textColor: AppColors.red500,
                   ),
-                if (canApprove && report.status == 'Pending') ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppButton(
-                          label: 'Approve',
-                          variant: AppButtonVariant.primary,
-                          expanded: true,
-                          onPressed: () async {
-                            final ok = await ref
-                                .read(reportsProvider.notifier)
-                                .updateStatus(report.id, 'Approved');
-                            if (!context.mounted) return;
-                            AppToast.show(
-                              context,
-                              message: ok ? 'Approved' : 'Operation failed',
-                              type: ok
-                                  ? AppToastType.success
-                                  : AppToastType.error,
-                            );
-                            await _load();
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppButton(
-                          label: 'Reject',
-                          variant: AppButtonVariant.danger,
-                          expanded: true,
-                          onPressed: () async {
-                            final ok = await ref
-                                .read(reportsProvider.notifier)
-                                .updateStatus(report.id, 'Rejected');
-                            if (!context.mounted) return;
-                            AppToast.show(
-                              context,
-                              message: ok ? 'Rejected' : 'Operation failed',
-                              type: ok
-                                  ? AppToastType.success
-                                  : AppToastType.error,
-                            );
-                            await _load();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _updateStatus(String status) async {
+    setState(() => _updatingStatus = true);
+    try {
+      final r = _report.valueOrNull;
+      final id = r?.id ?? widget.id;
+      final ok =
+          await ref.read(reportsProvider.notifier).updateStatus(id, status);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: ok ? (status == 'Approved' ? 'Approved' : 'Rejected') : 'Operation failed',
+        type: ok ? AppToastType.success : AppToastType.error,
+      );
+      await _load();
+    } finally {
+      if (mounted) setState(() => _updatingStatus = false);
+    }
+  }
+
+  Future<void> _downloadPdf() async {
+    setState(() => _downloadingPdf = true);
+    try {
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/Service_Report_${widget.id}.pdf');
+      final download = await ref
+          .read(reportsProvider.notifier)
+          .downloadPdfWithType(widget.id, file.path);
+      if (!mounted) return;
+      if (download == null) {
+        AppToast.show(
+          context,
+          message: 'Failed to download PDF',
+          type: AppToastType.error,
+        );
+        return;
+      }
+
+      final openResult = await OpenFile.open(
+        download.path,
+        type: download.mimeType,
+      );
+      if (!mounted) return;
+
+      if (openResult.type != ResultType.done) {
+        AppToast.show(
+          context,
+          message: 'Saved file to ${download.path}',
+          type: AppToastType.success,
+        );
+      } else {
+        if (download.mimeType == 'text/html') {
+          AppToast.show(
+            context,
+            message:
+                'Server returned HTML fallback. Use Print/Save as PDF to download.',
+            type: AppToastType.info,
+          );
+        } else {
+          AppToast.show(
+            context,
+            message: 'Report download started',
+            type: AppToastType.success,
+          );
+        }
+      }
+    } catch (_) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Failed to download PDF',
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _downloadingPdf = false);
+    }
   }
 
   Widget _signatureCard({
@@ -572,7 +673,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Date: ${_shortDate(date) ?? '—'}',
+          'Date: ${_shortDate(date)}',
           style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
         ),
       ],

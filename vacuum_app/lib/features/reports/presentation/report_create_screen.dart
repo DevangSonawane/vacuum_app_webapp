@@ -310,10 +310,10 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   String? _poNumber;
 
   // PDF section state
-  late List<_ChecklistItem> _checklist =
+  final List<_ChecklistItem> _checklist =
       _defaultChecklist.map((e) => e.copy()).toList();
   final List<_IssueRow> _issues = [_IssueRow.empty(sr: 1)];
-  late List<_SpareRow> _spares =
+  final List<_SpareRow> _spares =
       _defaultSpares.map((e) => e.copy()).toList();
 
   final _picker = ImagePicker();
