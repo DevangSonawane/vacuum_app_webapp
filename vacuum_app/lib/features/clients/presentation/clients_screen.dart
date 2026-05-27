@@ -204,7 +204,11 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     child: AppDropdownField<String>(
                       label: 'Status',
                       value: erp.valueOrNull?.status ?? 'All',
-                      items: const ['All', 'Active', 'Inactive'],
+                      items: const [
+                        AppDropdownItem(value: 'All', label: 'All'),
+                        AppDropdownItem(value: 'Active', label: 'Active'),
+                        AppDropdownItem(value: 'Inactive', label: 'Inactive'),
+                      ],
                       onChanged: (v) => ref
                           .read(erpCustomersProvider.notifier)
                           .setStatus(v ?? 'All'),
@@ -275,12 +279,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                                   ],
                                 ),
                               ),
-                              StatusBadge(
-                                label: c.status,
-                                color: c.status == 'Inactive'
-                                    ? AppColors.gray600
-                                    : AppColors.emerald500,
-                              ),
+                              StatusBadge(label: c.status),
                             ],
                           ),
                         ),
@@ -450,17 +449,13 @@ class _ErpCustomerDetailSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          StatusBadge(
-            label: status.isEmpty ? 'Active' : status,
-            color: status == 'Inactive' ? AppColors.gray600 : AppColors.emerald500,
-          ),
+          StatusBadge(label: status.isEmpty ? 'Active' : status),
           const SizedBox(height: 16),
           _kv(context, 'Email', email),
           _kv(context, 'Phone', phone),
           _kv(context, 'Address', address),
           _kv(context, 'GSTIN', gstin),
-          const SizedBox(height: 12),
-          const BottomSafeArea(),
+          const SizedBox(height: 16),
         ],
       ),
     );

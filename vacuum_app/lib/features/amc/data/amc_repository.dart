@@ -29,6 +29,22 @@ class AmcRepository {
         .toList();
   }
 
+  Future<List<AmcContract>> fetchExpiring({int days = 30}) async {
+    final response = await _dio.get(
+      'amc/expiring',
+      queryParameters: {'days': days},
+    );
+    final root = _asMap(response.data);
+    final list = _asList(root['data']);
+    return list
+        .whereType<Map>()
+        .map(
+          (e) =>
+              AmcContract.fromJson(e.map((k, v) => MapEntry(k.toString(), v))),
+        )
+        .toList();
+  }
+
   Future<AmcContract> fetchById(String id) async {
     final response = await _dio.get('amc/$id');
     return AmcContract.fromJson(_asMap(_asMap(response.data)['data']));

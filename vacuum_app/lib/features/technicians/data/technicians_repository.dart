@@ -7,6 +7,20 @@ class TechniciansRepository {
 
   final Dio _dio;
 
+  Future<String> login({
+    required String email,
+    required String password,
+  }) async {
+    final res = await _dio.post(
+      'technicians/login',
+      data: {'email': email.trim(), 'password': password},
+    );
+    final data = res.data;
+    if (data is String) return data;
+    if (data is Map && data['token'] != null) return data['token'].toString();
+    return '';
+  }
+
   Future<List<Technician>> fetchTechnicians({
     int limit = 50,
     String search = '',

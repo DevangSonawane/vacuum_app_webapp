@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../auth/application/auth_notifier.dart';
 import '../data/jobs_repository.dart';
 import '../domain/job.dart';
 
@@ -29,16 +30,27 @@ final jobsProvider = AsyncNotifierProvider<JobsNotifier, JobsState>(
 class JobsNotifier extends AsyncNotifier<JobsState> {
   JobsRepository get _repo => ref.read(jobsRepositoryProvider);
 
+  int? _scopedUserId() {
+    final auth = ref.read(authProvider).valueOrNull?.user;
+    if (auth == null) return null;
+    final role = auth.role.toLowerCase();
+    if (role == 'technician' && auth.id != 0) return auth.id;
+    return null;
+  }
+
   @override
   Future<JobsState> build() async {
-    final items = await _repo.fetchJobs();
+    final items = await _repo.fetchJobs(userId: _scopedUserId());
     return JobsState(items: items);
   }
 
   Future<void> setFilter(String status) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final items = await _repo.fetchJobs(status: status);
+      final items = await _repo.fetchJobs(
+        status: status,
+        userId: _scopedUserId(),
+      );
       return JobsState(items: items, statusFilter: status);
     });
   }
@@ -47,7 +59,10 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
     final filter = state.valueOrNull?.statusFilter ?? 'All';
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final items = await _repo.fetchJobs(status: filter);
+      final items = await _repo.fetchJobs(
+        status: filter,
+        userId: _scopedUserId(),
+      );
       return JobsState(items: items, statusFilter: filter);
     });
   }

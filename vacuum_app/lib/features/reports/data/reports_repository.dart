@@ -42,6 +42,22 @@ class ReportsRepository {
   Future<void> updateStatus(String id, String status) =>
       _dio.patch('reports/$id/status', data: {'status': status});
 
+  Future<void> shareReport({
+    required String id,
+    required String to,
+    String subject = '',
+    String message = '',
+  }) async {
+    await _dio.post(
+      'reports/$id/share',
+      data: {
+        'to': to.trim(),
+        if (subject.trim().isNotEmpty) 'subject': subject.trim(),
+        if (message.trim().isNotEmpty) 'message': message.trim(),
+      },
+    );
+  }
+
   Future<List<TechnicalReportFile>> uploadTechnicalReports(
     List<({String path, String name})> files,
   ) async {

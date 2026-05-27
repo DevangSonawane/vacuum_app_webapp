@@ -154,7 +154,12 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                   child: AppDropdownField<String>(
                     label: 'Status',
                     value: erp.valueOrNull?.status ?? 'All',
-                    items: const ['All', 'Draft', 'Confirmed', 'Cancelled'],
+                    items: const [
+                      AppDropdownItem(value: 'All', label: 'All'),
+                      AppDropdownItem(value: 'Draft', label: 'Draft'),
+                      AppDropdownItem(value: 'Confirmed', label: 'Confirmed'),
+                      AppDropdownItem(value: 'Cancelled', label: 'Cancelled'),
+                    ],
                     onChanged: (v) => ref
                         .read(erpQuotationsProvider.notifier)
                         .applyFilters(status: v ?? 'All', page: 1),
@@ -316,14 +321,7 @@ class _ErpQuotationCard extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              StatusBadge(
-                label: quotation.status,
-                color: quotation.status == 'Cancelled'
-                    ? AppColors.red500
-                    : (quotation.status == 'Draft'
-                        ? AppColors.gray600
-                        : AppColors.emerald500),
-              ),
+              StatusBadge(label: quotation.status),
               const Spacer(),
               Text(
                 amountText,
@@ -373,14 +371,7 @@ class _ErpQuotationDetailSheet extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              StatusBadge(
-                label: quotation.status,
-                color: quotation.status == 'Cancelled'
-                    ? AppColors.red500
-                    : (quotation.status == 'Draft'
-                        ? AppColors.gray600
-                        : AppColors.emerald500),
-              ),
+              StatusBadge(label: quotation.status),
               const Spacer(),
               Text(amountText, style: const TextStyle(fontWeight: FontWeight.w900)),
             ],
@@ -422,8 +413,7 @@ class _ErpQuotationDetailSheet extends StatelessWidget {
                 ),
               ),
           ],
-          const SizedBox(height: 12),
-          const BottomSafeArea(),
+          const SizedBox(height: 16),
         ],
       ),
     );
