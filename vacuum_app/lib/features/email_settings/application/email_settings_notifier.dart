@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/network/api_client.dart';
+import '../data/email_settings_repository.dart';
 import '../domain/email_settings.dart';
 
 final emailSettingsProvider =
@@ -9,22 +10,26 @@ final emailSettingsProvider =
     );
 
 class EmailSettingsNotifier extends AsyncNotifier<EmailSettings> {
-  static const _prefsKey = 'vdti_email_settings';
+  EmailSettingsRepository get _repo =>
+      ref.read(emailSettingsRepositoryProvider);
 
   @override
   Future<EmailSettings> build() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefsKey);
-    if (raw == null || raw.isEmpty) return EmailSettings.defaults;
-    return EmailSettings.fromJsonString(raw);
+    return _repo.fetch();
   }
 
   Future<void> save(EmailSettings settings) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefsKey, settings.toJsonString());
-      return settings;
+      return _repo.upsert(settings);
     });
   }
+
+  Future<void> sendTestEmail(String to) async {
+    await _repo.sendTestEmail(to);
+  }
 }
+
+final emailSettingsRepositoryProvider = Provider<EmailSettingsRepository>((ref) {
+  return EmailSettingsRepository(dio: ref.read(dioProvider));
+});

@@ -20,7 +20,7 @@ import {
   Textarea, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = "https://vaccumapi.onrender.com/api";
+const API_BASE_URL = "https://vaccumapi-o4ol.onrender.com/api";
 
 // ── Default checklist from PDF Page 1 ──────────────────────
 const DEFAULT_CHECKLIST = [
@@ -94,11 +94,6 @@ const ISSUE_DATA = {
 };
 
 const ISSUE_TYPES    = ["Low Vaccum", "Abnormal Sound", "Excessive Oil", "No Lubrication"];
-const SEVERITY_OPTIONS = ["", "Low", "Med", "High"];
-
-const EMPTY_ISSUE = {
-  sr: 1, issue: "", observation: "", impact_on_pump: "", severity: "", recommended_spares: ""
-};
 
 // ── Step indicator ────────────────────────────────────────────
 const STEPS = [
@@ -118,6 +113,7 @@ export default function CreateReport() {
   const [technicians, setTechnicians] = useState([]);
   const [clients, setClients]         = useState([]);
   const [amcContracts, setAmcContracts] = useState([]);
+  const [expandedIssueTypes, setExpandedIssueTypes] = useState(ISSUE_TYPES);
   const [submitting, setSubmitting]   = useState(false);
 
   // ── Form state ──────────────────────────────────────────
@@ -127,7 +123,7 @@ export default function CreateReport() {
     po_number: "", serial_no: "",
     // client info (PDF Page 1)
     client_id: "", client_name: "", client_email: "",
-    company_name: "", contact_person: "",
+    company_name: "", contact_person: "", location: "",
     model_serial_installation: "",
     operating_hours_per_day: "",
     application_process_description: "",
@@ -141,7 +137,7 @@ export default function CreateReport() {
 
   // ── PDF section state ───────────────────────────────────
   const [checklist, setChecklist]           = useState(DEFAULT_CHECKLIST);
-  const [issues, setIssues]                 = useState([{ ...EMPTY_ISSUE }]);
+  const [issues, setIssues]                 = useState([]);
   const [spares, setSpares]                 = useState(DEFAULT_SPARES);
 
   // ── File upload state ───────────────────────────────────
@@ -169,6 +165,7 @@ export default function CreateReport() {
           client_email: client?.email || (job.client_email !== "Asynk" ? job.client_email : "") || "",
           company_name: client?.name || (job.client_name !== "Asynk" ? job.client_name : "") || "",
           contact_person: client?.contact_person || (job.contact_person !== "Asynk" ? job.contact_person : "") || "",
+          location:     client?.address || job.location || "",
         }));
       }
     }
@@ -220,40 +217,16 @@ export default function CreateReport() {
   };
 
   // ── Issue helpers ───────────────────────────────────────
-  const addIssue = () => {
-    setIssues(p => [...p, { ...EMPTY_ISSUE, sr: p.length + 1 }]);
-  };
-  const removeIssue = (idx) => setIssues(p => p.filter((_, i) => i !== idx));
-
-  // When issue type changes → reset observation/impact/severity/spares
-  const setIssueType = (idx, issueType) => {
-    setIssues(p => p.map((item, i) =>
-      i === idx
-        ? { ...item, issue: issueType, observation: "", impact_on_pump: "", severity: "", recommended_spares: "" }
-        : item
-    ));
-  };
-
-  // When observation is selected → auto-fill impact, severity, spares
-  const setIssueObservation = (idx, observation) => {
-    const issueType = issues[idx].issue;
-    const rows      = ISSUE_DATA[issueType] || [];
-    const matched   = rows.find(r => r.observation === observation);
-    setIssues(p => p.map((item, i) =>
-      i === idx
-        ? {
-            ...item,
-            observation,
-            impact_on_pump:     matched?.impact_on_pump     || "",
-            severity:           matched?.severity           || "",
-            recommended_spares: matched?.recommended_spares || "",
-          }
-        : item
-    ));
-  };
-
-  const setIssueField = (idx, field, val) => {
-    setIssues(p => p.map((item, i) => i === idx ? { ...item, [field]: val } : item));
+  const toggleIssueRow = (issueType, rowData) => {
+    const isSelected = issues.some(i => i.issue === issueType && i.observation === rowData.observation);
+    if (isSelected) {
+      setIssues(p => p.filter(i => !(i.issue === issueType && i.observation === rowData.observation)));
+    } else {
+      setIssues(p => {
+        const newIssues = [...p.filter(i => i.issue || i.observation), { ...rowData, issue: issueType, sr: p.length + 1 }];
+        return newIssues;
+      });
+    }
   };
 
   // ── Spare helpers ────────────────────────────────────────
@@ -362,6 +335,7 @@ export default function CreateReport() {
         client_email:    form.client_email    || undefined,
         company_name:    form.company_name    || undefined,
         contact_person:  form.contact_person  || undefined,
+        location:        form.location        || undefined,
         model_serial_installation:      form.model_serial_installation      || undefined,
         operating_hours_per_day:        form.operating_hours_per_day        || undefined,
         application_process_description: form.application_process_description || undefined,
@@ -505,21 +479,31 @@ export default function CreateReport() {
                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Client Info (PDF Page 1)</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select label="Client" value={f("client_id")}
-                      onChange={e => {
-                        const clientId = e.target.value;
-                        const client = clients.find(cl => String(cl.id) === String(clientId));
-                        setForm(p => ({
-                          ...p,
-                          client_id: clientId,
-                          client_name: client?.name || "",
-                          client_email: client?.email || "",
-                          company_name: client?.name || "",
-                          contact_person: client?.contact_person || ""
-                        }));
-                      }}
-                      options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
-                    />
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Client</label>
+                      {form.job_id ? (
+                        <div className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-semibold">
+                          {form.client_name || "Linked from job"}
+                        </div>
+                      ) : (
+                        <Select value={f("client_id")}
+                          onChange={e => {
+                            const clientId = e.target.value;
+                            const client = clients.find(cl => String(cl.id) === String(clientId));
+                            setForm(p => ({
+                              ...p,
+                              client_id: clientId,
+                              client_name: client?.name || "",
+                              client_email: client?.email || "",
+                              company_name: client?.name || "",
+                              contact_person: client?.contact_person || "",
+                              location: client?.address || ""
+                            }));
+                          }}
+                          options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
+                        />
+                      )}
+                    </div>
                     <Input label="Client Email" type="email" value={f("client_email")} onChange={sf("client_email")} placeholder="client@company.com" />
                   </div>
                   {form.client_email && (
@@ -529,6 +513,9 @@ export default function CreateReport() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                     <Input label="Company Name *" value={f("company_name")} onChange={sf("company_name")} required placeholder="Acme Industries Pvt Ltd" />
                     <Input label="Contact Person" value={f("contact_person")} onChange={sf("contact_person")} placeholder="Rajesh Mehta" />
+                  </div>
+                  <div className="mt-4">
+                    <Input label="Location / Address" value={f("location")} onChange={sf("location")} placeholder="Plot No. 123, GIDC Sachin, Surat" />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                     <Input label="Model / Serial No. / Installation Year" value={f("model_serial_installation")} onChange={sf("model_serial_installation")} placeholder="ITPUMP-V2 / SN-20034 / 2021" />
@@ -598,195 +585,109 @@ export default function CreateReport() {
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <Card className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <SectionTitle icon={AlertTriangle} label="Step 3 — Detailed Issue Observation Matrix" color="orange" />
-                  <Button variant="secondary" size="sm" onClick={addIssue}>
-                    <Plus size={13} /> Add Issue
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-400 mb-5">Record each issue found during inspection (PDF Page 2 & 3). Selecting an observation auto-fills impact, severity and recommended spares.</p>
+                <SectionTitle icon={AlertTriangle} label="Step 3 — Detailed Issue - Observation - Impact Matrix" color="orange" />
+                <p className="text-xs text-gray-400 mb-6 mt-1">Select the relevant rows from the matrix below (PDF Page 2 & 3). Click on any block to include it in the report.</p>
 
-                <div className="space-y-5">
-                  {issues.map((issue, idx) => {
-                    // Observations available for selected issue type
-                    const observationOptions = issue.issue
-                      ? (ISSUE_DATA[issue.issue] || []).map(r => r.observation)
-                      : [];
-
-                    // Impact options: all unique impacts for selected issue
-                    const impactOptions = issue.issue
-                      ? [...new Set((ISSUE_DATA[issue.issue] || []).map(r => r.impact_on_pump))]
-                      : [];
-
-                    // Recommended spares options: all unique spares for selected issue
-                    const sparesOptions = issue.issue
-                      ? [...new Set((ISSUE_DATA[issue.issue] || []).map(r => r.recommended_spares))]
-                      : [];
-
+                <div className="space-y-8">
+                  {ISSUE_TYPES.map((issueType, typeIdx) => {
+                    const rows = ISSUE_DATA[issueType] || [];
+                    const isExpanded = expandedIssueTypes.includes(issueType);
+                    
                     return (
-                      <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
-
-                        {/* Issue header */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0
-                              ${issue.severity === "High" ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" :
-                                issue.severity === "Med"  ? "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400" :
-                                issue.severity === "Low"  ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400" :
-                                "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"}`}>
-                              {idx + 1}
+                      <div key={issueType} className="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+                        {/* Issue Type Header */}
+                        <div 
+                          onClick={() => setExpandedIssueTypes(p => p.includes(issueType) ? p.filter(t => t !== issueType) : [...p, issueType])}
+                          className="flex items-center justify-between px-5 py-4 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-sm">
+                              {typeIdx + 1}
                             </span>
-                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                              {issue.issue || `Issue #${idx + 1}`}
+                            <h3 className="font-bold text-gray-900 dark:text-white uppercase tracking-wider">{issueType}</h3>
+                            <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-500 px-2 py-0.5 rounded-full font-bold">
+                              {rows.length} OPTIONS
                             </span>
-                            {issue.severity && (
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
-                                ${issue.severity === "High" ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
-                                  issue.severity === "Med"  ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" :
-                                  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"}`}>
-                                {issue.severity}
-                              </span>
-                            )}
                           </div>
-                          {issues.length > 1 && (
-                            <button onClick={() => removeIssue(idx)} className="text-red-400 hover:text-red-600 transition p-1">
-                              <Trash2 size={14} />
-                            </button>
-                          )}
+                          {isExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
                         </div>
 
-                        <div className="p-4 space-y-4">
-
-                          {/* Row 1: Issue Type */}
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
-                              Issue Type <span className="text-red-400">*</span>
-                            </label>
-                            <div className="flex flex-wrap gap-2">
-                              {ISSUE_TYPES.map(t => (
-                                <button
-                                  key={t}
-                                  type="button"
-                                  onClick={() => setIssueType(idx, t)}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
-                                    ${issue.issue === t
-                                      ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-                                      : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:border-orange-400 hover:text-orange-500"}`}
-                                >
-                                  {t}
-                                </button>
-                              ))}
-                            </div>
+                        {isExpanded && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
+                                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center w-12">SR</th>
+                                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Observation</th>
+                                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Impact on Pump</th>
+                                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center w-24">Severity</th>
+                                  <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Recommended Spares</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {rows.map((row, rowIdx) => {
+                                  const isSelected = issues.some(i => i.issue === issueType && i.observation === row.observation);
+                                  return (
+                                    <tr 
+                                      key={rowIdx} 
+                                      onClick={() => toggleIssueRow(issueType, row)}
+                                      className={`group cursor-pointer transition-all hover:bg-orange-50/30 dark:hover:bg-orange-900/10
+                                        ${isSelected ? "bg-orange-50/50 dark:bg-orange-900/20" : ""}`}
+                                    >
+                                      <td className="p-4 text-center">
+                                        <div className={`w-6 h-6 mx-auto rounded-lg flex items-center justify-center text-[10px] font-bold transition-all
+                                          ${isSelected 
+                                            ? "bg-orange-600 text-white shadow-lg shadow-orange-500/30" 
+                                            : "bg-gray-100 dark:bg-gray-700 text-gray-400 group-hover:bg-orange-200 group-hover:text-orange-700"}`}
+                                        >
+                                          {rowIdx + 1}
+                                        </div>
+                                      </td>
+                                      <td className={`p-4 text-sm transition-colors ${isSelected ? "font-bold text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-400"}`}>
+                                        {row.observation}
+                                      </td>
+                                      <td className={`p-4 text-sm transition-colors ${isSelected ? "text-gray-800 dark:text-gray-200" : "text-gray-500 dark:text-gray-500"}`}>
+                                        {row.impact_on_pump}
+                                      </td>
+                                      <td className="p-4 text-center">
+                                        <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all
+                                          ${isSelected
+                                            ? row.severity === "High" ? "bg-red-500 text-white shadow-sm" :
+                                              row.severity === "Med"  ? "bg-amber-500 text-white shadow-sm" :
+                                                               "bg-emerald-500 text-white shadow-sm"
+                                            : "bg-gray-100 dark:bg-gray-700 text-gray-400"}`}
+                                        >
+                                          {row.severity}
+                                        </span>
+                                      </td>
+                                      <td className={`p-4 text-sm transition-colors ${isSelected ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-gray-500 dark:text-gray-500"}`}>
+                                        {row.recommended_spares}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
-
-                          {/* Row 2: Observation (dropdown — unlocked after issue selected) */}
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
-                              Observation
-                              {issue.issue && <span className="ml-1 text-gray-400 font-normal">({observationOptions.length} options from PDF)</span>}
-                            </label>
-                            <select
-                              value={issue.observation}
-                              onChange={e => setIssueObservation(idx, e.target.value)}
-                              disabled={!issue.issue}
-                              className={`w-full text-sm px-3 py-2 rounded-xl border transition focus:outline-none focus:ring-2 focus:ring-blue-500
-                                ${!issue.issue
-                                  ? "bg-gray-100 dark:bg-gray-700/50 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed"
-                                  : issue.observation
-                                    ? "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-medium"
-                                    : "bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"}`}
-                            >
-                              <option value="">{issue.issue ? "— Select observation —" : "— Select issue type first —"}</option>
-                              {observationOptions.map(o => (
-                                <option key={o} value={o}>{o}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Row 3: Impact + Severity side by side */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Impact on Pump</label>
-                              <select
-                                value={issue.impact_on_pump}
-                                onChange={e => setIssueField(idx, "impact_on_pump", e.target.value)}
-                                disabled={!issue.issue}
-                                className={`w-full text-sm px-3 py-2 rounded-xl border transition focus:outline-none focus:ring-2 focus:ring-blue-500
-                                  ${!issue.issue
-                                    ? "bg-gray-100 dark:bg-gray-700/50 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed"
-                                    : issue.impact_on_pump
-                                      ? "bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200 font-medium"
-                                      : "bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"}`}
-                              >
-                                <option value="">{issue.issue ? "— Select impact —" : "— Select issue first —"}</option>
-                                {impactOptions.map(o => (
-                                  <option key={o} value={o}>{o}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Severity</label>
-                              <div className="flex gap-2">
-                                {["Low", "Med", "High"].map(sev => (
-                                  <button
-                                    key={sev}
-                                    type="button"
-                                    onClick={() => setIssueField(idx, "severity", sev)}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all
-                                      ${issue.severity === sev
-                                        ? sev === "High" ? "bg-red-500 text-white border-red-500 shadow-sm" :
-                                          sev === "Med"  ? "bg-amber-500 text-white border-amber-500 shadow-sm" :
-                                                           "bg-green-500 text-white border-green-500 shadow-sm"
-                                        : "bg-white dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-600 hover:border-gray-400"}`}
-                                  >
-                                    {sev}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Row 4: Recommended Spares (dropdown) */}
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Recommended Spares</label>
-                            <select
-                              value={issue.recommended_spares}
-                              onChange={e => setIssueField(idx, "recommended_spares", e.target.value)}
-                              disabled={!issue.issue}
-                              className={`w-full text-sm px-3 py-2 rounded-xl border transition focus:outline-none focus:ring-2 focus:ring-blue-500
-                                ${!issue.issue
-                                  ? "bg-gray-100 dark:bg-gray-700/50 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed"
-                                  : issue.recommended_spares
-                                    ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 font-medium"
-                                    : "bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"}`}
-                            >
-                              <option value="">{issue.issue ? "— Select spare —" : "— Select issue first —"}</option>
-                              {sparesOptions.map(o => (
-                                <option key={o} value={o}>{o}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Auto-fill hint */}
-                          {issue.observation && (
-                            <div className="flex items-center gap-2 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-xl">
-                              <CheckCircle size={12} />
-                              Auto-filled from PDF data. You can change any value above.
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
 
-                {issues.length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    <AlertTriangle size={28} className="mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">No issues added. Click "Add Issue" to record observations.</p>
+                <div className="mt-8 flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-2xl">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0 text-white">
+                    <CheckCircle size={20} />
                   </div>
-                )}
+                  <div>
+                    <p className="text-sm font-bold text-blue-900 dark:text-blue-200">
+                      {issues.length} Issues Selected
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-400">
+                      The selected observations will be mapped into the PDF Issue-Observation Matrix.
+                    </p>
+                  </div>
+                </div>
               </Card>
             </motion.div>
           )}

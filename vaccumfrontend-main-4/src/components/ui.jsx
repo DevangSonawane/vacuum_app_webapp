@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle, AlertCircle, Info, ChevronDown, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 // ── Page wrapper with transition ──────────────────────────────────────────
 export function PageTransition({ children }) {
@@ -567,9 +567,9 @@ export function Toast({ message, type = "success", onClose }) {
 
 export function useToast() {
   const [toast, setToast] = useState(null);
-  const showToast = (message, type = "success") => {
+  const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
-  };
+  }, []);
   return { toast, showToast };
 }

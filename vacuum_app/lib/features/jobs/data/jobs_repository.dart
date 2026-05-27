@@ -7,9 +7,13 @@ class JobsRepository {
 
   final Dio _dio;
 
-  Future<List<Job>> fetchJobs({String status = ''}) async {
+  Future<List<Job>> fetchJobs({
+    String status = '',
+    int? userId,
+  }) async {
+    final path = userId != null ? 'jobs/by-user/$userId' : 'jobs';
     final response = await _dio.get(
-      'jobs',
+      path,
       queryParameters: {
         'limit': 100,
         if (status.isNotEmpty && status != 'All') 'status': status,
@@ -31,6 +35,11 @@ class JobsRepository {
 
   Future<void> create(Map<String, dynamic> payload) =>
       _dio.post('jobs', data: payload);
+
+  Future<void> update(String id, Map<String, dynamic> payload) =>
+      _dio.put('jobs/$id', data: payload);
+
+  Future<void> delete(String id) => _dio.delete('jobs/$id');
 
   Future<void> advanceStatus(String id, String newStatus) =>
       _dio.patch('jobs/$id/status', data: {'status': newStatus});
@@ -57,6 +66,9 @@ class JobsRepository {
 
   Future<void> linkImage(String jobId, Map<String, dynamic> imageData) =>
       _dio.post('jobs/$jobId/images', data: imageData);
+
+  Future<void> deleteImage(String jobId, int imageId) =>
+      _dio.delete('jobs/$jobId/images/$imageId');
 
   static Map<String, dynamic> _asMap(dynamic v) {
     if (v is Map<String, dynamic>) return v;

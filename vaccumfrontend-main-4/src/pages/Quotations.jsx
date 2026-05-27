@@ -1,186 +1,265 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, DollarSign, Trash2, Check, X, FileText } from "lucide-react";
+import { Plus, DollarSign, Trash2, Check, X, FileText, Search, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { PageTransition, Card, Badge, Button, Modal, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
+import { PageTransition, Card, Badge, Button, Modal, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast, PageLoader } from "../components/ui";
+import axios from "axios";
 
-const EMPTY_FORM = { clientId: "", title: "", validTill: "", items: [{ description: "", qty: 1, rate: "", total: 0 }] };
+const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
 
 export default function Quotations() {
-  const { quotations, clients, addQuotation, updateQuotation, currentUser } = useApp();
+  const { clients, currentUser } = useApp();
   const { toast, showToast } = useToast();
-  const [modalOpen, setModalOpen] = useState(false);
+  
+  if (currentUser?.role?.toLowerCase() !== "admin") {
+    return (
+      <PageTransition>
+        <div className="p-4 md:p-6 max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="bg-red-50 dark:bg-red-900/20 p-6 rounded-2xl text-center max-w-md">
+            <X size={48} className="text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
+            <p className="text-gray-500 dark:text-gray-400">You do not have permission to view this page. This page is restricted to administrators only.</p>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
   const [detailQ, setDetailQ] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const canEdit = currentUser?.role?.toLowerCase() === "admin";
 
-  const canEdit = currentUser?.role !== "Technician";
+  // ERP API State
+  const [erpQuotations, setErpQuotations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [filters, setFilters] = useState({
+    page: 1,
+    limit: 10,
+    status: "",
+    from_date: "",
+    to_date: "",
+    search: "",
+  });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const updateItem = (i, field, val) => {
-    setForm(p => {
-      const items = [...p.items];
-      items[i] = { ...items[i], [field]: val };
-      if (field === "qty" || field === "rate") items[i].total = Number(items[i].qty) * Number(items[i].rate);
-      return { ...p, items };
-    });
-  };
-  const addItem = () => setForm(p => ({ ...p, items: [...p.items, { description: "", qty: 1, rate: "", total: 0 }] }));
-  const removeItem = i => setForm(p => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }));
-  const totalAmount = form.items.reduce((s, it) => s + Number(it.total), 0);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    addQuotation({ ...form, amount: totalAmount });
-    setModalOpen(false);
-    showToast("Quotation created!");
-    setForm(EMPTY_FORM);
-  };
+  const fetchErpQuotations = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page: filters.page,
+        limit: filters.limit,
+      };
+      if (filters.status) params.status = filters.status;
+      if (filters.from_date) params.from_date = filters.from_date;
+      if (filters.to_date) params.to_date = filters.to_date;
+      if (debouncedSearch) params.search = debouncedSearch;
 
-  const changeStatus = (id, status) => {
-    updateQuotation(id, { status });
-    showToast(`Quotation ${status.toLowerCase()}`, status === "Approved" ? "success" : "error");
-    if (detailQ?.id === id) setDetailQ(p => ({ ...p, status }));
-  };
+      const response = await axios.get(`${API_BASE_URL}/erp/quotations`, { params });
+      if (response.data.success) {
+        const data = response.data.data || [];
+        setErpQuotations(data);
+        setTotalCount(response.data.count || data.length);
+      }
+    } catch (error) {
+      console.error("Error fetching ERP quotations:", error);
+      showToast("Failed to fetch ERP quotations", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [filters.page, filters.limit, filters.status, filters.from_date, filters.to_date, debouncedSearch, showToast]);
+
+  useEffect(() => {
+    fetchErpQuotations();
+  }, [fetchErpQuotations]);
+
+  const totalPages = Math.ceil(totalCount / filters.limit);
 
   return (
     <PageTransition>
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <SectionHeader
           title="Quotations"
-          subtitle={`${quotations.filter(q => q.status === "Pending").length} pending approval`}
-          action={canEdit && <Button onClick={() => setModalOpen(true)}><Plus size={16} /> New Quotation</Button>}
+          subtitle={`${totalCount} total quotations from ERP`}
         />
 
-        {quotations.length === 0 ? (
-          <EmptyState icon={DollarSign} title="No quotations yet" description="Create a quotation for a client." />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {quotations.map((q, i) => {
-              const client = clients.find(c => c.id === q.clientId);
-              return (
-                <motion.div key={q.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                  <Card hover className="p-5" onClick={() => setDetailQ(q)}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-mono text-xs text-blue-500">{q.id}</p>
-                        <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">{q.title}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{client?.name}</p>
-                      </div>
-                      <Badge label={q.status} />
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 font-display">₹{q.amount.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Valid till {q.validTill}</p>
-                      </div>
-                      {canEdit && q.status === "Pending" && (
-                        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => changeStatus(q.id, "Approved")}
-                            className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-lg hover:bg-emerald-100 transition"><Check size={16} /></button>
-                          <button onClick={() => changeStatus(q.id, "Rejected")}
-                            className="p-2 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-lg hover:bg-red-100 transition"><X size={16} /></button>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
+        {/* Filters Bar */}
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 space-y-4 md:space-y-0 md:flex md:items-end md:gap-4">
+          <div className="flex-1">
+            <Input 
+              label="Search" 
+              placeholder="Search by ID or Customer..." 
+              value={filters.search} 
+              onChange={e => setFilters(p => ({ ...p, search: e.target.value, page: 1 }))}
+            />
           </div>
+          <div className="w-full md:w-48">
+            <Select 
+              label="Status" 
+              value={filters.status} 
+              onChange={e => setFilters(p => ({ ...p, status: e.target.value, page: 1 }))}
+              options={[
+                { value: "", label: "All Status" },
+                { value: "Draft", label: "Draft" },
+                { value: "Confirmed", label: "Confirmed" },
+                { value: "Cancelled", label: "Cancelled" }
+              ]}
+            />
+          </div>
+          <div className="w-full md:w-48">
+            <DatePicker 
+              label="From Date" 
+              value={filters.from_date} 
+              onChange={e => setFilters(p => ({ ...p, from_date: e.target.value, page: 1 }))}
+            />
+          </div>
+          <div className="w-full md:w-48">
+            <DatePicker 
+              label="To Date" 
+              value={filters.to_date} 
+              onChange={e => setFilters(p => ({ ...p, to_date: e.target.value, page: 1 }))}
+            />
+          </div>
+          <Button variant="secondary" onClick={() => setFilters({ page: 1, limit: 10, status: "", from_date: "", to_date: "", search: "" })}>
+            Reset
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="py-20 flex justify-center"><PageLoader /></div>
+        ) : erpQuotations.length === 0 ? (
+          <EmptyState icon={DollarSign} title="No quotations found" description="Try adjusting your filters or create a new one." />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {erpQuotations.map((q, i) => {
+                return (
+                  <motion.div key={q.QuotId || q.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                    <Card hover className="p-5" onClick={() => setDetailQ(q)}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-mono text-xs text-blue-500">{q.QuotNo || q.id}</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">{q.CustName || q.customer_name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{q.ContactNo || `ID: ${q.customer_id}`}</p>
+                        </div>
+                        <Badge label={q.status || "Confirmed"} />
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-400 mt-0.5">Date: {q.QuotDate || q.date}</p>
+                        </div>
+                        {canEdit && (q.status === "Draft" || !q.status) && (
+                          <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => showToast("ERP actions not implemented", "info")}
+                              className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-lg hover:bg-emerald-100 transition"><Check size={16} /></button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Showing <span className="font-semibold text-gray-900 dark:text-white">{(filters.page - 1) * filters.limit + 1}</span> to <span className="font-semibold text-gray-900 dark:text-white">{Math.min(filters.page * filters.limit, totalCount)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalCount}</span> results
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  disabled={filters.page === 1}
+                  onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))}
+                >
+                  <ChevronLeft size={16} /> Previous
+                </Button>
+                <div className="flex gap-1">
+                  {[...Array(totalPages)].map((_, i) => {
+                    const pageNum = i + 1;
+                    // Only show limited page numbers if there are many
+                    if (totalPages > 5 && (pageNum < filters.page - 1 || pageNum > filters.page + 1) && pageNum !== 1 && pageNum !== totalPages) {
+                      if (pageNum === 2 || pageNum === totalPages - 1) return <span key={pageNum} className="px-2">...</span>;
+                      return null;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setFilters(p => ({ ...p, page: pageNum }))}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${filters.page === pageNum ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  disabled={filters.page === totalPages}
+                  onClick={() => setFilters(p => ({ ...p, page: p.page + 1 }))}
+                >
+                  Next <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          </>
         )}
 
-        {/* New Quotation Modal */}
-        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Create Quotation" size="xl">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Select label="Client" value={form.clientId} onChange={e => setForm(p => ({ ...p, clientId: e.target.value }))} required
-                options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
-              <Input label="Quotation Title" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} required />
-              <DatePicker label="Valid Till" value={form.validTill} onChange={e => setForm(p => ({ ...p, validTill: e.target.value }))} className="col-span-2" />
-            </div>
-
-            {/* Line Items */}
-            <div>
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Line Items</p>
-              <div className="space-y-2">
-                {form.items.map((item, i) => (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-5">
-                      {i === 0 && <p className="text-xs text-gray-400 mb-1">Description</p>}
-                      <input value={item.description} onChange={e => updateItem(i, "description", e.target.value)} placeholder="Service description"
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <div className="col-span-2">
-                      {i === 0 && <p className="text-xs text-gray-400 mb-1">Qty</p>}
-                      <input type="number" value={item.qty} onChange={e => updateItem(i, "qty", e.target.value)} min="1"
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <div className="col-span-2">
-                      {i === 0 && <p className="text-xs text-gray-400 mb-1">Rate (₹)</p>}
-                      <input type="number" value={item.rate} onChange={e => updateItem(i, "rate", e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <div className="col-span-2">
-                      {i === 0 && <p className="text-xs text-gray-400 mb-1">Total</p>}
-                      <div className="px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm font-semibold text-blue-700 dark:text-blue-300">₹{Number(item.total).toLocaleString()}</div>
-                    </div>
-                    <div className="col-span-1 flex justify-center">
-                      {form.items.length > 1 && (
-                        <button type="button" onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 mt-1"><X size={16} /></button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button type="button" onClick={addItem} className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"><Plus size={14} /> Add Item</button>
-            </div>
-
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-              <div>
-                <p className="text-xs text-gray-400">Total Amount</p>
-                <p className="text-2xl font-bold text-blue-600 font-display">₹{totalAmount.toLocaleString()}</p>
-              </div>
-              <div className="flex gap-3">
-                <Button type="submit">Create Quotation</Button>
-                <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-              </div>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Detail Modal */}
+        {/* Detail Modal (ERP Data) */}
         {detailQ && (
-          <Modal isOpen={!!detailQ} onClose={() => setDetailQ(null)} title={detailQ.title} size="lg">
+          <Modal isOpen={!!detailQ} onClose={() => setDetailQ(null)} title={`Quotation: ${detailQ.QuotNo || detailQ.id}`} size="lg">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><p className="text-xs text-gray-400">ID</p><p className="font-mono font-semibold text-blue-600">{detailQ.id}</p></div>
-                <div><p className="text-xs text-gray-400">Status</p><Badge label={detailQ.status} /></div>
-                <div><p className="text-xs text-gray-400">Client</p><p className="font-medium text-gray-800 dark:text-gray-200">{clients.find(c => c.id === detailQ.clientId)?.name}</p></div>
-                <div><p className="text-xs text-gray-400">Valid Till</p><p className="font-medium text-gray-800 dark:text-gray-200">{detailQ.validTill}</p></div>
+                <div><p className="text-xs text-gray-400">ID</p><p className="font-mono font-semibold text-blue-600">{detailQ.QuotNo || detailQ.id}</p></div>
+                <div><p className="text-xs text-gray-400">Status</p><Badge label={detailQ.status || "Confirmed"} /></div>
+                <div><p className="text-xs text-gray-400">Customer</p><p className="font-medium text-gray-800 dark:text-gray-200">{detailQ.CustName || detailQ.customer_name} ({detailQ.customer_id || "ERP"})</p></div>
+                <div><p className="text-xs text-gray-400">Date</p><p className="font-medium text-gray-800 dark:text-gray-200">{detailQ.QuotDate || detailQ.date}</p></div>
+                {detailQ.ContactNo && <div><p className="text-xs text-gray-400">Contact</p><p className="font-medium text-gray-800 dark:text-gray-200">{detailQ.ContactNo}</p></div>}
+                {detailQ.Address1 && <div><p className="text-xs text-gray-400">Address</p><p className="font-medium text-gray-800 dark:text-gray-200">{detailQ.Address1}</p></div>}
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b border-gray-100 dark:border-gray-700">
-                    <th className="text-left py-2 text-xs text-gray-400">Description</th>
-                    <th className="text-right py-2 text-xs text-gray-400">Qty</th>
-                    <th className="text-right py-2 text-xs text-gray-400">Rate</th>
-                    <th className="text-right py-2 text-xs text-gray-400">Total</th>
-                  </tr></thead>
-                  <tbody>
-                    {detailQ.items?.map((item, i) => (
-                      <tr key={i} className="border-b border-gray-50 dark:border-gray-700/50">
-                        <td className="py-2 text-gray-700 dark:text-gray-300">{item.description}</td>
-                        <td className="py-2 text-right text-gray-600 dark:text-gray-400">{item.qty}</td>
-                        <td className="py-2 text-right text-gray-600 dark:text-gray-400">₹{Number(item.rate).toLocaleString()}</td>
-                        <td className="py-2 text-right font-semibold text-gray-800 dark:text-gray-200">₹{Number(item.total).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot><tr>
-                    <td colSpan={3} className="pt-3 text-right font-bold text-gray-700 dark:text-gray-300">Grand Total</td>
-                    <td className="pt-3 text-right text-xl font-bold text-blue-600 font-display">₹{detailQ.amount.toLocaleString()}</td>
-                  </tr></tfoot>
-                </table>
-              </div>
+              
+              {/* Note: The API example doesn't show items, so we check if they exist */}
+              {detailQ.items ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b border-gray-100 dark:border-gray-700">
+                      <th className="text-left py-2 text-xs text-gray-400">Description</th>
+                      <th className="text-right py-2 text-xs text-gray-400">Qty</th>
+                      <th className="text-right py-2 text-xs text-gray-400">Rate</th>
+                      <th className="text-right py-2 text-xs text-gray-400">Total</th>
+                    </tr></thead>
+                    <tbody>
+                      {detailQ.items?.map((item, i) => (
+                        <tr key={i} className="border-b border-gray-50 dark:border-gray-700/50">
+                          <td className="py-2 text-gray-700 dark:text-gray-300">{item.description}</td>
+                          <td className="py-2 text-right text-gray-600 dark:text-gray-400">{item.qty}</td>
+                          <td className="py-2 text-right text-gray-600 dark:text-gray-400">₹{Number(item.rate).toLocaleString()}</td>
+                          <td className="py-2 text-right font-semibold text-gray-800 dark:text-gray-200">₹{Number(item.total).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot><tr>
+                      <td colSpan={3} className="pt-3 text-right font-bold text-gray-700 dark:text-gray-300">Grand Total</td>
+                      <td className="pt-3 text-right text-xl font-bold text-blue-600 font-display">₹{(detailQ.TotalAmt || detailQ.total_amount || 0).toLocaleString()}</td>
+                    </tr></tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                  {/* <div className="flex justify-between items-center">
+                    <p className="font-bold text-gray-700 dark:text-gray-300">Total Amount</p>
+                    <p className="text-xl font-bold text-blue-600 font-display">₹{(detailQ.TotalAmt || detailQ.total_amount || 0).toLocaleString()}</p>
+                  </div> */}
+                </div>
+              )}
             </div>
           </Modal>
         )}
@@ -190,3 +269,4 @@ export default function Quotations() {
     </PageTransition>
   );
 }
+

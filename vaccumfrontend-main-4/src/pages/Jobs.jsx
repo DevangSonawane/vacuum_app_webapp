@@ -13,7 +13,7 @@ import {
   Select, DatePicker, Textarea, SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
+const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
 
 const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];

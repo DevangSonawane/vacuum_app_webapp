@@ -185,11 +185,36 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                       variant: AppButtonVariant.outline,
                       size: AppButtonSize.sm,
                       leading: const Icon(Icons.send_outlined),
-                      onPressed: () => AppToast.show(
-                        context,
-                        message: 'Test email sending is not wired yet.',
-                        type: AppToastType.info,
-                      ),
+                      onPressed: () async {
+                        final to = (auth?.user?.email ?? '').toString().trim();
+                        if (to.isEmpty) {
+                          AppToast.show(
+                            context,
+                            message: 'No email found on your profile.',
+                            type: AppToastType.error,
+                          );
+                          return;
+                        }
+
+                        try {
+                          await ref
+                              .read(emailSettingsProvider.notifier)
+                              .sendTestEmail(to);
+                          if (!context.mounted) return;
+                          AppToast.show(
+                            context,
+                            message: 'Test email sent to $to',
+                            type: AppToastType.success,
+                          );
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          AppToast.show(
+                            context,
+                            message: e.toString(),
+                            type: AppToastType.error,
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),

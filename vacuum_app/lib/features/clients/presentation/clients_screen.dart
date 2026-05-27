@@ -17,6 +17,7 @@ import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
+import '../../erp/application/erp_customers_notifier.dart';
 import '../application/clients_notifier.dart';
 import '../domain/client.dart';
 
@@ -47,12 +48,17 @@ class ClientsScreen extends ConsumerStatefulWidget {
 
 class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   final _searchController = TextEditingController();
+  final _erpSearchController = TextEditingController();
   Timer? _debounce;
+  Timer? _erpDebounce;
+  int _tabIndex = 0; // 0 = Local, 1 = ERP
 
   @override
   void dispose() {
     _searchController.dispose();
+    _erpSearchController.dispose();
     _debounce?.cancel();
+    _erpDebounce?.cancel();
     super.dispose();
   }
 
@@ -63,15 +69,33 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     });
   }
 
+  void _onErpSearch(String query) {
+    _erpDebounce?.cancel();
+    _erpDebounce = Timer(const Duration(milliseconds: 400), () {
+      ref.read(erpCustomersProvider.notifier).setSearch(query);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canEdit = !['technician', 'labour'].contains(role);
 
     final state = ref.watch(clientsProvider);
+    final erp = ref.watch(erpCustomersProvider);
+
+    Future<void> refreshCurrent() async {
+      if (_tabIndex == 0) {
+        await ref.read(clientsProvider.notifier).refresh();
+      } else {
+        await ref
+            .read(erpCustomersProvider.notifier)
+            .setPage(erp.valueOrNull?.page ?? 1);
+      }
+    }
 
     return RefreshIndicator(
-      onRefresh: () => ref.read(clientsProvider.notifier).refresh(),
+      onRefresh: refreshCurrent,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -80,74 +104,199 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           children: [
             SectionHeader(
               title: 'Clients',
-              subtitle: state.whenOrNull(
-                data: (d) =>
-                    '${d.items.where((c) => c.status == "Active").length} active clients',
-              ),
+              subtitle: _tabIndex == 0
+                  ? state.whenOrNull(
+                      data: (d) =>
+                          '${d.items.where((c) => c.status == "Active").length} active clients',
+                    )
+                  : erp.whenOrNull(data: (d) => '${d.count} total ERP customers'),
               action: canEdit
-                  ? AppButton(
+                  ? (_tabIndex == 0
+                      ? AppButton(
                       label: '+ Add Client',
                       onPressed: () => context.push('/clients/new'),
                     )
+                      : null)
                   : null,
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearch,
-                    decoration: const InputDecoration(
-                      hintText: 'Search clients...',
-                      prefixIcon: Icon(Icons.search),
-                      isDense: true,
-                    ),
+                  child: SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 0, label: Text('Local')),
+                      ButtonSegment(value: 1, label: Text('ERP')),
+                    ],
+                    selected: {_tabIndex},
+                    onSelectionChanged: (s) =>
+                        setState(() => _tabIndex = s.first),
                   ),
                 ),
                 const SizedBox(width: 12),
                 IconButton(
                   tooltip: 'Refresh',
-                  onPressed: () => ref.read(clientsProvider.notifier).refresh(),
+                  onPressed: refreshCurrent,
                   icon: const Icon(Icons.refresh),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            state.when(
-              loading: () => const _ClientsSkeleton(),
-              error: (e, _) => EmptyState(
-                icon: Icons.error_outline,
-                title: 'Failed to load',
-                description: e.toString(),
+            if (_tabIndex == 0) ...[
+              TextField(
+                controller: _searchController,
+                onChanged: _onSearch,
+                decoration: const InputDecoration(
+                  hintText: 'Search clients...',
+                  prefixIcon: Icon(Icons.search),
+                  isDense: true,
+                ),
               ),
-              data: (data) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TypeFilters(
-                    value: data.typeFilter,
-                    onChanged: (t) =>
-                        ref.read(clientsProvider.notifier).filter(type: t),
-                  ),
-                  const SizedBox(height: 16),
-                  if (data.items.isEmpty)
-                    const EmptyState(
-                      icon: Icons.groups_outlined,
-                      title: 'No clients found',
-                      description:
-                          'Try a different search or adjust the type filter.',
-                    )
-                  else
-                    _ClientsGrid(
-                      items: data.items,
-                      canEdit: canEdit,
-                      onTap: (c) => _openDetailSheet(context, c, canEdit),
-                      onEdit: (c) => _openFormSheet(context, c),
-                      onDelete: (c) => _confirmDelete(context, c),
+              const SizedBox(height: 12),
+              state.when(
+                loading: () => const _ClientsSkeleton(),
+                error: (e, _) => EmptyState(
+                  icon: Icons.error_outline,
+                  title: 'Failed to load',
+                  description: e.toString(),
+                ),
+                data: (data) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TypeFilters(
+                      value: data.typeFilter,
+                      onChanged: (t) =>
+                          ref.read(clientsProvider.notifier).filter(type: t),
                     ),
+                    const SizedBox(height: 16),
+                    if (data.items.isEmpty)
+                      const EmptyState(
+                        icon: Icons.groups_outlined,
+                        title: 'No clients found',
+                        description:
+                            'Try a different search or adjust the type filter.',
+                      )
+                    else
+                      _ClientsGrid(
+                        items: data.items,
+                        canEdit: canEdit,
+                        onTap: (c) => _openDetailSheet(context, c, canEdit),
+                        onEdit: (c) => _openFormSheet(context, c),
+                        onDelete: (c) => _confirmDelete(context, c),
+                      ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              TextField(
+                controller: _erpSearchController,
+                onChanged: _onErpSearch,
+                decoration: const InputDecoration(
+                  hintText: 'Search ERP customers...',
+                  prefixIcon: Icon(Icons.search),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppDropdownField<String>(
+                      label: 'Status',
+                      value: erp.valueOrNull?.status ?? 'All',
+                      items: const ['All', 'Active', 'Inactive'],
+                      onChanged: (v) => ref
+                          .read(erpCustomersProvider.notifier)
+                          .setStatus(v ?? 'All'),
+                    ),
+                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              erp.when(
+                loading: () => const _ClientsSkeleton(),
+                error: (e, _) => EmptyState(
+                  icon: Icons.error_outline,
+                  title: 'Failed to load ERP customers',
+                  description: e.toString(),
+                ),
+                data: (data) {
+                  if (data.items.isEmpty) {
+                    return const EmptyState(
+                      icon: Icons.cloud_outlined,
+                      title: 'No ERP customers',
+                      description: 'Try a different search or status filter.',
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      for (final c in data.items)
+                        AppCard(
+                          hover: true,
+                          onTap: () async {
+                            final full = await ref
+                                .read(erpCustomersProvider.notifier)
+                                .fetchDetail(c.id);
+                            if (!context.mounted) return;
+                            await showModalBottomSheet<void>(
+                              context: context,
+                              isScrollControlled: true,
+                              showDragHandle: true,
+                              useSafeArea: true,
+                              builder: (_) => _ErpCustomerDetailSheet(
+                                customer: full ?? c,
+                              ),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      c.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      () {
+                                        final contact =
+                                            (c.email ?? c.phone ?? '').trim();
+                                        return contact.isEmpty ? '—' : contact;
+                                      }(),
+                                      style: TextStyle(
+                                        color: Theme.of(context).hintColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              StatusBadge(
+                                label: c.status,
+                                color: c.status == 'Inactive'
+                                    ? AppColors.gray600
+                                    : AppColors.emerald500,
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      _ErpPager(
+                        page: data.page,
+                        totalPages: data.totalPages,
+                        onPage: (p) => ref
+                            .read(erpCustomersProvider.notifier)
+                            .setPage(p),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -224,6 +373,118 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
       context,
       message: ok ? 'Client removed' : 'Delete failed',
       type: ok ? AppToastType.error : AppToastType.error,
+    );
+  }
+}
+
+class _ErpPager extends StatelessWidget {
+  const _ErpPager({
+    required this.page,
+    required this.totalPages,
+    required this.onPage,
+  });
+
+  final int page;
+  final int totalPages;
+  final ValueChanged<int> onPage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: page <= 1 ? null : () => onPage(page - 1),
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Expanded(
+          child: Center(
+            child: Text(
+              'Page $page of $totalPages',
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: page >= totalPages ? null : () => onPage(page + 1),
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErpCustomerDetailSheet extends StatelessWidget {
+  const _ErpCustomerDetailSheet({required this.customer});
+
+  final dynamic customer;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (customer.name ?? '').toString().trim();
+    final id = (customer.id ?? '').toString().trim();
+    final email = (customer.email ?? '').toString().trim();
+    final phone = (customer.phone ?? '').toString().trim();
+    final address = (customer.address ?? '').toString().trim();
+    final gstin = (customer.gstin ?? '').toString().trim();
+    final status = (customer.status ?? 'Active').toString().trim();
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name.isEmpty ? 'ERP Customer' : name,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            id,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w900,
+              color: AppColors.blue600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          StatusBadge(
+            label: status.isEmpty ? 'Active' : status,
+            color: status == 'Inactive' ? AppColors.gray600 : AppColors.emerald500,
+          ),
+          const SizedBox(height: 16),
+          _kv(context, 'Email', email),
+          _kv(context, 'Phone', phone),
+          _kv(context, 'Address', address),
+          _kv(context, 'GSTIN', gstin),
+          const SizedBox(height: 12),
+          const BottomSafeArea(),
+        ],
+      ),
+    );
+  }
+
+  Widget _kv(BuildContext context, String k, String v) {
+    final val = v.trim().isEmpty ? '—' : v.trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(k, style: TextStyle(color: Theme.of(context).hintColor)),
+          ),
+          Expanded(
+            child: Text(
+              val,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

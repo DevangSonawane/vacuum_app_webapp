@@ -20,7 +20,7 @@ import {
   PageTransition, Card, Badge, Button, useToast, Toast, EmptyState, SectionHeader
 } from "../components/ui";
 
-const API_BASE_URL = "https://vaccumapi.onrender.com/api";
+const API_BASE_URL = "https://vaccumapi-o4ol.onrender.com/api";
 
 export default function Reports() {
   const { currentUser } = useApp();

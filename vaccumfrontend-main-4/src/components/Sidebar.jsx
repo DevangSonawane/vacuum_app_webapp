@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { id: "email",       label: "Email Settings",    icon: Mail,            path: "/email",      adminOnly: true },
   { id: "activity",    label: "Activity History",  icon: FileText,        path: "/activity",   adminOnly: true },
   { id: "users",       label: "Users",             icon: Users,           path: "/users",      adminOnly: true },
+  { id: "quotations",    label: "Quotations",        icon: DollarSign,      path: "/quotations",   adminOnly: true },
 ];
 
 // ── Colour per notification event ────────────────────────────

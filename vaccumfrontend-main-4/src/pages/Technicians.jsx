@@ -5,7 +5,7 @@ import axios from "axios";
 import { useApp } from "../context/AppContext";
 import { PageTransition, Card, Badge, Avatar, Button, Modal, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
 
-const API_BASE_URL = 'https://vaccumapi.onrender.com/api';
+const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
 
 const EMPTY_FORM = {
   name:           "",

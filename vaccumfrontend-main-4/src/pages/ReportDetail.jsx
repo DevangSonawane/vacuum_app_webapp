@@ -6,19 +6,20 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, CheckCircle, XCircle, Loader2,
   User, Calendar, Briefcase, Building2,
   Image as ImageIcon, FileText, ClipboardList,
   ChevronRight, Clock, MapPin, Hash, Package,
-  AlertTriangle, Wrench, Mail, PenLine, ExternalLink, Download
+  AlertTriangle, Wrench, Mail, PenLine, ExternalLink, Download,
+  X
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
 import { PageTransition, Badge, Button, useToast, Toast, Card } from "../components/ui";
 
-const API_BASE_URL = "https://vaccumapi.onrender.com/api";
+const API_BASE_URL = "https://vaccumapi-o4ol.onrender.com/api";
 
 const STATUS_STYLES = {
   Pending:  { bg: "bg-amber-50   dark:bg-amber-900/20   border-amber-200  dark:border-amber-800",   text: "text-amber-700  dark:text-amber-300",  dot: "bg-amber-400"   },
@@ -36,6 +37,7 @@ export default function ReportDetail() {
   const [loading, setLoading]     = useState(true);
   const [approving, setApproving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => { fetchReport(); }, [id]);
 
@@ -182,12 +184,13 @@ export default function ReportDetail() {
                   { icon: Package,    label: "PO Number",     value: report.po_number || "—" },
                   { icon: Wrench,     label: "Model / S/N / Year", value: report.model_serial_installation || "—" },
                   { icon: Clock,      label: "Operating Hrs/Day",  value: report.operating_hours_per_day || "—" },
+                  { icon: MapPin,     label: "Location",           value: report.location || "—" },
                 ].map((item, idx) => (
                   <div 
                     key={item.label} 
                     className={`p-4 flex items-start gap-3 border-b border-gray-100 dark:border-gray-800 
                       ${idx % 2 === 0 ? "border-r" : ""} 
-                      ${idx >= 6 ? "border-b-0" : ""}
+                      ${idx >= 8 ? "border-b-0" : ""}
                       hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors`}
                   >
                     <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -207,26 +210,21 @@ export default function ReportDetail() {
                 ))}
               </div>
               {report.application_process_description && (
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Application / Process Description</p>
+                <div className="p-5 border-t border-gray-100 dark:border-gray-800">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-bold mb-1">Application / Process Description</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{report.application_process_description}</p>
                 </div>
               )}
-              {(report.client_email || report.location || report.serial_no) && (
-                <div className="mt-3 flex flex-wrap gap-3">
-                  {report.location && (
-                    <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                      <MapPin size={11} className="text-emerald-500" /> {report.location}
-                    </span>
-                  )}
+              {(report.client_email || report.serial_no) && (
+                <div className="p-5 pt-0 flex flex-wrap gap-4">
                   {report.serial_no && (
-                    <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                      <Hash size={11} className="text-gray-400" /> S/N: {report.serial_no}
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                      <Hash size={12} className="text-gray-400" /> S/N: <span className="text-gray-900 dark:text-white">{report.serial_no}</span>
                     </span>
                   )}
                   {report.client_email && (
-                    <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                      <Mail size={11} className="text-blue-400" /> {report.client_email}
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                      <Mail size={12} className="text-blue-500" /> <span className="text-gray-900 dark:text-white">{report.client_email}</span>
                     </span>
                   )}
                 </div>
@@ -299,46 +297,7 @@ export default function ReportDetail() {
               </Card>
             )}
 
-            {/* ── PDF Page 3: Remarks ─────────────────────────── */}
-            {report.remarks && (
-              <Card className="p-5">
-                <SectionLabel icon={PenLine} label="Remarks" />
-                <div className="mt-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl p-4">
-                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.remarks}</p>
-                </div>
-              </Card>
-            )}
 
-            {/* ── Findings / Recommendations ─────────────────── */}
-            {(report.findings || report.recommendations || report.comments) && (
-              <Card className="p-5 space-y-4">
-                <SectionLabel icon={FileText} label="Findings & Recommendations" />
-                {report.findings && (
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Findings</p>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.findings}</p>
-                    </div>
-                  </div>
-                )}
-                {report.recommendations && (
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Recommendations</p>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.recommendations}</p>
-                    </div>
-                  </div>
-                )}
-                {report.comments && (
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Comments</p>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.comments}</p>
-                    </div>
-                  </div>
-                )}
-              </Card>
-            )}
 
             {/* ── PDF Page 4: Mandatory Spares ───────────────── */}
             {report.mandatory_spares?.length > 0 && (
@@ -374,46 +333,7 @@ export default function ReportDetail() {
               </Card>
             )}
 
-            {/* ── Signatures ──────────────────────────────────── */}
-            {(report.vdt_representative_name || report.client_representative_name) && (
-              <Card className="p-5">
-                <SectionLabel icon={PenLine} label="Signatures" />
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">VDT Representative</p>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-white">{report.vdt_representative_name || "—"}</p>
-                    <p className="text-xs text-gray-400 mt-1">Date: {report.report_date ? report.report_date.slice(0, 10) : "—"}</p>
-                  </div>
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Client Representative</p>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-white">{report.client_representative_name || "—"}</p>
-                    <p className="text-xs text-gray-400 mt-1">Date: {report.report_date ? report.report_date.slice(0, 10) : "—"}</p>
-                  </div>
-                </div>
-              </Card>
-            )}
 
-            {/* ── Photos ──────────────────────────────────────── */}
-            <Card className="p-5">
-              <SectionLabel icon={ImageIcon} label={`Attached Photos${report.images?.length > 0 ? ` (${report.images.length})` : ""}`} />
-              {report.images?.length > 0 ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4">
-                  {report.images.map(img => (
-                    <a key={img.id} href={img.file_url} target="_blank" rel="noopener noreferrer" className="group">
-                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition group-hover:ring-2 group-hover:ring-blue-500">
-                        <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
-                      </div>
-                      <p className="text-[10px] text-gray-400 truncate mt-1">{img.file_name}</p>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-gray-300 dark:text-gray-600 mt-3">
-                  <ImageIcon size={28} className="mb-2 opacity-40" />
-                  <p className="text-sm">No photos attached</p>
-                </div>
-              )}
-            </Card>
 
             {/* ── Technical Reports ───────────────────────────── */}
             {report.technical_reports?.length > 0 && (
@@ -507,9 +427,120 @@ export default function ReportDetail() {
                 ))}
               </div>
             </Card>
+
+            {/* ── Findings / Recommendations ─────────────────── */}
+            {(report.findings || report.recommendations || report.comments) && (
+              <Card className="p-5 space-y-4">
+                <SectionLabel icon={FileText} label="Findings & Recommendations" />
+                {report.findings && (
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Findings</p>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.findings}</p>
+                    </div>
+                  </div>
+                )}
+                {report.recommendations && (
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Recommendations</p>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3">
+                      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.recommendations}</p>
+                    </div>
+                  </div>
+                )}
+                {report.comments && (
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Comments</p>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                      <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.comments}</p>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* ── Signatures ──────────────────────────────────── */}
+            {(report.vdt_representative_name || report.client_representative_name) && (
+              <Card className="p-5">
+                <SectionLabel icon={PenLine} label="Signatures" />
+                <div className="space-y-3 mt-4">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">VDT Rep</p>
+                    <p className="text-xs font-semibold text-gray-800 dark:text-white">{report.vdt_representative_name || "—"}</p>
+                  </div>
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Client Rep</p>
+                    <p className="text-xs font-semibold text-gray-800 dark:text-white">{report.client_representative_name || "—"}</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* ── PDF Page 3: Remarks ─────────────────────────── */}
+            {report.remarks && (
+              <Card className="p-5">
+                <SectionLabel icon={PenLine} label="Remarks" />
+                <div className="mt-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl p-4">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.remarks}</p>
+                </div>
+              </Card>
+            )}
+
+            {/* ── Photos ──────────────────────────────────────── */}
+            <Card className="p-5">
+              <SectionLabel icon={ImageIcon} label={`Attached Photos${report.images?.length > 0 ? ` (${report.images.length})` : ""}`} />
+              {report.images?.length > 0 ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4">
+                  {report.images.map(img => (
+                    <div key={img.id} onClick={() => setSelectedImage(img)} className="group cursor-pointer">
+                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition group-hover:ring-2 group-hover:ring-blue-500">
+                        <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
+                      </div>
+                      <p className="text-[10px] text-gray-400 truncate mt-1">{img.file_name}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-gray-300 dark:text-gray-600 mt-3">
+                  <ImageIcon size={28} className="mb-2 opacity-40" />
+                  <p className="text-sm">No photos attached</p>
+                </div>
+              )}
+            </Card>
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-5xl max-h-[90vh]"
+            >
+              <img src={selectedImage.file_url} alt="" className="rounded-2xl shadow-2xl max-h-[85vh] object-contain" />
+              <div className="absolute top-4 right-4 flex gap-2">
+                <a href={selectedImage.file_url} download target="_blank" rel="noreferrer"
+                   className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition backdrop-blur-md">
+                  <Download size={20} />
+                </a>
+                <button onClick={() => setSelectedImage(null)} 
+                        className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition backdrop-blur-md">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <p className="text-white font-medium">{selectedImage.file_name}</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {toast && <Toast message={toast.message} type={toast.type} />}
     </PageTransition>
