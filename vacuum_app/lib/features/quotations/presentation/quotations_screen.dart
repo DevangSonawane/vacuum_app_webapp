@@ -35,9 +35,11 @@ class QuotationsScreen extends ConsumerStatefulWidget {
 }
 
 class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
-  int _tabIndex = 0; // 0 = Local, 1 = ERP
   final _erpSearch = TextEditingController();
   Timer? _erpDebounce;
+  String _fromDate = '';
+  String _toDate = '';
+  int _limit = 10;
 
   @override
   void dispose() {
@@ -53,13 +55,53 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
     });
   }
 
+  Future<void> _pickDate({
+    required bool isFrom,
+  }) async {
+    final now = DateTime.now();
+    DateTime? initial;
+    try {
+      final raw = isFrom ? _fromDate : _toDate;
+      if (raw.isNotEmpty) initial = DateTime.parse(raw);
+    } catch (_) {
+      initial = null;
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(now.year + 5),
+      initialDate: initial ?? now,
+    );
+    if (picked == null) return;
+    final iso = picked.toIso8601String().substring(0, 10);
+    setState(() {
+      if (isFrom) {
+        _fromDate = iso;
+      } else {
+        _toDate = iso;
+      }
+    });
+    ref.read(erpQuotationsProvider.notifier).applyFilters(
+          fromDate: _fromDate,
+          toDate: _toDate,
+          page: 1,
+          limit: _limit,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
-    final canEdit = !['technician', 'labour'].contains(role);
+    final isAdmin = role.toLowerCase() == 'admin';
+    if (!isAdmin) {
+      return const EmptyState(
+        icon: Icons.lock_outline,
+        title: 'Access Denied',
+        description: 'This page is restricted to administrators only.',
+      );
+    }
 
-    final quotations = ref.watch(quotationsProvider);
-    final pending = quotations.where((q) => q.status == 'Pending').length;
     final erp = ref.watch(erpQuotationsProvider);
 
     final width = MediaQuery.sizeOf(context).width;
@@ -72,218 +114,371 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
         children: [
           SectionHeader(
             title: 'Quotations',
-            subtitle: _tabIndex == 0
-                ? '$pending pending approval'
-                : erp.whenOrNull(data: (d) => '${d.count} total quotations') ??
+            subtitle:
+                erp.whenOrNull(data: (d) => '${d.count} total quotations from ERP') ??
                     'ERP quotations',
-            action: (_tabIndex == 0 && canEdit)
-                ? AppButton(
-                    label: 'New Quotation',
-                    onPressed: () => context.push('/quotations/new'),
-                  )
-                : null,
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('Local')),
-                    ButtonSegment(value: 1, label: Text('ERP')),
-                  ],
-                  selected: {_tabIndex},
-                  onSelectionChanged: (s) =>
-                      setState(() => _tabIndex = s.first),
+                child: Text(
+                  'ERP Quotations',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
-              const SizedBox(width: 12),
               IconButton(
                 tooltip: 'Refresh',
-                onPressed: () {
-                  if (_tabIndex == 0) return;
-                  ref
-                      .read(erpQuotationsProvider.notifier)
-                      .applyFilters(page: erp.valueOrNull?.page ?? 1);
-                },
+                onPressed: () => ref
+                    .read(erpQuotationsProvider.notifier)
+                    .applyFilters(page: erp.valueOrNull?.page ?? 1, limit: _limit),
                 icon: const Icon(Icons.refresh),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          if (_tabIndex == 0) ...[
-            if (quotations.isEmpty)
-              const EmptyState(
-                icon: Icons.currency_rupee,
-                title: 'No quotations yet',
-                description: 'Create a quotation for a client.',
-              )
-            else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: cols,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: cols == 1 ? 1.8 : 1.45,
-                ),
-                itemCount: quotations.length,
-                itemBuilder: (context, i) => _QuotationCard(
-                  quotation: quotations[i],
-                  canEdit: canEdit,
-                  onTap: () => _openDetailSheet(context, quotations[i]),
-                  onApprove: () => _changeStatus(quotations[i].id, 'Approved'),
-                  onReject: () => _changeStatus(quotations[i].id, 'Rejected'),
-                ),
-              ),
-          ] else ...[
-            TextField(
-              controller: _erpSearch,
-              onChanged: _onErpSearch,
-              decoration: const InputDecoration(
-                hintText: 'Search ERP quotations...',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: AppDropdownField<String>(
-                    label: 'Status',
-                    value: erp.valueOrNull?.status ?? 'All',
-                    items: const [
-                      AppDropdownItem(value: 'All', label: 'All'),
-                      AppDropdownItem(value: 'Draft', label: 'Draft'),
-                      AppDropdownItem(value: 'Confirmed', label: 'Confirmed'),
-                      AppDropdownItem(value: 'Cancelled', label: 'Cancelled'),
-                    ],
-                    onChanged: (v) => ref
-                        .read(erpQuotationsProvider.notifier)
-                        .applyFilters(status: v ?? 'All', page: 1),
+                TextField(
+                  controller: _erpSearch,
+                  onChanged: _onErpSearch,
+                  decoration: const InputDecoration(
+                    hintText: 'Search by ID or Customer...',
+                    prefixIcon: Icon(Icons.search),
+                    isDense: true,
                   ),
+                ),
+                const SizedBox(height: 12),
+                LayoutBuilder(
+                  builder: (context, c) {
+                    final narrow = c.maxWidth < 740;
+                    final statusValue = erp.valueOrNull?.status ?? 'All';
+
+                    final statusField = AppDropdownField<String>(
+                      label: 'Status',
+                      value: statusValue,
+                      items: const [
+                        AppDropdownItem(value: 'All', label: 'All Status'),
+                        AppDropdownItem(value: 'Draft', label: 'Draft'),
+                        AppDropdownItem(value: 'Confirmed', label: 'Confirmed'),
+                        AppDropdownItem(value: 'Cancelled', label: 'Cancelled'),
+                      ],
+                      onChanged: (v) => ref
+                          .read(erpQuotationsProvider.notifier)
+                          .applyFilters(status: v ?? 'All', page: 1),
+                    );
+
+                    final limitField = AppDropdownField<int>(
+                      label: 'Limit',
+                      value: _limit,
+                      items: const [
+                        AppDropdownItem(value: 10, label: '10'),
+                        AppDropdownItem(value: 20, label: '20'),
+                        AppDropdownItem(value: 50, label: '50'),
+                      ],
+                      onChanged: (v) {
+                        final next = v ?? 10;
+                        setState(() => _limit = next);
+                        ref
+                            .read(erpQuotationsProvider.notifier)
+                            .applyFilters(page: 1, limit: next);
+                      },
+                    );
+
+                    final fromBtn = AppButton(
+                      label: _fromDate.isEmpty ? 'From Date' : _fromDate,
+                      variant: AppButtonVariant.secondary,
+                      size: AppButtonSize.sm,
+                      leading: const Icon(Icons.calendar_month_outlined),
+                      onPressed: () => _pickDate(isFrom: true),
+                    );
+
+                    final toBtn = AppButton(
+                      label: _toDate.isEmpty ? 'To Date' : _toDate,
+                      variant: AppButtonVariant.secondary,
+                      size: AppButtonSize.sm,
+                      leading: const Icon(Icons.calendar_month_outlined),
+                      onPressed: () => _pickDate(isFrom: false),
+                    );
+
+                    final resetBtn = AppButton(
+                      label: 'Reset',
+                      variant: AppButtonVariant.secondary,
+                      size: AppButtonSize.sm,
+                      onPressed: () {
+                        setState(() {
+                          _erpSearch.clear();
+                          _fromDate = '';
+                          _toDate = '';
+                          _limit = 10;
+                        });
+                        ref.read(erpQuotationsProvider.notifier).applyFilters(
+                              search: '',
+                              status: 'All',
+                              fromDate: '',
+                              toDate: '',
+                              page: 1,
+                              limit: 10,
+                            );
+                      },
+                    );
+
+                    if (narrow) {
+                      return Column(
+                        children: [
+                          Row(children: [Expanded(child: statusField)]),
+                          const SizedBox(height: 12),
+                          Row(children: [Expanded(child: limitField)]),
+                          const SizedBox(height: 12),
+                          Row(children: [Expanded(child: fromBtn)]),
+                          const SizedBox(height: 10),
+                          Row(children: [Expanded(child: toBtn)]),
+                          const SizedBox(height: 10),
+                          Row(children: [Expanded(child: resetBtn)]),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(child: statusField),
+                        const SizedBox(width: 12),
+                        SizedBox(width: 110, child: limitField),
+                        const SizedBox(width: 12),
+                        fromBtn,
+                        const SizedBox(width: 10),
+                        toBtn,
+                        const SizedBox(width: 10),
+                        resetBtn,
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            erp.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => EmptyState(
-                icon: Icons.error_outline,
-                title: 'Failed to load ERP quotations',
-                description: e.toString(),
-              ),
-              data: (data) {
-                if (data.items.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.description_outlined,
-                    title: 'No ERP quotations',
-                    description: 'Try a different search or status filter.',
-                  );
-                }
-                return Column(
-                  children: [
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: cols,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: cols == 1 ? 1.9 : 1.55,
-                      ),
-                      itemCount: data.items.length,
-                      itemBuilder: (context, i) => _ErpQuotationCard(
-                        quotation: data.items[i],
-                        onTap: () async {
-                          final full = await ref
-                              .read(erpQuotationsProvider.notifier)
-                              .fetchDetail(data.items[i].id);
-                          if (!context.mounted) return;
-                          await showModalBottomSheet<void>(
-                            context: context,
-                            isScrollControlled: true,
-                            showDragHandle: true,
-                            useSafeArea: true,
-                            builder: (_) => _ErpQuotationDetailSheet(
-                              quotation: full ?? data.items[i],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _ErpPager(
-                      page: data.page,
-                      totalPages: data.totalPages,
-                      onPage: (p) => ref
-                          .read(erpQuotationsProvider.notifier)
-                          .applyFilters(page: p),
-                    ),
-                  ],
-                );
-              },
+          ),
+          const SizedBox(height: 12),
+          erp.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => EmptyState(
+              icon: Icons.error_outline,
+              title: 'Failed to load ERP quotations',
+              description: e.toString(),
             ),
-          ],
+            data: (data) {
+              if (data.items.isEmpty) {
+                return const EmptyState(
+                  icon: Icons.description_outlined,
+                  title: 'No quotations found',
+                  description: 'Try adjusting your filters.',
+                );
+              }
+
+              final start = ((data.page - 1) * data.limit) + 1;
+              final end = (data.page * data.limit) > data.count
+                  ? data.count
+                  : (data.page * data.limit);
+
+              return Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Showing $start–$end of ${data.count}',
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: cols == 1 ? 1.55 : 1.35,
+                    ),
+                    itemCount: data.items.length,
+                    itemBuilder: (context, i) => _ErpQuotationCard(
+                      quotation: data.items[i],
+                      onTap: () async {
+                        final full = await ref
+                            .read(erpQuotationsProvider.notifier)
+                            .fetchDetail(data.items[i].id);
+                        if (!context.mounted) return;
+                        await showModalBottomSheet<void>(
+                          context: context,
+                          isScrollControlled: true,
+                          showDragHandle: true,
+                          useSafeArea: true,
+                          builder: (_) => _ErpQuotationDetailSheet(
+                            quotation: full ?? data.items[i],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _ErpPaginationBar(
+                    page: data.page,
+                    totalPages: data.totalPages,
+                    totalCount: data.count,
+                    limit: data.limit,
+                    onPage: (p) => ref
+                        .read(erpQuotationsProvider.notifier)
+                        .applyFilters(page: p),
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  void _changeStatus(String id, String status) {
-    ref.read(quotationsProvider.notifier).updateStatus(id, status);
-    AppToast.show(
-      context,
-      message: 'Quotation ${status.toLowerCase()}',
-      type: status == 'Approved' ? AppToastType.success : AppToastType.error,
-    );
-  }
-
-  Future<void> _openDetailSheet(BuildContext context, Quotation q) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (_) => _QuotationDetailSheet(quotation: q),
-    );
-  }
 }
 
-class _ErpPager extends StatelessWidget {
-  const _ErpPager({
+class _ErpPaginationBar extends StatelessWidget {
+  const _ErpPaginationBar({
     required this.page,
     required this.totalPages,
+    required this.totalCount,
+    required this.limit,
     required this.onPage,
   });
 
   final int page;
   final int totalPages;
+  final int totalCount;
+  final int limit;
   final ValueChanged<int> onPage;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: page <= 1 ? null : () => onPage(page - 1),
-          icon: const Icon(Icons.chevron_left),
-        ),
-        Expanded(
-          child: Center(
-            child: Text(
-              'Page $page of $totalPages',
-              style: TextStyle(color: Theme.of(context).hintColor),
+    if (totalPages <= 1) return const SizedBox.shrink();
+
+    final start = ((page - 1) * limit) + 1;
+    final end = (page * limit) > totalCount ? totalCount : (page * limit);
+
+    List<int> pagesToShow() {
+      if (totalPages <= 5) return [for (int i = 1; i <= totalPages; i++) i];
+      final set = <int>{1, totalPages, page - 1, page, page + 1};
+      final list = set.where((p) => p >= 1 && p <= totalPages).toList()..sort();
+      return list;
+    }
+
+    final pages = pagesToShow();
+
+    Widget pageButton(int p) {
+      final active = p == page;
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final bg = active
+          ? AppColors.blue600
+          : (isDark ? const Color(0xFF111827) : AppColors.gray100);
+      final fg =
+          active ? Colors.white : (isDark ? Colors.white : AppColors.gray700);
+      return InkWell(
+        onTap: () => onPage(p),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            p.toString(),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: fg,
+              fontSize: 12,
             ),
           ),
         ),
-        IconButton(
-          onPressed: page >= totalPages ? null : () => onPage(page + 1),
-          icon: const Icon(Icons.chevron_right),
-        ),
-      ],
+      );
+    }
+
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final narrow = c.maxWidth < 720;
+          final left = Text(
+            'Showing $start to $end of $totalCount results',
+            style: TextStyle(color: Theme.of(context).hintColor),
+          );
+
+          final right = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppButton(
+                label: 'Previous',
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                leading: const Icon(Icons.chevron_left),
+                onPressed: page <= 1 ? null : () => onPage(page - 1),
+              ),
+              const SizedBox(width: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < pages.length; i++) ...[
+                    if (i > 0 && pages[i] - pages[i - 1] > 1) ...[
+                      const SizedBox(width: 10),
+                      Text(
+                        '...',
+                        style: TextStyle(color: Theme.of(context).hintColor),
+                      ),
+                      const SizedBox(width: 10),
+                    ] else if (i > 0) ...[
+                      const SizedBox(width: 8),
+                    ],
+                    pageButton(pages[i]),
+                  ],
+                ],
+              ),
+              const SizedBox(width: 10),
+              AppButton(
+                label: 'Next',
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                leading: const Icon(Icons.chevron_right),
+                onPressed: page >= totalPages ? null : () => onPage(page + 1),
+              ),
+            ],
+          );
+
+          if (narrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                left,
+                const SizedBox(height: 10),
+                right,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: left),
+              right,
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -295,48 +490,110 @@ class _ErpQuotationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final amountText = _inr0.format(quotation.totalAmount);
+    final contact = (quotation.contactNo ?? '').trim().isNotEmpty
+        ? quotation.contactNo!.trim()
+        : quotation.customerId.trim();
+
     return AppCard(
       hover: true,
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            quotation.id,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w900,
-              color: AppColors.blue600,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            quotation.customerName.isEmpty ? '—' : quotation.customerName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              StatusBadge(label: quotation.status),
-              const Spacer(),
-              Text(
-                amountText,
-                style: const TextStyle(fontWeight: FontWeight.w900),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      quotation.id,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.blue600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      quotation.customerName.isEmpty
+                          ? '—'
+                          : quotation.customerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    ),
+                    if (contact.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        contact,
+                        style: TextStyle(
+                          color: Theme.of(context).hintColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              StatusBadge(
+                label: quotation.status.isEmpty ? 'Confirmed' : quotation.status,
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.14)),
           const SizedBox(height: 10),
-          Text(
-            quotation.date.isEmpty ? '—' : quotation.date,
-            style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+          Row(
+            children: [
+              Text(
+                'Date: ${_formatDate(quotation.date)}',
+                style: TextStyle(
+                  color: Theme.of(context).hintColor,
+                  fontSize: 12,
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: onTap,
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1FAE5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.emerald500,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  static String _formatDate(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '—';
+    try {
+      final base = t.length >= 10 ? t.substring(0, 10) : t;
+      final dt = DateTime.parse(base);
+      String two(int n) => n.toString().padLeft(2, '0');
+      return '${two(dt.day)}/${two(dt.month)}/${dt.year}';
+    } catch (_) {
+      return t;
+    }
   }
 }
 
@@ -525,6 +782,7 @@ class _QuotationCreateScreenState extends ConsumerState<QuotationCreateScreen> {
   }
 }
 
+// ignore: unused_element
 class _QuotationCard extends StatelessWidget {
   const _QuotationCard({
     required this.quotation,
@@ -997,6 +1255,7 @@ class _LineItemState {
   }
 }
 
+// ignore: unused_element
 class _QuotationDetailSheet extends StatelessWidget {
   const _QuotationDetailSheet({required this.quotation});
 

@@ -79,6 +79,7 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
     String? fromDate,
     String? toDate,
     int? page,
+    int? limit,
   }) async {
     final prev = state.valueOrNull;
     final next = prev?.copyWith(
@@ -87,12 +88,13 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
           fromDate: fromDate ?? prev.fromDate,
           toDate: toDate ?? prev.toDate,
           page: page ?? prev.page,
+          limit: limit ?? prev.limit,
         ) ??
         ErpQuotationsState(
           items: const [],
           count: 0,
           page: 1,
-          limit: 10,
+          limit: limit ?? 10,
           search: search ?? '',
           status: status ?? 'All',
           fromDate: fromDate ?? '',
@@ -121,4 +123,3 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
     }
   }
 }
-

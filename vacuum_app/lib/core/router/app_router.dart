@@ -128,10 +128,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/quotations',
             builder: (context, state) => const QuotationsScreen(),
           ),
-          GoRoute(
-            path: '/quotations/new',
-            builder: (context, state) => const QuotationCreateScreen(),
-          ),
           GoRoute(path: '/amc', builder: (context, state) => const AmcScreen()),
           GoRoute(
             path: '/amc/new',

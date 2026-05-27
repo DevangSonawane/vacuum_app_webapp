@@ -6,6 +6,7 @@ class ErpQuotation {
     required this.date,
     required this.status,
     required this.totalAmount,
+    this.contactNo,
     this.validUntil,
     this.currency,
     this.items = const [],
@@ -17,6 +18,7 @@ class ErpQuotation {
   final String date;
   final String status;
   final num totalAmount;
+  final String? contactNo;
   final String? validUntil;
   final String? currency;
   final List<ErpQuotationItem> items;
@@ -32,6 +34,21 @@ class ErpQuotation {
       return t.isEmpty ? null : t;
     }
 
+    final id = s(json['id'] ?? json['QuotNo'] ?? json['quotation_no']).trim();
+    final customerId = s(
+      json['customer_id'] ?? json['CustId'] ?? json['customerId'],
+    ).trim();
+    final customerName = s(
+      json['customer_name'] ?? json['CustName'] ?? json['customerName'],
+    ).trim();
+    final contactNo = sn(json['ContactNo'] ?? json['contact_no']);
+    final date = s(json['date'] ?? json['QuotDate']).trim();
+    final validUntil = sn(json['valid_until'] ?? json['validTill']);
+    final statusRaw = s(json['status']).trim();
+    final status = statusRaw.isEmpty ? 'Confirmed' : statusRaw;
+    final totalAmount =
+        n(json['total_amount'] ?? json['TotalAmt'] ?? json['total']);
+
     final itemsRaw = json['items'];
     final items = itemsRaw is List
         ? itemsRaw
@@ -42,13 +59,14 @@ class ErpQuotation {
         : const <ErpQuotationItem>[];
 
     return ErpQuotation(
-      id: s(json['id']).trim(),
-      customerId: s(json['customer_id']).trim(),
-      customerName: s(json['customer_name']).trim(),
-      date: s(json['date']).trim(),
-      validUntil: sn(json['valid_until']),
-      status: s(json['status']).trim().isEmpty ? 'Confirmed' : s(json['status']),
-      totalAmount: n(json['total_amount']),
+      id: id,
+      customerId: customerId,
+      customerName: customerName,
+      date: date,
+      validUntil: validUntil,
+      status: status,
+      totalAmount: totalAmount,
+      contactNo: contactNo,
       currency: sn(json['currency']),
       items: items,
     );
@@ -76,11 +94,10 @@ class ErpQuotationItem {
     }
 
     return ErpQuotationItem(
-      description: s(json['description']).trim(),
-      quantity: n(json['quantity']),
-      unitPrice: n(json['unit_price']),
-      total: n(json['total']),
+      description: s(json['description'] ?? json['Desc']).trim(),
+      quantity: n(json['quantity'] ?? json['Qty']),
+      unitPrice: n(json['unit_price'] ?? json['Rate']),
+      total: n(json['total'] ?? json['Total']),
     );
   }
 }
-

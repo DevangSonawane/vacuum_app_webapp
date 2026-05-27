@@ -176,7 +176,6 @@ class _TopBar extends ConsumerWidget {
     if (location.startsWith('/jobs')) return 'Visit Scheduled';
     if (location == '/reports/new') return 'New Report';
     if (location.startsWith('/reports')) return 'Service Reports';
-    if (location == '/quotations/new') return 'Create Quotation';
     if (location.startsWith('/quotations')) return 'Quotations';
     if (location == '/amc/new') return 'Add Contract';
     if (location.startsWith('/amc')) return 'AMC Contracts';
@@ -508,6 +507,12 @@ const _navItems = <_NavDescriptor>[
     route: '/amc',
     icon: Icons.verified_user_outlined,
     adminOnly: false,
+  ),
+  _NavDescriptor(
+    label: 'Quotations',
+    route: '/quotations',
+    icon: Icons.request_quote_outlined,
+    adminOnly: true,
   ),
   _NavDescriptor(
     label: 'Attendance',
