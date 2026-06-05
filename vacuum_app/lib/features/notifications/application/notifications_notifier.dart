@@ -24,6 +24,15 @@ final notificationsProvider =
 
 class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
   static const _wsUrl = 'wss://vaccumapi.onrender.com/ws';
+  static const _supportedEvents = {
+    'job_raised',
+    'job_status',
+    'report_submitted',
+    'report_reviewed',
+    'amc_expiring',
+    'amc_created',
+    'notification',
+  };
 
   NotificationsRepository get _repo =>
       ref.read(notificationsRepositoryProvider);
@@ -156,13 +165,19 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     }
 
     final event = (msg['event'] ?? '').toString();
-    if (event == 'pong') return;
-
-    final current = state.valueOrNull ?? NotificationsState.empty;
-    if (event == 'connected') {
-      state = AsyncData(current.copyWith(connected: true));
+    if (event == 'pong' || event == 'connected') {
+      if (event == 'connected') {
+        final current = state.valueOrNull ?? NotificationsState.empty;
+        state = AsyncData(current.copyWith(connected: true));
+      }
       return;
     }
+
+    if (event.isEmpty || !_supportedEvents.contains(event)) {
+      return;
+    }
+
+    final current = state.valueOrNull ?? NotificationsState.empty;
 
     final meta = notificationMeta(event);
     final data = _asMap(msg['data']);
