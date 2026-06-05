@@ -15,37 +15,64 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final titleSize = compact ? 18.0 : 22.0;
+
+        final textBlock = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontSize: titleSize,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
               Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
+                subtitle!,
+                maxLines: compact ? 3 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: compact ? 12 : 13,
+                  color: isDark
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF6B7280),
                 ),
               ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  subtitle!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontSize: 13,
-                    color: isDark
-                        ? const Color(0xFF9CA3AF)
-                        : const Color(0xFF6B7280),
-                  ),
-                ),
-              ],
             ],
-          ),
-        ),
-        ...?(action == null ? null : [action!]),
-      ],
+          ],
+        );
+
+        if (action == null) {
+          return textBlock;
+        }
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              textBlock,
+              const SizedBox(height: 12),
+              Align(alignment: Alignment.centerLeft, child: action!),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: textBlock),
+            const SizedBox(width: 12),
+            action!,
+          ],
+        );
+      },
     );
   }
 }

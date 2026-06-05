@@ -19,12 +19,12 @@ class AttendanceEmployeesNotifier
 
   @override
   Future<List<AttendanceEmployee>> build() async {
-    return _repo.fetchEmployees();
+    return _loadSafe();
   }
 
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _repo.fetchEmployees());
+    state = AsyncData(await _loadSafe());
   }
 
   Future<AttendanceEmployee?> previewEmployee(String employeeId) async {
@@ -75,6 +75,14 @@ class AttendanceEmployeesNotifier
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<List<AttendanceEmployee>> _loadSafe() async {
+    try {
+      return await _repo.fetchEmployees();
+    } catch (_) {
+      return const [];
     }
   }
 }

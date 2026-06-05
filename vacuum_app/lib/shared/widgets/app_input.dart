@@ -47,6 +47,8 @@ class _AppInputState extends State<AppInput> {
     final labelColor = isDark
         ? const Color(0xFFE5E7EB)
         : const Color(0xFF374151);
+    final size = MediaQuery.sizeOf(context);
+    final compact = size.width < 420 || size.height < 760;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,7 +58,7 @@ class _AppInputState extends State<AppInput> {
             text: widget.label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              fontSize: 13,
+              fontSize: compact ? 12 : 13,
               color: labelColor,
             ),
             children: widget.required
@@ -72,7 +74,7 @@ class _AppInputState extends State<AppInput> {
                 : const [],
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: compact ? 4 : 8),
         TextField(
           controller: widget.controller,
           enabled: widget.enabled,
@@ -87,10 +89,16 @@ class _AppInputState extends State<AppInput> {
             hintText: widget.placeholder,
             prefixIcon: widget.prefix,
             suffixIcon: suffix,
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: compact ? 10 : 12,
+            ),
           ),
+          style: const TextStyle(fontSize: 14),
         ),
         if (widget.helperText != null) ...[
-          const SizedBox(height: 6),
+          SizedBox(height: compact ? 4 : 6),
           Text(
             widget.helperText!,
             style: Theme.of(

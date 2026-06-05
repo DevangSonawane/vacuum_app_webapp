@@ -41,7 +41,7 @@ class AttendanceScreen extends ConsumerWidget {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'Failed to load',
-        description: e.toString(),
+        description: 'Could not load attendance right now.',
       ),
       data: (data) {
         final rows = data.items;

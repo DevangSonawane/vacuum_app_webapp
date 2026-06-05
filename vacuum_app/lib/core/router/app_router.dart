@@ -138,6 +138,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/attendance',
+            builder: (context, state) => const AttendanceEmployeesScreen(),
+          ),
+          GoRoute(
+            path: '/attendance/tracking',
             builder: (context, state) => const AttendanceScreen(),
           ),
           GoRoute(

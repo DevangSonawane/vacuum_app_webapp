@@ -10,14 +10,20 @@ class AttendanceRepository {
   final Dio _dio;
 
   Future<List<AttendanceEntry>> fetchByDate(String date) async {
-    final res = await _dio.get('attendance', queryParameters: {'date': date});
-    final root = _asMap(res.data);
-    final list = _asList(root['data']);
-    return list
-        .whereType<Map>()
-        .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-        .map((e) => AttendanceEntry.fromJson(e, fallbackDate: date))
-        .toList();
+    try {
+      final res = await _dio.get('attendance', queryParameters: {'date': date});
+      final root = _asMap(res.data);
+      final list = _asList(root['data']);
+      return list
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+          .map((e) => AttendanceEntry.fromJson(e, fallbackDate: date))
+          .toList();
+    } on DioException catch (err) {
+      final status = err.response?.statusCode;
+      if (status == 404 || status == 204 || status == 400) return [];
+      return [];
+    }
   }
 
   Future<void> markAttendance(Map<String, dynamic> payload) async {
@@ -25,28 +31,40 @@ class AttendanceRepository {
   }
 
   Future<List<AttendanceEmployee>> fetchEmployees() async {
-    final res = await _dio.get('attendance/people');
-    final root = _asMap(res.data);
-    final list = _asList(root['employees'] ?? root['data']);
-    return list
-        .whereType<Map>()
-        .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-        .map(AttendanceEmployee.fromJson)
-        .toList();
+    try {
+      final res = await _dio.get('attendance/people');
+      final root = _asMap(res.data);
+      final list = _asList(root['employees'] ?? root['data']);
+      return list
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+          .map(AttendanceEmployee.fromJson)
+          .toList();
+    } on DioException {
+      return [];
+    }
   }
 
-  Future<AttendanceEmployee> fetchEmployee(String employeeId) async {
-    final res = await _dio.get('attendance/people/$employeeId');
-    final root = _asMap(res.data);
-    final employee = _asMap(root['employee'] ?? root['data'] ?? root);
-    return AttendanceEmployee.fromJson(employee);
+  Future<AttendanceEmployee?> fetchEmployee(String employeeId) async {
+    try {
+      final res = await _dio.get('attendance/people/$employeeId');
+      final root = _asMap(res.data);
+      final employee = _asMap(root['employee'] ?? root['data'] ?? root);
+      return AttendanceEmployee.fromJson(employee);
+    } on DioException {
+      return null;
+    }
   }
 
-  Future<AttendanceEmployee> fetchEmployeePreview(String employeeId) async {
-    final res = await _dio.get('attendance/people/view/$employeeId');
-    final root = _asMap(res.data);
-    final employee = _asMap(root['employee'] ?? root['data'] ?? root);
-    return AttendanceEmployee.fromJson(employee);
+  Future<AttendanceEmployee?> fetchEmployeePreview(String employeeId) async {
+    try {
+      final res = await _dio.get('attendance/people/view/$employeeId');
+      final root = _asMap(res.data);
+      final employee = _asMap(root['employee'] ?? root['data'] ?? root);
+      return AttendanceEmployee.fromJson(employee);
+    } on DioException {
+      return null;
+    }
   }
 
   Future<void> storeEmployee({
@@ -102,7 +120,7 @@ class AttendanceRepository {
       return AttendanceRecord.fromJson(payload);
     } on DioException catch (err) {
       if (err.response?.statusCode == 404) return null;
-      rethrow;
+      return null;
     }
   }
 

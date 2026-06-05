@@ -179,6 +179,7 @@ class _TopBar extends ConsumerWidget {
     if (location.startsWith('/quotations')) return 'Quotations';
     if (location == '/amc/new') return 'Add Contract';
     if (location.startsWith('/amc')) return 'AMC Contracts';
+    if (location == '/attendance') return 'Employees';
     if (location.startsWith('/attendance')) return 'Attendance';
     if (location.startsWith('/email')) return 'Email Settings';
     if (location.startsWith('/activity')) return 'Activity History';

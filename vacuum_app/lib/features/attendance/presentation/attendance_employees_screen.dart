@@ -97,99 +97,132 @@ class _AttendanceEmployeesScreenState
 
     final state = ref.watch(attendanceEmployeesProvider);
 
-    return RefreshIndicator(
-      onRefresh: () => ref.read(attendanceEmployeesProvider.notifier).refresh(),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionHeader(
-              title: 'Employees',
-              subtitle: 'Manage RazorpayX employee records',
-              action: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Refresh',
-                    onPressed: () =>
-                        ref.read(attendanceEmployeesProvider.notifier).refresh(),
-                    icon: const Icon(Icons.refresh),
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'Employees',
+            subtitle: 'Manage RazorpayX employee records',
+            action: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.start,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (canManage)
+                  AppButton(
+                    label: 'Add Employee',
+                    variant: AppButtonVariant.outline,
+                    onPressed: () => _openAddSheet(context),
                   ),
-                  if (canManage)
-                    AppButton(
-                      label: 'Add Employee',
-                      variant: AppButtonVariant.outline,
-                      onPressed: () => _openAddSheet(context),
-                    ),
-                ],
-              ),
+              ],
             ),
-            const SizedBox(height: 16),
-            state.when(
-              loading: () => const _EmployeesSkeleton(),
-              error: (error, _) => EmptyState(
-                icon: Icons.error_outline,
-                title: 'Failed to load employees',
-                description: error.toString(),
-              ),
-              data: (employees) {
-                final filtered = employees.where((emp) {
-                  if (_query.isEmpty) return true;
-                  return [
-                    emp.name,
-                    emp.email,
-                    emp.department,
-                    emp.title,
-                    emp.employeeId,
-                    emp.phoneNumber,
-                  ].any((value) => value.toLowerCase().contains(_query));
-                }).toList();
+          ),
+          const SizedBox(height: 16),
+          state.when(
+            loading: () => const _EmployeesSkeleton(),
+            error: (error, _) => EmptyState(
+              icon: Icons.error_outline,
+              title: 'Failed to load employees',
+              description: 'Could not load employee records right now.',
+            ),
+            data: (employees) {
+              final filtered = employees.where((emp) {
+                if (_query.isEmpty) return true;
+                return [
+                  emp.name,
+                  emp.email,
+                  emp.department,
+                  emp.title,
+                  emp.employeeId,
+                  emp.phoneNumber,
+                ].any((value) => value.toLowerCase().contains(_query));
+              }).toList();
 
-                final active = employees.where((e) => e.isActive).length;
-                final inactive = employees.length - active;
+              final active = employees.where((e) => e.isActive).length;
+              final inactive = employees.length - active;
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.9,
-                      children: [
-                        StatCard(title: 'Total Employees', value: '${employees.length}'),
-                        StatCard(title: 'Active', value: '$active'),
-                        StatCard(title: 'Inactive', value: '$inactive'),
-                        StatCard(title: 'Managed', value: '${employees.where((e) => e.annualCtc != null).length}'),
-                      ],
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.9,
+                    children: [
+                      StatCard(title: 'Total Employees', value: '${employees.length}'),
+                      StatCard(title: 'Active', value: '$active'),
+                      StatCard(title: 'Inactive', value: '$inactive'),
+                      StatCard(title: 'Managed', value: '${employees.where((e) => e.annualCtc != null).length}'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    decoration: const InputDecoration(
+                      hintText: 'Search by name, email, department, title…',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _searchController,
-                      onChanged: _onSearchChanged,
-                      decoration: const InputDecoration(
-                        hintText: 'Search by name, email, department, title…',
-                        prefixIcon: Icon(Icons.search),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (filtered.isEmpty)
-                      const EmptyState(
-                        icon: Icons.badge_outlined,
-                        title: 'No employees found',
-                        description: 'Try a different search or add a new employee.',
-                      )
-                    else
-                      AppCard(
-                        padding: EdgeInsets.zero,
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+                  ),
+                  const SizedBox(height: 16),
+                  if (filtered.isEmpty)
+                    const EmptyState(
+                      icon: Icons.badge_outlined,
+                      title: 'No employees found',
+                      description: 'Try a different search or add a new employee.',
+                    )
+                  else
+                    AppCard(
+                      padding: EdgeInsets.zero,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            dataTableTheme: DataTableThemeData(
+                              headingRowColor: WidgetStateProperty.all(
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? const Color(0xFF111827)
+                                    : AppColors.gray50,
+                              ),
+                              dataRowColor: WidgetStateProperty.resolveWith(
+                                (states) {
+                                  if (states.contains(WidgetState.selected) ||
+                                      states.contains(WidgetState.hovered)) {
+                                    return (Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.white
+                                            : Colors.black)
+                                        .withValues(alpha: 0.04);
+                                  }
+                                  return Colors.transparent;
+                                },
+                              ),
+                              headingTextStyle: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.gray500,
+                              ),
+                              dataTextStyle: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.gray700,
+                              ),
+                            ),
+                          ),
                           child: DataTable(
+                            showCheckboxColumn: false,
+                            headingRowHeight: 44,
+                            dataRowMinHeight: 54,
+                            dataRowMaxHeight: 64,
+                            horizontalMargin: 16,
+                            columnSpacing: 20,
+                            dividerThickness: 0.6,
                             columns: const [
                               DataColumn(label: Text('Employee')),
                               DataColumn(label: Text('Department / Title')),
@@ -201,6 +234,7 @@ class _AttendanceEmployeesScreenState
                             rows: [
                               for (final emp in filtered)
                                 DataRow(
+                                  selected: false,
                                   onSelectChanged: canView
                                       ? (_) => context.push(
                                             '/attendance/${emp.employeeId}',
@@ -218,9 +252,27 @@ class _AttendanceEmployeesScreenState
                                             : null,
                                         child: Row(
                                           children: [
-                                            AppAvatar(
-                                              initials: initialsFromName(emp.name),
-                                              size: AppAvatarSize.sm,
+                                            Container(
+                                              width: 36,
+                                              height: 36,
+                                              decoration: const BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Color(0xFF3B82F6),
+                                                    Color(0xFF4F46E5),
+                                                  ],
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                initialsFromName(emp.name),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
                                             ),
                                             const SizedBox(width: 10),
                                             ConstrainedBox(
@@ -237,8 +289,8 @@ class _AttendanceEmployeesScreenState
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w700,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: AppColors.gray800,
                                                     ),
                                                   ),
                                                   Text(
@@ -266,6 +318,10 @@ class _AttendanceEmployeesScreenState
                                                 ? '—'
                                                 : emp.department,
                                             overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.gray700,
+                                            ),
                                           ),
                                           Text(
                                             emp.title.isEmpty ? '—' : emp.title,
@@ -287,6 +343,9 @@ class _AttendanceEmployeesScreenState
                                           Text(
                                             emp.email.isEmpty ? '—' : emp.email,
                                             overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: AppColors.gray700,
+                                            ),
                                           ),
                                           Text(
                                             emp.phoneNumber.isEmpty
@@ -309,13 +368,15 @@ class _AttendanceEmployeesScreenState
                                               : FontWeight.w700,
                                           color: emp.annualCtc == null
                                               ? AppColors.gray500
-                                              : null,
+                                              : AppColors.gray800,
                                         ),
                                       ),
                                     ),
-                                    DataCell(StatusBadge(
-                                      label: emp.isActive ? 'Active' : 'Inactive',
-                                    )),
+                                    DataCell(
+                                      StatusBadge(
+                                        label: emp.isActive ? 'Active' : 'Inactive',
+                                      ),
+                                    ),
                                     DataCell(
                                       Row(
                                         children: [
@@ -334,14 +395,17 @@ class _AttendanceEmployeesScreenState
                                               tooltip: 'Edit employee',
                                               onPressed: () =>
                                                   _openEditSheet(context, emp),
-                                              icon: const Icon(Icons.edit_outlined),
+                                              icon:
+                                                  const Icon(Icons.edit_outlined),
                                             ),
                                           if (canManage)
                                             IconButton(
                                               tooltip: 'Set salary',
                                               onPressed: () =>
                                                   _openSalarySheet(context, emp),
-                                              icon: const Icon(Icons.payments_outlined),
+                                              icon: const Icon(
+                                                Icons.payments_outlined,
+                                              ),
                                             ),
                                         ],
                                       ),
@@ -352,12 +416,12 @@ class _AttendanceEmployeesScreenState
                           ),
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -484,13 +548,19 @@ class _AddEmployeeSheetState extends ConsumerState<_AddEmployeeSheet> {
     });
 
     try {
-      final preview = await ref.read(attendanceEmployeesProvider.notifier).previewEmployee(id);
+      final preview =
+          await ref.read(attendanceEmployeesProvider.notifier).previewEmployee(id);
       if (!mounted) return;
-      setState(() => _preview = preview);
+      setState(() {
+        _preview = preview;
+        if (preview == null) {
+          _error = 'Could not fetch the employee preview.';
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = 'Could not fetch the employee preview.';
       });
     } finally {
       if (mounted) setState(() => _fetching = false);
@@ -531,124 +601,146 @@ class _AddEmployeeSheetState extends ConsumerState<_AddEmployeeSheet> {
       minChildSize: 0.65,
       maxChildSize: 0.95,
       expand: false,
-      builder: (context, scroll) => SingleChildScrollView(
+      builder: (context, scroll) => ListView(
         controller: scroll,
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         padding: EdgeInsets.fromLTRB(
           16,
           0,
           16,
           MediaQuery.of(context).viewInsets.bottom + 16,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Fetch Employee from RazorpayX', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            const Text(
-              'Enter the numeric employee ID to preview the record before saving it locally.',
-              style: TextStyle(color: AppColors.gray500),
-            ),
-            const SizedBox(height: 16),
-            AppInput(
-              label: 'RazorpayX Employee ID',
-              controller: _employeeId,
-              type: AppInputType.number,
-              placeholder: 'e.g. 1',
-              required: true,
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _softRed,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: AppColors.red500),
-                ),
+        children: [
+          Text('Fetch Employee from RazorpayX', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          const Text(
+            'Enter the numeric employee ID to preview the record before saving it locally.',
+            style: TextStyle(color: AppColors.gray500),
+          ),
+          const SizedBox(height: 16),
+          AppInput(
+            label: 'RazorpayX Employee ID',
+            controller: _employeeId,
+            type: AppInputType.number,
+            placeholder: 'e.g. 1',
+            required: true,
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _softRed,
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-            const SizedBox(height: 16),
-            if (_preview != null) ...[
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        AppAvatar(
-                          initials: initialsFromName(_preview!.name),
-                          size: AppAvatarSize.md,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _preview!.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Text(
-                                [
-                                  _preview!.title,
-                                  _preview!.department,
-                                ].where((v) => v.isNotEmpty).join(' · '),
-                                style: const TextStyle(color: AppColors.gray500),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _EmployeeDetailRow(label: 'Employee ID', value: _employeeId.text.trim()),
-                    _EmployeeDetailRow(label: 'Email', value: _preview!.email),
-                    _EmployeeDetailRow(label: 'Phone', value: _preview!.phoneNumber),
-                    _EmployeeDetailRow(label: 'Date of Birth', value: _formatDate(_preview!.dateOfBirth)),
-                    _EmployeeDetailRow(label: 'Date of Hiring', value: _formatDate(_preview!.dateOfHiring)),
-                    _EmployeeDetailRow(label: 'Manager Email', value: _preview!.managerEmail ?? '—'),
-                    _EmployeeDetailRow(label: 'PAN', value: _preview!.pan ?? '—'),
-                    _EmployeeDetailRow(label: 'Bank IFSC', value: _preview!.bankIfsc ?? '—'),
-                    _EmployeeDetailRow(label: 'Bank Account', value: _preview!.bankAccountNumber ?? '—'),
-                  ],
-                ),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: AppColors.red500),
               ),
-            ],
-            const SizedBox(height: 20),
-            BottomSafeArea(
-              child: Row(
+            ),
+          ],
+          const SizedBox(height: 16),
+          if (_preview != null) ...[
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: AppButton(
-                      label: 'Cancel',
-                      variant: AppButtonVariant.secondary,
-                      expanded: true,
-                      onPressed: _saving ? null : () => Navigator.of(context).pop(),
-                    ),
+                  Row(
+                    children: [
+                      AppAvatar(
+                        initials: initialsFromName(_preview!.name),
+                        size: AppAvatarSize.md,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _preview!.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              [
+                                _preview!.title,
+                                _preview!.department,
+                              ].where((v) => v.isNotEmpty).join(' · '),
+                              style: const TextStyle(color: AppColors.gray500),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppButton(
-                      label: _preview == null ? 'Fetch Preview' : 'Save to Database',
-                      expanded: true,
-                      loading: _fetching || _saving,
-                      onPressed: _fetching || _saving
-                          ? null
-                          : (_preview == null ? _fetchPreview : _save),
-                    ),
+                  const SizedBox(height: 16),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cols = constraints.maxWidth >= 560 ? 2 : 1;
+                      final entries = [
+                        ('Employee ID', _employeeId.text.trim()),
+                        ('Email', _preview!.email),
+                        ('Phone', _preview!.phoneNumber),
+                        ('Date of Birth', _formatDate(_preview!.dateOfBirth)),
+                        ('Date of Hiring', _formatDate(_preview!.dateOfHiring)),
+                        ('Department', _preview!.department),
+                        ('Manager Email', _preview!.managerEmail ?? '—'),
+                        ('PAN', _preview!.pan ?? '—'),
+                        ('Bank IFSC', _preview!.bankIfsc ?? '—'),
+                        ('Bank Account', _preview!.bankAccountNumber ?? '—'),
+                      ];
+
+                      return GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: cols,
+                        crossAxisSpacing: 18,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: cols == 2 ? 3.1 : 4.2,
+                        children: [
+                          for (final entry in entries)
+                            _EmployeeDetailRow(
+                              label: entry.$1,
+                              value: entry.$2,
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
             ),
           ],
-        ),
+          const SizedBox(height: 20),
+          BottomSafeArea(
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: 'Cancel',
+                    variant: AppButtonVariant.secondary,
+                    expanded: true,
+                    onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppButton(
+                    label: _preview == null ? 'Fetch Preview' : 'Save to Database',
+                    expanded: true,
+                    loading: _fetching || _saving,
+                    onPressed: _fetching || _saving
+                        ? null
+                        : (_preview == null ? _fetchPreview : _save),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

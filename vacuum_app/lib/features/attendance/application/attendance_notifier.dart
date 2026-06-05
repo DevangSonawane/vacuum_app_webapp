@@ -58,19 +58,19 @@ class AttendanceNotifier extends AsyncNotifier<AttendanceState> {
   @override
   Future<AttendanceState> build() async {
     final now = DateTime.now();
-    return _loadForDate(now);
+    return _loadForDateSafe(now);
   }
 
   Future<void> setDate(DateTime date) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _loadForDate(date));
+    state = AsyncData(await _loadForDateSafe(date));
   }
 
   Future<void> refresh() async {
     final current = state.valueOrNull;
     if (current == null) return;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _loadForDate(current.date));
+    state = AsyncData(await _loadForDateSafe(current.date));
   }
 
   Future<bool> markAttendance(Map<String, dynamic> payload) async {
@@ -88,6 +88,18 @@ class AttendanceNotifier extends AsyncNotifier<AttendanceState> {
     final items = await _repo.fetchByDate(dateKey);
     final week = await _fetchWeek(date);
     return AttendanceState(date: date, items: items, week: week);
+  }
+
+  Future<AttendanceState> _loadForDateSafe(DateTime date) async {
+    try {
+      return await _loadForDate(date);
+    } catch (_) {
+      return AttendanceState(
+        date: date,
+        items: const [],
+        week: await _fetchWeek(date),
+      );
+    }
   }
 
   Future<List<AttendanceDaySummary>> _fetchWeek(DateTime anchor) async {

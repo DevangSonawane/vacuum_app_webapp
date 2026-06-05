@@ -102,6 +102,13 @@ class _AttendanceEmployeeDetailScreenState
       final repo = AttendanceRepository(dio: ref.read(dioProvider));
       final employee = await repo.fetchEmployee(widget.employeeId);
       if (!mounted) return;
+      if (employee == null) {
+        setState(() {
+          _employeeError = null;
+          _employee = null;
+        });
+        return;
+      }
       setState(() {
         _employee = employee;
       });
@@ -109,7 +116,7 @@ class _AttendanceEmployeeDetailScreenState
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _employeeError = e.toString();
+        _employeeError = 'Could not load employee details right now.';
       });
     } finally {
       if (mounted) setState(() => _employeeLoading = false);
@@ -136,17 +143,9 @@ class _AttendanceEmployeeDetailScreenState
       setState(() => _attendance = record);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _attendanceError = e.toString());
+      setState(() => _attendanceError = 'Could not load attendance right now.');
     } finally {
       if (mounted) setState(() => _attendanceLoading = false);
-    }
-  }
-
-  Future<void> _refresh() async {
-    if (_employee == null) {
-      await _loadEmployee();
-    } else {
-      await _loadAttendance();
     }
   }
 
@@ -209,8 +208,10 @@ class _AttendanceEmployeeDetailScreenState
       accentSoft = AppColors.gray50;
     }
 
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset + 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -225,66 +226,53 @@ class _AttendanceEmployeeDetailScreenState
                   variant: AppButtonVariant.secondary,
                   onPressed: () => Navigator.of(context).pop(),
                 ),
-                const SizedBox(width: 8),
-                AppButton(
-                  label: 'Refresh',
-                  variant: AppButtonVariant.outline,
-                  onPressed: _refresh,
-                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           AppCard(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppAvatar(
-                  initials: initialsFromName(employee.name),
-                  size: AppAvatarSize.lg,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              employee.name,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final stacked = constraints.maxWidth < 720;
+                final summary = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            employee.name,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                          StatusBadge(label: employee.isActive ? 'Active' : 'Inactive'),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        [employee.title, employee.department]
-                            .where((v) => v.isNotEmpty)
-                            .join(' · '),
-                        style: const TextStyle(color: AppColors.gray500),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
-                        children: [
-                          _MetaChip(label: 'Email', value: employee.email),
-                          _MetaChip(label: 'Phone', value: employee.phoneNumber),
-                          _MetaChip(label: 'Employee ID', value: employee.employeeId),
-                          _MetaChip(label: 'Hired', value: _formatDate(employee.dateOfHiring)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                        ),
+                        StatusBadge(label: employee.isActive ? 'Active' : 'Inactive'),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      [employee.title, employee.department]
+                          .where((v) => v.isNotEmpty)
+                          .join(' · '),
+                      style: const TextStyle(color: AppColors.gray500),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        _MetaChip(label: 'Email', value: employee.email),
+                        _MetaChip(label: 'Phone', value: employee.phoneNumber),
+                        _MetaChip(label: 'Employee ID', value: employee.employeeId),
+                        _MetaChip(label: 'Hired', value: _formatDate(employee.dateOfHiring)),
+                      ],
+                    ),
+                  ],
+                );
+
+                final salaryBlock = Column(
+                  crossAxisAlignment: stacked ? CrossAxisAlignment.start : CrossAxisAlignment.end,
                   children: [
                     const Text(
                       'Annual CTC',
@@ -302,83 +290,130 @@ class _AttendanceEmployeeDetailScreenState
                       ),
                     ),
                   ],
-                ),
-              ],
+                );
+
+                if (stacked) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          AppAvatar(
+                            initials: initialsFromName(employee.name),
+                            size: AppAvatarSize.lg,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(child: summary),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      salaryBlock,
+                    ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppAvatar(
+                      initials: initialsFromName(employee.name),
+                      size: AppAvatarSize.lg,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(child: summary),
+                    const SizedBox(width: 12),
+                    salaryBlock,
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              _DateNavButton(
-                icon: Icons.chevron_left,
-                onPressed: () {
-                  setState(() => _date = _shiftDate(_date, -1));
-                  _loadAttendance();
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final datePicker = GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setState(() => _date = _startOfDay(picked));
+                    await _loadAttendance();
+                  }
                 },
-              ),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _date,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (picked != null) {
-                      setState(() => _date = _startOfDay(picked));
-                      await _loadAttendance();
-                    }
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF0B1220)
-                          : AppColors.gray50,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.gray400),
-                        const SizedBox(width: 8),
-                        Text(_displayDate(_date)),
-                      ],
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFF0B1220)
+                        : AppColors.gray50,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
                     ),
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.gray400),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          _displayDate(_date),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              _DateNavButton(
-                icon: Icons.chevron_right,
-                onPressed: _date.isBefore(_startOfDay(DateTime.now()))
-                    ? () {
-                        setState(() => _date = _shiftDate(_date, 1));
-                        _loadAttendance();
-                      }
-                    : null,
-              ),
-              const SizedBox(width: 8),
-              AppButton(
-                label: 'Today',
-                variant: _date == _startOfDay(DateTime.now())
-                    ? AppButtonVariant.primary
-                    : AppButtonVariant.secondary,
-                onPressed: () {
-                  setState(() => _date = _startOfDay(DateTime.now()));
-                  _loadAttendance();
-                },
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Refresh attendance',
-                onPressed: _loadAttendance,
-                icon: const Icon(Icons.refresh),
-              ),
-            ],
+              );
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _DateNavButton(
+                    icon: Icons.chevron_left,
+                    onPressed: () {
+                      setState(() => _date = _shiftDate(_date, -1));
+                      _loadAttendance();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: datePicker),
+                  const SizedBox(width: 8),
+                  AppButton(
+                    label: 'Today',
+                    size: AppButtonSize.sm,
+                    variant: _date == _startOfDay(DateTime.now())
+                        ? AppButtonVariant.primary
+                        : AppButtonVariant.secondary,
+                    onPressed: () {
+                      setState(() => _date = _startOfDay(DateTime.now()));
+                      _loadAttendance();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Reload attendance',
+                    onPressed: _loadAttendance,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                  _DateNavButton(
+                    icon: Icons.chevron_right,
+                    onPressed: _date.isBefore(_startOfDay(DateTime.now()))
+                        ? () {
+                            setState(() => _date = _shiftDate(_date, 1));
+                            _loadAttendance();
+                          }
+                        : null,
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           if (_attendanceLoading)
@@ -650,6 +685,15 @@ class _AttendanceEmployeeDetailScreenState
                 ),
               ),
             ],
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: AppButton(
+                label: 'Reload Attendance',
+                variant: AppButtonVariant.outline,
+                onPressed: _loadAttendance,
+              ),
+            ),
           ],
         ],
       ),
