@@ -22,7 +22,8 @@ import Reports        from "./pages/Reports";
 import ReportDetail   from "./pages/ReportDetail";
 import Quotations     from "./pages/Quotations";
 import AMC            from "./pages/AMC";
-import Attendance     from "./pages/Attendance";
+import Attendance       from "./pages/Attendance";
+import AttendanceDetail from "./pages/AttendanceDetail";
 import EmailSettings  from "./pages/EmailSettings";
 import CreateReport from "./pages/CreateReport";
 import ActivityHistory from "./pages/ActivityHistory";
@@ -112,7 +113,8 @@ function AppContent() {
         {/* Other modules */}
         <Route path="/quotations" element={<PL><Quotations /></PL>} />
         <Route path="/amc"        element={<PL><AMC /></PL>} />
-        <Route path="/attendance" element={<PL><Attendance /></PL>} />
+        <Route path="/attendance"                    element={<PL><Attendance /></PL>} />
+        <Route path="/attendance/:employee_id"       element={<PL><AttendanceDetail /></PL>} />
         <Route path="/activity"   element={<PL><ActivityHistory /></PL>} />
 
         {/* Admin only */}

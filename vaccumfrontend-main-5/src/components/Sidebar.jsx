@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { id: "dashboard",   label: "Dashboard",        icon: LayoutDashboard, path: "/"            },
   { id: "technicians", label: "Technicians",       icon: UserCog,         path: "/technicians" },
   { id: "clients",     label: "Clients",           icon: Users,           path: "/clients"     },
+   { id: "quotations",    label: "Quotations",        icon: DollarSign,      path: "/quotations",   adminOnly: true },
   { id: "amc",         label: "AMC Contracts",     icon: ShieldCheck,     path: "/amc"         },
   { id: "jobs",        label: "Visit Scheduled",   icon: CalendarCheck,   path: "/jobs"        },
   { id: "reports",     label: "Service & Reports", icon: ClipboardList,   path: "/reports"     },
@@ -25,7 +26,7 @@ const NAV_ITEMS = [
   { id: "email",       label: "Email Settings",    icon: Mail,            path: "/email",      adminOnly: true },
   { id: "activity",    label: "Activity History",  icon: FileText,        path: "/activity",   adminOnly: true },
   { id: "users",       label: "Users",             icon: Users,           path: "/users",      adminOnly: true },
-  { id: "quotations",    label: "Quotations",        icon: DollarSign,      path: "/quotations",   adminOnly: true },
+ 
 ];
 
 // ── Colour per notification event ────────────────────────────

@@ -11,6 +11,9 @@ import '../../features/shell/presentation/app_shell.dart';
 import '../../features/clients/presentation/clients_screen.dart';
 import '../../features/amc/presentation/amc_screen.dart';
 import '../../features/attendance/presentation/attendance_screen.dart';
+import '../../features/attendance/presentation/attendance_employees_screen.dart';
+import '../../features/attendance/presentation/attendance_employee_detail_screen.dart';
+import '../../features/attendance/domain/attendance_employee.dart';
 import '../../features/activity/presentation/activity_screen.dart';
 import '../../features/jobs/presentation/job_detail_screen.dart';
 import '../../features/jobs/presentation/jobs_screen.dart';
@@ -136,6 +139,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/attendance',
             builder: (context, state) => const AttendanceScreen(),
+          ),
+          GoRoute(
+            path: '/attendance/people',
+            builder: (context, state) => const AttendanceEmployeesScreen(),
+          ),
+          GoRoute(
+            path: '/attendance/:employee_id',
+            builder: (context, state) => AttendanceEmployeeDetailScreen(
+              employeeId: state.pathParameters['employee_id']!,
+              employee: state.extra is AttendanceEmployee
+                  ? state.extra as AttendanceEmployee
+                  : null,
+            ),
           ),
           GoRoute(
             path: '/email',

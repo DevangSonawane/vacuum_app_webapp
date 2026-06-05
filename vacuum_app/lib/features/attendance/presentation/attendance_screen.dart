@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
@@ -32,6 +33,7 @@ class AttendanceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canEdit = !['technician', 'labour'].contains(role);
+    final canViewEmployees = role == 'admin' || role == 'manager';
 
     final state = ref.watch(attendanceProvider);
     return state.when(
@@ -66,6 +68,15 @@ class AttendanceScreen extends ConsumerWidget {
                           ref.read(attendanceProvider.notifier).refresh(),
                       icon: const Icon(Icons.refresh),
                     ),
+                    const SizedBox(width: 4),
+                    if (canViewEmployees) ...[
+                      AppButton(
+                        label: 'Employees',
+                        variant: AppButtonVariant.outline,
+                        onPressed: () => context.go('/attendance/people'),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     if (canEdit)
                       AppButton(
                         label: 'Mark Attendance',
