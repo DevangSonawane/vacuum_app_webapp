@@ -97,331 +97,334 @@ class _AttendanceEmployeesScreenState
 
     final state = ref.watch(attendanceEmployeesProvider);
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
-            title: 'Employees',
-            subtitle: 'Manage RazorpayX employee records',
-            action: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.start,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (canManage)
-                  AppButton(
-                    label: 'Add Employee',
-                    variant: AppButtonVariant.outline,
-                    onPressed: () => _openAddSheet(context),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          state.when(
-            loading: () => const _EmployeesSkeleton(),
-            error: (error, _) => EmptyState(
-              icon: Icons.error_outline,
-              title: 'Failed to load employees',
-              description: 'Could not load employee records right now.',
-            ),
-            data: (employees) {
-              final filtered = employees.where((emp) {
-                if (_query.isEmpty) return true;
-                return [
-                  emp.name,
-                  emp.email,
-                  emp.department,
-                  emp.title,
-                  emp.employeeId,
-                  emp.phoneNumber,
-                ].any((value) => value.toLowerCase().contains(_query));
-              }).toList();
-
-              final active = employees.where((e) => e.isActive).length;
-              final inactive = employees.length - active;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return RefreshIndicator(
+      onRefresh: () => ref.read(attendanceEmployeesProvider.notifier).refresh(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Employees',
+              subtitle: 'Manage RazorpayX employee records',
+              action: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.start,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.9,
-                    children: [
-                      StatCard(title: 'Total Employees', value: '${employees.length}'),
-                      StatCard(title: 'Active', value: '$active'),
-                      StatCard(title: 'Inactive', value: '$inactive'),
-                      StatCard(title: 'Managed', value: '${employees.where((e) => e.annualCtc != null).length}'),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    decoration: const InputDecoration(
-                      hintText: 'Search by name, email, department, title…',
-                      prefixIcon: Icon(Icons.search),
-                      isDense: true,
+                  if (canManage)
+                    AppButton(
+                      label: 'Add Employee',
+                      variant: AppButtonVariant.outline,
+                      onPressed: () => _openAddSheet(context),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (filtered.isEmpty)
-                    const EmptyState(
-                      icon: Icons.badge_outlined,
-                      title: 'No employees found',
-                      description: 'Try a different search or add a new employee.',
-                    )
-                  else
-                    AppCard(
-                      padding: EdgeInsets.zero,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Theme(
-                          data: Theme.of(context).copyWith(
-                            dataTableTheme: DataTableThemeData(
-                              headingRowColor: WidgetStateProperty.all(
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? const Color(0xFF111827)
-                                    : AppColors.gray50,
-                              ),
-                              dataRowColor: WidgetStateProperty.resolveWith(
-                                (states) {
-                                  if (states.contains(WidgetState.selected) ||
-                                      states.contains(WidgetState.hovered)) {
-                                    return (Theme.of(context).brightness == Brightness.dark
-                                            ? Colors.white
-                                            : Colors.black)
-                                        .withValues(alpha: 0.04);
-                                  }
-                                  return Colors.transparent;
-                                },
-                              ),
-                              headingTextStyle: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.gray500,
-                              ),
-                              dataTextStyle: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.gray700,
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            state.when(
+              loading: () => const _EmployeesSkeleton(),
+              error: (error, _) => EmptyState(
+                icon: Icons.error_outline,
+                title: 'Failed to load employees',
+                description: 'Could not load employee records right now.',
+              ),
+              data: (employees) {
+                final filtered = employees.where((emp) {
+                  if (_query.isEmpty) return true;
+                  return [
+                    emp.name,
+                    emp.email,
+                    emp.department,
+                    emp.title,
+                    emp.employeeId,
+                    emp.phoneNumber,
+                  ].any((value) => value.toLowerCase().contains(_query));
+                }).toList();
+
+                final active = employees.where((e) => e.isActive).length;
+                final inactive = employees.length - active;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.9,
+                      children: [
+                        StatCard(title: 'Total Employees', value: '${employees.length}'),
+                        StatCard(title: 'Active', value: '$active'),
+                        StatCard(title: 'Inactive', value: '$inactive'),
+                        StatCard(title: 'Managed', value: '${employees.where((e) => e.annualCtc != null).length}'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      decoration: const InputDecoration(
+                        hintText: 'Search by name, email, department, title…',
+                        prefixIcon: Icon(Icons.search),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (filtered.isEmpty)
+                      const EmptyState(
+                        icon: Icons.badge_outlined,
+                        title: 'No employees found',
+                        description: 'Try a different search or add a new employee.',
+                      )
+                    else
+                      AppCard(
+                        padding: EdgeInsets.zero,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              dataTableTheme: DataTableThemeData(
+                                headingRowColor: WidgetStateProperty.all(
+                                  Theme.of(context).brightness == Brightness.dark
+                                      ? const Color(0xFF111827)
+                                      : AppColors.gray50,
+                                ),
+                                dataRowColor: WidgetStateProperty.resolveWith(
+                                  (states) {
+                                    if (states.contains(WidgetState.selected) ||
+                                        states.contains(WidgetState.hovered)) {
+                                      return (Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.white
+                                              : Colors.black)
+                                          .withValues(alpha: 0.04);
+                                    }
+                                    return Colors.transparent;
+                                  },
+                                ),
+                                headingTextStyle: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.gray500,
+                                ),
+                                dataTextStyle: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.gray700,
+                                ),
                               ),
                             ),
-                          ),
-                          child: DataTable(
-                            showCheckboxColumn: false,
-                            headingRowHeight: 44,
-                            dataRowMinHeight: 54,
-                            dataRowMaxHeight: 64,
-                            horizontalMargin: 16,
-                            columnSpacing: 20,
-                            dividerThickness: 0.6,
-                            columns: const [
-                              DataColumn(label: Text('Employee')),
-                              DataColumn(label: Text('Department / Title')),
-                              DataColumn(label: Text('Contact')),
-                              DataColumn(label: Text('Annual CTC')),
-                              DataColumn(label: Text('Status')),
-                              DataColumn(label: Text('Actions')),
-                            ],
-                            rows: [
-                              for (final emp in filtered)
-                                DataRow(
-                                  selected: false,
-                                  onSelectChanged: canView
-                                      ? (_) => context.push(
-                                            '/attendance/${emp.employeeId}',
-                                            extra: emp,
-                                          )
-                                      : null,
-                                  cells: [
-                                    DataCell(
-                                      InkWell(
-                                        onTap: canView
-                                            ? () => context.push(
-                                                  '/attendance/${emp.employeeId}',
-                                                  extra: emp,
-                                                )
-                                            : null,
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 36,
-                                              height: 36,
-                                              decoration: const BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Color(0xFF3B82F6),
-                                                    Color(0xFF4F46E5),
+                            child: DataTable(
+                              showCheckboxColumn: false,
+                              headingRowHeight: 44,
+                              dataRowMinHeight: 54,
+                              dataRowMaxHeight: 64,
+                              horizontalMargin: 16,
+                              columnSpacing: 20,
+                              dividerThickness: 0.6,
+                              columns: const [
+                                DataColumn(label: Text('Employee')),
+                                DataColumn(label: Text('Department / Title')),
+                                DataColumn(label: Text('Contact')),
+                                DataColumn(label: Text('Annual CTC')),
+                                DataColumn(label: Text('Status')),
+                                DataColumn(label: Text('Actions')),
+                              ],
+                              rows: [
+                                for (final emp in filtered)
+                                  DataRow(
+                                    selected: false,
+                                    onSelectChanged: canView
+                                        ? (_) => context.push(
+                                              '/attendance/${emp.employeeId}',
+                                              extra: emp,
+                                            )
+                                        : null,
+                                    cells: [
+                                      DataCell(
+                                        InkWell(
+                                          onTap: canView
+                                              ? () => context.push(
+                                                    '/attendance/${emp.employeeId}',
+                                                    extra: emp,
+                                                  )
+                                              : null,
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 36,
+                                                height: 36,
+                                                decoration: const BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      Color(0xFF3B82F6),
+                                                      Color(0xFF4F46E5),
+                                                    ],
+                                                  ),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  initialsFromName(emp.name),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              ConstrainedBox(
+                                                constraints: const BoxConstraints(
+                                                  maxWidth: 180,
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      emp.name,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.w700,
+                                                        color: AppColors.gray800,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      'ID: ${emp.employeeId}',
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        color: AppColors.gray500,
+                                                      ),
+                                                    ),
                                                   ],
                                                 ),
-                                                shape: BoxShape.circle,
                                               ),
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                initialsFromName(emp.name),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w800,
-                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              emp.department.isEmpty
+                                                  ? '—'
+                                                  : emp.department,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.gray700,
                                               ),
                                             ),
-                                            const SizedBox(width: 10),
-                                            ConstrainedBox(
-                                              constraints: const BoxConstraints(
-                                                maxWidth: 180,
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    emp.name,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.w700,
-                                                      color: AppColors.gray800,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    'ID: ${emp.employeeId}',
-                                                    style: const TextStyle(
-                                                      fontSize: 11,
-                                                      color: AppColors.gray500,
-                                                    ),
-                                                  ),
-                                                ],
+                                            Text(
+                                              emp.title.isEmpty ? '—' : emp.title,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.gray500,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    ),
-                                    DataCell(
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            emp.department.isEmpty
-                                                ? '—'
-                                                : emp.department,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.gray700,
-                                            ),
-                                          ),
-                                          Text(
-                                            emp.title.isEmpty ? '—' : emp.title,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.gray500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            emp.email.isEmpty ? '—' : emp.email,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: AppColors.gray700,
-                                            ),
-                                          ),
-                                          Text(
-                                            emp.phoneNumber.isEmpty
-                                                ? '—'
-                                                : emp.phoneNumber,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.gray500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Text(
-                                        _currency(emp.annualCtc),
-                                        style: TextStyle(
-                                          fontWeight: emp.annualCtc == null
-                                              ? FontWeight.w400
-                                              : FontWeight.w700,
-                                          color: emp.annualCtc == null
-                                              ? AppColors.gray500
-                                              : AppColors.gray800,
-                                        ),
-                                      ),
-                                    ),
-                                    DataCell(
-                                      StatusBadge(
-                                        label: emp.isActive ? 'Active' : 'Inactive',
-                                      ),
-                                    ),
-                                    DataCell(
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            tooltip: 'View attendance',
-                                            onPressed: canView
-                                                ? () => context.push(
-                                                      '/attendance/${emp.employeeId}',
-                                                      extra: emp,
-                                                    )
-                                                : null,
-                                            icon: const Icon(Icons.visibility_outlined),
-                                          ),
-                                          if (canManage)
-                                            IconButton(
-                                              tooltip: 'Edit employee',
-                                              onPressed: () =>
-                                                  _openEditSheet(context, emp),
-                                              icon:
-                                                  const Icon(Icons.edit_outlined),
-                                            ),
-                                          if (canManage)
-                                            IconButton(
-                                              tooltip: 'Set salary',
-                                              onPressed: () =>
-                                                  _openSalarySheet(context, emp),
-                                              icon: const Icon(
-                                                Icons.payments_outlined,
+                                      DataCell(
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              emp.email.isEmpty ? '—' : emp.email,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: AppColors.gray700,
                                               ),
                                             ),
-                                        ],
+                                            Text(
+                                              emp.phoneNumber.isEmpty
+                                                  ? '—'
+                                                  : emp.phoneNumber,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.gray500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                            ],
+                                      DataCell(
+                                        Text(
+                                          _currency(emp.annualCtc),
+                                          style: TextStyle(
+                                            fontWeight: emp.annualCtc == null
+                                                ? FontWeight.w400
+                                                : FontWeight.w700,
+                                            color: emp.annualCtc == null
+                                                ? AppColors.gray500
+                                                : AppColors.gray800,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        StatusBadge(
+                                          label: emp.isActive ? 'Active' : 'Inactive',
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              tooltip: 'View attendance',
+                                              onPressed: canView
+                                                  ? () => context.push(
+                                                        '/attendance/${emp.employeeId}',
+                                                        extra: emp,
+                                                      )
+                                                  : null,
+                                              icon: const Icon(Icons.visibility_outlined),
+                                            ),
+                                            if (canManage)
+                                              IconButton(
+                                                tooltip: 'Edit employee',
+                                                onPressed: () =>
+                                                    _openEditSheet(context, emp),
+                                                icon:
+                                                    const Icon(Icons.edit_outlined),
+                                              ),
+                                            if (canManage)
+                                              IconButton(
+                                                tooltip: 'Set salary',
+                                                onPressed: () =>
+                                                    _openSalarySheet(context, emp),
+                                                icon: const Icon(
+                                                  Icons.payments_outlined,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
