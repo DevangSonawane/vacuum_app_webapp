@@ -334,6 +334,7 @@ class _Sidebar extends ConsumerWidget {
             expanded: true,
             leading: const Icon(Icons.logout),
             onPressed: () async {
+              await Future<void>.delayed(Duration.zero);
               await ref.read(authProvider.notifier).logout();
               onNavigate?.call();
             },

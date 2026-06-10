@@ -26,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _remember = true;
   _LoginMode _mode = _LoginMode.email;
   String? _errorMessage;
+  bool _isLoggingIn = false;
 
   @override
   void dispose() {
@@ -37,28 +38,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(authProvider, (prev, next) {
-      next.whenOrNull(
-        error: (error, _) {
-          final message = error.toString();
-          debugPrint('[Auth] Login failed: $message');
-          setState(() => _errorMessage = message);
-          if (context.mounted) {
-            AppToast.show(context, message: message, type: AppToastType.error);
-          }
-        },
-      );
-      next.whenOrNull(
-        data: (state) {
-          if (state.isAuthenticated) context.go('/');
-        },
-      );
-    });
-
     final width = MediaQuery.sizeOf(context).width;
     final showBranding = width >= 900;
-    final auth = ref.watch(authProvider);
-    final isLoading = auth.isLoading;
+    final isLoading = _isLoggingIn;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -270,19 +252,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               onPressed: isLoading
                                   ? null
                                   : () async {
+                                      debugPrint(
+                                        '[Login] submit -> ${_mode == _LoginMode.email ? "email" : "phone"}',
+                                      );
                                       setState(() => _errorMessage = null);
+                                      setState(() => _isLoggingIn = true);
                                       final identifier =
                                           _mode == _LoginMode.email
                                           ? _email.text
                                           : (_phone.text.trim().startsWith('+')
                                                 ? _phone.text
                                                 : '+91${_phone.text.trim()}');
-                                      await ref
-                                          .read(authProvider.notifier)
-                                          .login(
+                                      try {
+                                        await ref.read(authProvider.notifier).login(
                                             identifier: identifier,
                                             password: _password.text,
                                           );
+                                        if (!mounted) return;
+                                        setState(() => _isLoggingIn = false);
+                                        debugPrint('[Login] auth success -> toast shown');
+                                        _showLoginSuccess();
+                                      } catch (_) {
+                                        final auth = ref.read(authProvider);
+                                        final message = _friendlyLoginMessage(
+                                          auth.error?.toString() ?? 'Login failed. Please try again.',
+                                        );
+                                        debugPrint('[Login] auth failure -> $message');
+                                        if (!mounted) return;
+                                        setState(() {
+                                          _isLoggingIn = false;
+                                          _errorMessage = message;
+                                        });
+                                        _showLoginError(message);
+                                      }
                                     },
                             ),
                             const SizedBox(height: 8),
@@ -306,6 +308,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  String _friendlyLoginMessage(String raw) {
+    final message = raw.trim();
+    if (message.isEmpty) {
+      return 'Login failed. Please try again.';
+    }
+
+    final lower = message.toLowerCase();
+    if (lower.contains('incorrect') ||
+        lower.contains('wrong email') ||
+        lower.contains('wrong password') ||
+        lower.contains('invalid credentials')) {
+      return 'Incorrect email/phone number or password.';
+    }
+    if (lower.contains('contact the admin') ||
+        lower.contains('backend error') ||
+        lower.contains('server error')) {
+      return 'Backend error. Please contact the admin and try again later.';
+    }
+    if (lower.contains('internet') ||
+        lower.contains('connection') ||
+        lower.contains('timeout') ||
+        lower.contains('network')) {
+      return 'Unable to reach the server. Please check your internet connection.';
+    }
+    return message;
+  }
+
+  void _showLoginSuccess() {
+    AppToast.show(
+      context,
+      message: 'Login successful. Welcome back.',
+      type: AppToastType.success,
+    );
+  }
+
+  void _showLoginError(String message) {
+    AppToast.show(
+      context,
+      message: message,
+      type: AppToastType.error,
     );
   }
 }

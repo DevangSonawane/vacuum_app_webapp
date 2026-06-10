@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -10,24 +13,54 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(dio: dio);
 });
 
-final authProvider = AsyncNotifierProvider<AuthNotifier, AuthState>(
-  AuthNotifier.new,
-);
+final authProvider =
+    StateNotifierProvider<AuthNotifier, AsyncValue<AuthState>>(
+      (ref) => AuthNotifier(ref),
+    );
 
-class AuthNotifier extends AsyncNotifier<AuthState> {
+class AuthNotifier extends StateNotifier<AsyncValue<AuthState>> {
+  AuthNotifier(this.ref) : super(const AsyncLoading()) {
+    unawaited(_restoreSession());
+  }
+
+  final Ref ref;
+
   TokenStorage get _tokenStorage => ref.read(tokenStorageProvider);
   AuthRepository get _repo => ref.read(authRepositoryProvider);
 
-  @override
-  Future<AuthState> build() async {
+  Future<void> _setStateAsync(AsyncValue<AuthState> value) {
+    final completer = Completer<void>();
+    scheduleMicrotask(() {
+      if (mounted) {
+        state = value;
+      }
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    });
+    return completer.future;
+  }
+
+  Future<void> _restoreSession() async {
     final token = await _tokenStorage.readToken();
-    if (token == null || token.isEmpty) return AuthState.unauthenticated;
+    if (token == null || token.isEmpty) {
+      debugPrint('[Auth] build: no stored token');
+      await _setStateAsync(const AsyncData(AuthState.unauthenticated));
+      return;
+    }
+
     try {
       final user = await _repo.getMe();
-      return AuthState(user: user, isAuthenticated: true, resetToken: null);
+      debugPrint('[Auth] build: restored session for ${user.email}');
+      await _setStateAsync(
+        AsyncData(
+          AuthState(user: user, isAuthenticated: true, resetToken: null),
+        ),
+      );
     } catch (_) {
+      debugPrint('[Auth] build: stored token invalid, clearing session');
       await _tokenStorage.deleteToken();
-      return AuthState.unauthenticated;
+      await _setStateAsync(const AsyncData(AuthState.unauthenticated));
     }
   }
 
@@ -35,33 +68,47 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     required String identifier,
     required String password,
   }) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    debugPrint(
+      '[Auth] login: start (${identifier.trim().contains('@') ? 'email' : 'phone'})',
+    );
+    try {
       final result = await _repo.login(
         identifier: identifier,
         password: password,
       );
       await _tokenStorage.writeToken(result.token);
-      return AuthState(
-        user: result.user,
-        isAuthenticated: true,
-        resetToken: null,
+      debugPrint('[Auth] login: success for ${result.user.email}');
+      await _setStateAsync(
+        AsyncData(
+          AuthState(
+          user: result.user,
+          isAuthenticated: true,
+          resetToken: null,
+          ),
+        ),
       );
-    });
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] login: failed -> $error');
+      await _setStateAsync(AsyncError(error, stackTrace));
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   Future<void> logout() async {
+    debugPrint('[Auth] logout: start');
     await _tokenStorage.deleteToken();
-    state = const AsyncData(AuthState.unauthenticated);
+    await _setStateAsync(const AsyncData(AuthState.unauthenticated));
+    debugPrint('[Auth] logout: completed');
   }
 
   Future<void> forgotPassword({required String email}) async {
     final current = state.valueOrNull ?? AuthState.unauthenticated;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    await _setStateAsync(const AsyncLoading());
+    final result = await AsyncValue.guard(() async {
       final token = await _repo.forgotPassword(email: email);
       return current.copyWith(resetToken: token);
     });
+    await _setStateAsync(result);
   }
 
   Future<void> resetPassword({
@@ -70,8 +117,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     required String confirmPassword,
   }) async {
     final current = state.valueOrNull ?? AuthState.unauthenticated;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    await _setStateAsync(const AsyncLoading());
+    final result = await AsyncValue.guard(() async {
       await _repo.resetPassword(
         token: token,
         newPassword: newPassword,
@@ -79,5 +126,6 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       );
       return current.copyWith(resetToken: null);
     });
+    await _setStateAsync(result);
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
 
 import '../../features/auth/application/auth_notifier.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
@@ -28,9 +29,8 @@ import '../../features/users/presentation/users_screen.dart';
 import '../../shared/widgets/page_loader.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
-
   AuthGuardStatus status() {
+    final auth = ref.read(authProvider);
     return auth.when(
       loading: () => AuthGuardStatus.loading,
       error: (error, stackTrace) => AuthGuardStatus.unauthenticated,
@@ -40,7 +40,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     );
   }
 
-  String? role() => auth.valueOrNull?.user?.role;
+  String? role() => ref.read(authProvider).valueOrNull?.user?.role;
 
   return GoRouter(
     initialLocation: '/',
@@ -187,7 +187,13 @@ enum AuthGuardStatus { loading, unauthenticated, authenticated }
 
 class _GoRouterRefresh extends ChangeNotifier {
   _GoRouterRefresh(this.ref) {
-    _sub = ref.listen(authProvider, (previous, next) => notifyListeners());
+    _sub = ref.listen(authProvider, (previous, next) {
+      scheduleMicrotask(() {
+        if (hasListeners) {
+          notifyListeners();
+        }
+      });
+    });
   }
 
   final Ref ref;

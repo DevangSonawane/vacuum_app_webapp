@@ -205,7 +205,9 @@ class _AccountMenuCard extends ConsumerWidget {
                       labelColor: AppColors.red500,
                       onTap: () async {
                         Navigator.of(context).pop();
+                        await Future<void>.delayed(Duration.zero);
                         await ref.read(authProvider.notifier).logout();
+                        if (!context.mounted) return;
                       },
                     ),
                   ],

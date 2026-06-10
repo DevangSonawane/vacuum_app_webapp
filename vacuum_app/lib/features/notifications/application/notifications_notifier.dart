@@ -41,6 +41,7 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
   StreamSubscription? _sub;
   Timer? _pingTimer;
   Timer? _reconnectTimer;
+  String? _activeToken;
 
   @override
   Future<NotificationsState> build() async {
@@ -51,7 +52,13 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     final token = await ref.read(tokenStorageProvider).readToken();
     if (!isAuthed || token == null || token.isEmpty) {
       _disconnect();
+      _activeToken = null;
       return NotificationsState.empty;
+    }
+
+    if (_activeToken != token) {
+      _disconnect();
+      _activeToken = token;
     }
 
     unawaited(_connect(token));
@@ -124,7 +131,10 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
   }
 
   Future<void> _connect(String token) async {
-    if (_channel != null) return;
+    if (_channel != null && _activeToken == token) return;
+    if (_channel != null) {
+      _disconnect(keepConnectedFlag: true);
+    }
 
     try {
       _channel = await connectWebSocket(Uri.parse(_wsUrl));
@@ -235,6 +245,9 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
       _channel?.sink.close();
     } catch (_) {}
     _channel = null;
+    if (!keepConnectedFlag) {
+      _activeToken = null;
+    }
 
     if (!keepConnectedFlag) {
       final current = state.valueOrNull ?? NotificationsState.empty;

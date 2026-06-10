@@ -1,9 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -85,11 +86,14 @@ class _MenuBody extends ConsumerWidget {
         ),
       ),
       data: (s) {
+        final screenHeight = MediaQuery.sizeOf(context).height;
+        final maxHeight = isBottomSheet
+            ? math.min(screenHeight * 0.86, 400.0)
+            : 520.0;
+
         return ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: isBottomSheet
-                ? MediaQuery.sizeOf(context).height * 0.86
-                : 520,
+            maxHeight: maxHeight,
           ),
           child: Column(
             children: [
@@ -107,65 +111,37 @@ class _MenuBody extends ConsumerWidget {
                       ),
                     ),
                     _ConnectionDot(connected: s.connected),
-                    const SizedBox(width: 10),
-                    AppButton(
-                      label: 'Refresh',
-                      size: AppButtonSize.sm,
-                      variant: AppButtonVariant.secondary,
-                      leading: const Icon(Icons.refresh_outlined),
-                      onPressed: () =>
-                          ref.read(notificationsProvider.notifier).refresh(),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${s.unreadCount} unread',
-                        style: TextStyle(
-                          color: Theme.of(context).hintColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    const SizedBox(width: 12),
+                    if (s.items.isNotEmpty) ...[
+                      IconButton(
+                        tooltip: 'Mark all read',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () async {
+                          await ref.read(notificationsProvider.notifier).markAllRead();
+                          if (!context.mounted) return;
+                          AppToast.show(
+                            context,
+                            message: 'Marked all as read',
+                            type: AppToastType.success,
+                          );
+                        },
+                        icon: const Icon(Icons.checklist_rtl),
                       ),
-                    ),
-                    AppButton(
-                      label: 'Mark all read',
-                      size: AppButtonSize.sm,
-                      variant: AppButtonVariant.outline,
-                      onPressed: () async {
-                        await ref
-                            .read(notificationsProvider.notifier)
-                            .markAllRead();
-                        if (!context.mounted) return;
-                        AppToast.show(
-                          context,
-                          message: 'Marked all as read',
-                          type: AppToastType.success,
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 10),
-                    AppButton(
-                      label: 'Clear all',
-                      size: AppButtonSize.sm,
-                      variant: AppButtonVariant.secondary,
-                      onPressed: () async {
-                        await ref
-                            .read(notificationsProvider.notifier)
-                            .clearAll();
-                        if (!context.mounted) return;
-                        AppToast.show(
-                          context,
-                          message: 'Cleared notifications',
-                          type: AppToastType.info,
-                        );
-                      },
-                    ),
+                      IconButton(
+                        tooltip: 'Clear all',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () async {
+                          await ref.read(notificationsProvider.notifier).clearAll();
+                          if (!context.mounted) return;
+                          AppToast.show(
+                            context,
+                            message: 'Cleared notifications',
+                            type: AppToastType.info,
+                          );
+                        },
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -194,7 +170,13 @@ class _MenuBody extends ConsumerWidget {
                                 .read(notificationsProvider.notifier)
                                 .markRead(s.items[i]);
                             if (!context.mounted) return;
-                            _navigateFromNotification(context, s.items[i]);
+                            final navigated = _navigateFromNotification(
+                              context,
+                              s.items[i],
+                            );
+                            if (navigated && context.mounted) {
+                              Navigator.of(context).pop();
+                            }
                           },
                         ),
                       ),
@@ -220,29 +202,23 @@ class _MenuBody extends ConsumerWidget {
     );
   }
 
-  void _navigateFromNotification(BuildContext context, AppNotification n) {
+  bool _navigateFromNotification(BuildContext context, AppNotification n) {
     final entityType = (n.entityType ?? '').toLowerCase();
     final entityId = (n.entityId ?? '').toString();
-    Navigator.of(context).pop();
 
     if (entityType == 'job' && entityId.isNotEmpty) {
       context.go('/jobs/$entityId');
-      return;
+      return true;
     }
     if (entityType == 'report' && entityId.isNotEmpty) {
       context.go('/reports/$entityId');
-      return;
+      return true;
     }
     if (entityType == 'amc') {
       context.go('/amc');
-      return;
+      return true;
     }
-    // fallback
-    AppToast.show(
-      context,
-      message: 'Opened notification',
-      type: AppToastType.info,
-    );
+    return false;
   }
 }
 
@@ -353,6 +329,17 @@ class _NotificationTile extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
+                    if ((n.entityId ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        n.entityId!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.blue600,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

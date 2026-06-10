@@ -36,9 +36,24 @@ class AuthRepository {
       return (token: token, user: user);
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      if (status == 401) {
+      if (_isConnectionIssue(e)) {
         throw const AuthException(
-          'Login failed. Wrong email/phone or password.',
+          'Unable to reach the server. Please check your internet connection.',
+        );
+      }
+      if (status == 400 || status == 401 || status == 422) {
+        throw const AuthException(
+          'Incorrect email/phone number or password.',
+        );
+      }
+      if (status == 403) {
+        throw const AuthException(
+          'Your account does not have access. Please contact the admin.',
+        );
+      }
+      if (status != null && status >= 500) {
+        throw const AuthException(
+          'Backend error. Please contact the admin and try again later.',
         );
       }
       throw AuthException(
@@ -120,6 +135,18 @@ class AuthRepository {
       return value.map((key, val) => MapEntry(key.toString(), val));
     }
     return <String, dynamic>{};
+  }
+
+  static bool _isConnectionIssue(DioException e) {
+    return switch (e.type) {
+      DioExceptionType.connectionError ||
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.receiveTimeout ||
+      DioExceptionType.sendTimeout ||
+      DioExceptionType.badCertificate ||
+      DioExceptionType.unknown => true,
+      _ => false,
+    };
   }
 }
 
