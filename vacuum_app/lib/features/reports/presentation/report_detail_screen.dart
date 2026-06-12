@@ -471,7 +471,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   const SizedBox(height: 16),
                 ],
                 Text(
-                  'Technical Reports (${report.technicalReports.length})',
+                  'Report Copies (${report.technicalReports.length})',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),

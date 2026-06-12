@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,12 @@ import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../auth/application/auth_notifier.dart';
+import '../../clients/application/clients_notifier.dart';
+import '../../erp/application/erp_quotations_notifier.dart';
+import '../../jobs/application/jobs_notifier.dart';
+import '../../reports/application/reports_notifier.dart';
+import '../../technicians/application/technicians_notifier.dart';
+import '../../users/application/users_notifier.dart';
 import '../../notifications/application/notifications_notifier.dart';
 import '../../notifications/presentation/notifications_menu.dart';
 import 'account_menu.dart';
@@ -66,8 +74,10 @@ class _TopBar extends ConsumerWidget {
     final auth = ref.watch(authProvider).valueOrNull;
     final user = auth?.user;
     final isAdmin = user?.role == 'admin';
-    final title = _titleForLocation(GoRouterState.of(context).matchedLocation);
+    final location = GoRouterState.of(context).matchedLocation;
+    final title = _titleForLocation(location);
     final width = MediaQuery.sizeOf(context).width;
+    final showSearch = !_hideSearchForLocation(location);
 
     return Material(
       color: Theme.of(context).appBarTheme.backgroundColor,
@@ -106,12 +116,14 @@ class _TopBar extends ConsumerWidget {
                   ),
                 ],
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: const _SearchField(),
+                if (showSearch)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: const _SearchField(),
+                    ),
                   ),
-                ),
+                if (!showSearch) const Spacer(),
                 const _NotificationBell(),
                 const SizedBox(width: 4),
                 Container(
@@ -164,6 +176,11 @@ class _TopBar extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  bool _hideSearchForLocation(String location) {
+    return location.startsWith('/technicians') ||
+        location.startsWith('/clients');
   }
 
   String _titleForLocation(String location) {
@@ -263,9 +280,11 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
   late final TextEditingController _controller = TextEditingController(
     text: ref.read(searchQueryProvider),
   );
+  Timer? _debounce;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -276,16 +295,83 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
       if (_controller.text != next) _controller.text = next;
     });
 
+    final location = GoRouterState.of(context).matchedLocation;
+
     return TextField(
       controller: _controller,
-      decoration: const InputDecoration(
-        hintText: 'Search…',
-        prefixIcon: Icon(Icons.search),
+      decoration: InputDecoration(
+        hintText: _hintForLocation(location),
+        prefixIcon: const Icon(Icons.search),
         isDense: true,
       ),
-      onChanged: (value) =>
-          ref.read(searchQueryProvider.notifier).state = value,
+      onChanged: (value) {
+        ref.read(searchQueryProvider.notifier).state = value;
+        _debounce?.cancel();
+        _debounce = Timer(const Duration(milliseconds: 250), () {
+          if (!mounted) return;
+          _dispatchSearch(context, ref, location, value.trim());
+        });
+      },
     );
+  }
+
+  String _hintForLocation(String location) {
+    if (location.startsWith('/users')) return 'Search users…';
+    if (location.startsWith('/technicians')) return 'Search technicians…';
+    if (location.startsWith('/clients')) return 'Search clients…';
+    if (location.startsWith('/jobs')) return 'Search work orders…';
+    if (location.startsWith('/reports')) return 'Search reports…';
+    if (location.startsWith('/activity')) return 'Search activity…';
+    if (location.startsWith('/quotations')) return 'Search quotations…';
+    return 'Search…';
+  }
+
+  void _dispatchSearch(
+    BuildContext context,
+    WidgetRef ref,
+    String location,
+    String query,
+  ) {
+    if (location.startsWith('/users')) {
+      ref.read(usersProvider.notifier).search(query);
+      return;
+    }
+
+    if (location.startsWith('/technicians')) {
+      ref.read(techniciansProvider.notifier).search(query);
+      return;
+    }
+
+    if (location.startsWith('/clients')) {
+      ref.read(clientsProvider.notifier).filter(search: query);
+      return;
+    }
+
+    if (location.startsWith('/quotations')) {
+      ref
+          .read(erpQuotationsProvider.notifier)
+          .applyFilters(search: query, page: 1);
+      return;
+    }
+
+    if (location.startsWith('/jobs')) {
+      ref.read(jobsProvider.notifier).search(query);
+      return;
+    }
+
+    if (location.startsWith('/reports')) {
+      ref.read(reportsProvider.notifier).search(query);
+      return;
+    }
+
+    if (location.startsWith('/activity')) {
+      ref.read(searchQueryProvider.notifier).state = query;
+      return;
+    }
+
+    // Leave the keyboard open on pages without a routed search implementation.
+    // Those screens can still use the shared search text as a source of truth
+    // without forcing focus away after every character.
   }
 }
 

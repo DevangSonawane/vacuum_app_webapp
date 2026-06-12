@@ -17,7 +17,7 @@ const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
 
 const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];
-const CATEGORIES = ["Maintenance", "Repair", "Installation", "Inspection"];
+const CATEGORIES = ["Service", "AMC Visit", "Breakdown", "Installation & Commissioning", "Inspection"];
 
 const STATUS_FLOW  = { Raised: "Assigned", Assigned: "In Progress", "In Progress": "Closed" };
 const STATUS_COLOR = {
@@ -108,7 +108,7 @@ export default function Jobs() {
     try {
       const token = localStorage.getItem("token");
       const res   = await axios.get(`${API_BASE_URL}/clients`, {
-        headers: { Authorization: `Bearer ${token}` }, params: { limit: 100 },
+        headers: { Authorization: `Bearer ${token}` }, params: { limit: 1000 },
       });
       if (res.data.success) setClients(res.data.data || []);
     } catch {}
@@ -597,11 +597,11 @@ export default function Jobs() {
             <div className="grid grid-cols-2 gap-3">
               <Input label="Job Title" value={form.title} onChange={f("title")} required className="col-span-2" />
               <Select
-                label="Client" value={form.client_id} onChange={f("client_id")} required
+                label="Client" value={form.client_id} onChange={f("client_id")} required searchable
                 options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
               />
               <Select
-                label="Assign Technician" value={form.technician_id} onChange={f("technician_id")}
+                label="Assign Technician" value={form.technician_id} onChange={f("technician_id")} searchable
                 options={[{ value: "", label: "Not assigned yet" }, ...technicians.map(t => ({ value: t.id, label: t.name }))]}
               />
               <Select label="Priority" value={form.priority} onChange={f("priority")} options={PRIORITIES} />
@@ -619,6 +619,7 @@ export default function Jobs() {
                     value: a.id,
                     label: `${a.id}${a.po_number ? ` | PO: ${a.po_number}` : ""} — ${a.title}`
                   }))}
+                  searchable
                 />
                 {/* Inline badge strip when an AMC is selected */}
                 {form.amc_id && (() => {

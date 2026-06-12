@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/ui/ui_providers.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_dropdown_field.dart';
@@ -42,6 +43,12 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
   int _limit = 10;
 
   @override
+  void initState() {
+    super.initState();
+    _erpSearch.text = ref.read(searchQueryProvider);
+  }
+
+  @override
   void dispose() {
     _erpSearch.dispose();
     _erpDebounce?.cancel();
@@ -51,7 +58,11 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
   void _onErpSearch(String q) {
     _erpDebounce?.cancel();
     _erpDebounce = Timer(const Duration(milliseconds: 450), () {
-      ref.read(erpQuotationsProvider.notifier).applyFilters(search: q, page: 1);
+      ref.read(searchQueryProvider.notifier).state = q;
+      ref.read(erpQuotationsProvider.notifier).applyFilters(
+            search: q.trim(),
+            page: 1,
+          );
     });
   }
 
@@ -103,6 +114,11 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
     }
 
     final erp = ref.watch(erpQuotationsProvider);
+    ref.listen<String>(searchQueryProvider, (_, next) {
+      if (_erpSearch.text != next) {
+        _erpSearch.text = next;
+      }
+    });
 
     final width = MediaQuery.sizeOf(context).width;
     final cols = width >= 1024 ? 3 : (width >= 720 ? 2 : 1);

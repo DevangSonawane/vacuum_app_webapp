@@ -768,28 +768,32 @@ export default function CreateReport() {
                   </div>
                 </Card>
 
-                {/* Photo Upload */}
+                {/* Technical Reports Upload */}
                 <Card className="p-6">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
-                    <ImageIcon size={14} className="text-blue-500" /> Site Photos
+                    <FileText size={14} className="text-blue-500" /> Technical Reports
                   </p>
-                  <p className="text-xs text-gray-400 mb-3">JPEG, PNG, or WebP</p>
-                  <div onClick={() => imgRef.current?.click()}
+                  <p className="text-xs text-gray-400 mb-3">PDF, DOCX, XLSX, or any file type</p>
+                  <div onClick={() => techRef.current?.click()}
                     className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4 text-center cursor-pointer hover:border-blue-400 transition group">
                     <Upload size={20} className="mx-auto text-gray-300 dark:text-gray-500 mb-1 group-hover:text-blue-400 transition" />
-                    <p className="text-xs text-gray-400">Click to upload photos</p>
-                    <input ref={imgRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleImageSelect} />
+                    <p className="text-xs text-gray-400">Click to upload technical reports</p>
+                    <input ref={techRef} type="file" multiple className="hidden" onChange={handleTechFileSelect} />
                   </div>
-                  {previewImages.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {previewImages.map((img, idx) => (
-                        <div key={idx} className="relative group">
-                          <img src={img.preview} alt="" className="w-16 h-16 object-cover rounded-xl border border-gray-200 dark:border-gray-600" />
-                          {img.uploading && <div className="absolute inset-0 rounded-xl bg-black/40 flex items-center justify-center"><Loader2 size={14} className="animate-spin text-white" /></div>}
-                          {img.uploaded_url && <div className="absolute inset-0 rounded-xl bg-emerald-500/20 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-500" /></div>}
-                          {!img.uploading && !img.uploaded_url && (
-                            <button type="button" onClick={() => removeImage(idx)} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition"><X size={8} /></button>
-                          )}
+                  {techFiles.length > 0 && (
+                    <div className="space-y-2 mt-3">
+                      {techFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                              {file.uploading ? <Loader2 size={14} className="animate-spin text-blue-600" /> : file.uploaded ? <CheckCircle size={14} className="text-emerald-600" /> : file.error ? <AlertCircle size={14} className="text-red-500" /> : <FileText size={14} className="text-blue-600" />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{file.name}</p>
+                              <p className="text-xs text-gray-400">{file.uploading ? "Uploading..." : file.uploaded ? "Uploaded" : file.error || "Ready"}</p>
+                            </div>
+                          </div>
+                          {!file.uploading && <button type="button" onClick={() => removeTechFile(idx)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={14} /></button>}
                         </div>
                       ))}
                     </div>

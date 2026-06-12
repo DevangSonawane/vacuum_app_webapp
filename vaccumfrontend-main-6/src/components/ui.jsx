@@ -180,27 +180,42 @@ export function Input({ label, type = "text", value, onChange, placeholder, clas
 }
 
 // ── Select ────────────────────────────────────────────────────────────────
-export function Select({ label, value, onChange, options, className = "", required = false, placeholder = "Select..." }) {
+export function Select({ label, value, onChange, options, className = "", required = false, placeholder = "Select...", searchable = false }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false);
+        setSearchQuery("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (isOpen && searchable && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen, searchable]);
+
   const selectedOption = options.find(o => (o.value ?? o) === value);
   const displayLabel = selectedOption ? (selectedOption.label ?? selectedOption) : placeholder;
+
+  const filteredOptions = options.filter(option => {
+    const lbl = (option.label ?? option).toLowerCase();
+    return lbl.includes(searchQuery.toLowerCase());
+  });
 
   const handleSelect = (option) => {
     const val = option.value ?? option;
     onChange({ target: { value: val } });
     setIsOpen(false);
+    setSearchQuery("");
   };
 
   return (
@@ -237,11 +252,23 @@ export function Select({ label, value, onChange, options, className = "", requir
             transition={{ duration: 0.1 }}
             className="absolute z-[100] left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
           >
+            {searchable && (
+              <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
             <div className="max-h-60 overflow-y-auto py-1 custom-scrollbar">
-              {options.length === 0 ? (
+              {filteredOptions.length === 0 ? (
                 <div className="px-4 py-3 text-sm text-gray-400 text-center italic">No options</div>
               ) : (
-                options.map((option, idx) => {
+                filteredOptions.map((option, idx) => {
                   const val = option.value ?? option;
                   const lbl = option.label ?? option;
                   const isSelected = val === value;
@@ -275,12 +302,14 @@ export function Select({ label, value, onChange, options, className = "", requir
 export function DatePicker({ label, value, onChange, className = "", required = false, placeholder = "Select date..." }) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [view, setView] = useState("days"); // days | months | years
   const containerRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false);
+        setView("days");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -306,6 +335,17 @@ export function DatePicker({ label, value, onChange, className = "", required = 
     const adjustedDate = new Date(selectedDate.getTime() - (offset * 60 * 1000));
     onChange({ target: { value: adjustedDate.toISOString().split("T")[0] } });
     setIsOpen(false);
+    setView("days");
+  };
+
+  const handleSelectMonth = (month) => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), month, 1));
+    setView("days");
+  };
+
+  const handleSelectYear = (year) => {
+    setCurrentMonth(new Date(year, currentMonth.getMonth(), 1));
+    setView("months");
   };
 
   const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -313,6 +353,8 @@ export function DatePicker({ label, value, onChange, className = "", required = 
 
   const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  const prevYearRange = () => setCurrentMonth(new Date(currentMonth.getFullYear() - 10, currentMonth.getMonth(), 1));
+  const nextYearRange = () => setCurrentMonth(new Date(currentMonth.getFullYear() + 10, currentMonth.getMonth(), 1));
 
   const days = [];
   const totalDays = daysInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
@@ -321,6 +363,12 @@ export function DatePicker({ label, value, onChange, className = "", required = 
   // Padding for start of month
   for (let i = 0; i < startDay; i++) days.push(null);
   for (let i = 1; i <= totalDays; i++) days.push(i);
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  
+  const years = [];
+  const startYear = Math.floor(currentMonth.getFullYear() / 10) * 10;
+  for (let i = 0; i < 12; i++) years.push(startYear - 1 + i);
 
   const isToday = (day) => {
     const today = new Date();
@@ -335,6 +383,28 @@ export function DatePicker({ label, value, onChange, className = "", required = 
     return day === d.getDate() && 
            currentMonth.getMonth() === d.getMonth() && 
            currentMonth.getFullYear() === d.getFullYear();
+  };
+
+  const isSelectedMonth = (month) => {
+    if (!value) return false;
+    const d = new Date(value);
+    return month === d.getMonth() && currentMonth.getFullYear() === d.getFullYear();
+  };
+
+  const isSelectedYear = (year) => {
+    if (!value) return false;
+    const d = new Date(value);
+    return year === d.getFullYear();
+  };
+
+  const isCurrentMonth = (month) => {
+    const today = new Date();
+    return month === today.getMonth() && currentMonth.getFullYear() === today.getFullYear();
+  };
+
+  const isCurrentYear = (year) => {
+    const today = new Date();
+    return year === today.getFullYear();
   };
 
   return (
@@ -368,53 +438,133 @@ export function DatePicker({ label, value, onChange, className = "", required = 
             transition={{ duration: 0.1 }}
             className="absolute z-[110] left-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl p-4"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white">
-                {currentMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-              </h4>
-              <div className="flex gap-1">
-                <button type="button" onClick={prevMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
-                  <ChevronLeft size={16} />
-                </button>
-                <button type="button" onClick={nextMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
+            {view === "days" && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <button type="button" onClick={() => setView("years")} className="text-sm font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded-lg transition">
+                    {currentMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                  </button>
+                  <div className="flex gap-1">
+                    <button type="button" onClick={prevMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button type="button" onClick={nextMonth} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => (
-                <div key={d} className="text-center text-[10px] font-bold text-gray-400 uppercase">{d}</div>
-              ))}
-            </div>
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => (
+                    <div key={d} className="text-center text-[10px] font-bold text-gray-400 uppercase">{d}</div>
+                  ))}
+                </div>
 
-            <div className="grid grid-cols-7 gap-1">
-              {days.map((day, i) => (
-                <div key={i} className="aspect-square flex items-center justify-center">
-                  {day && (
+                <div className="grid grid-cols-7 gap-1">
+                  {days.map((day, i) => (
+                    <div key={i} className="aspect-square flex items-center justify-center">
+                      {day && (
+                        <button
+                          type="button"
+                          onClick={() => handleSelect(day)}
+                          className={`
+                            w-8 h-8 rounded-lg text-xs font-medium transition-all
+                            ${isSelected(day)
+                              ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40"
+                              : isToday(day)
+                              ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
+                          `}
+                        >
+                          {day}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {view === "months" && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <button type="button" onClick={() => setView("years")} className="text-sm font-bold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded-lg transition">
+                    {currentMonth.getFullYear()}
+                  </button>
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear() - 1, currentMonth.getMonth(), 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button type="button" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear() + 1, currentMonth.getMonth(), 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {months.map((month, idx) => (
                     <button
+                      key={idx}
                       type="button"
-                      onClick={() => handleSelect(day)}
+                      onClick={() => handleSelectMonth(idx)}
                       className={`
-                        w-8 h-8 rounded-lg text-xs font-medium transition-all
-                        ${isSelected(day)
+                        py-3 text-xs font-semibold rounded-lg transition-all
+                        ${isSelectedMonth(idx)
                           ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40"
-                          : isToday(day)
+                          : isCurrentMonth(idx)
                           ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                           : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
                       `}
                     >
-                      {day}
+                      {month}
                     </button>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
+
+            {view === "years" && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">
+                    {years[0]} - {years[years.length - 1]}
+                  </span>
+                  <div className="flex gap-1">
+                    <button type="button" onClick={prevYearRange} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button type="button" onClick={nextYearRange} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 transition">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {years.map((year, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectYear(year)}
+                      className={`
+                        py-3 text-xs font-semibold rounded-lg transition-all
+                        ${isSelectedYear(year)
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/40"
+                          : isCurrentYear(year)
+                          ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}
+                      `}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between">
               <button
                 type="button"
-                onClick={() => { onChange({ target: { value: "" } }); setIsOpen(false); }}
+                onClick={() => { onChange({ target: { value: "" } }); setIsOpen(false); setView("days"); }}
                 className="text-[11px] font-bold text-red-500 hover:text-red-600 transition"
               >
                 Clear
@@ -425,6 +575,7 @@ export function DatePicker({ label, value, onChange, className = "", required = 
                   const today = new Date();
                   onChange({ target: { value: today.toISOString().split("T")[0] } });
                   setIsOpen(false);
+                  setView("days");
                 }}
                 className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition"
               >

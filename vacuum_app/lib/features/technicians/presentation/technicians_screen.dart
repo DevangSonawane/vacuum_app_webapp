@@ -17,6 +17,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../../core/ui/ui_providers.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../application/technicians_notifier.dart';
 import '../domain/technician.dart';
@@ -36,6 +37,12 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
   Timer? _debounce;
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.text = ref.read(searchQueryProvider);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _debounce?.cancel();
@@ -45,7 +52,10 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
   void _onSearch(String query) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      ref.read(techniciansProvider.notifier).search(query);
+      if (!mounted) return;
+      final next = query.trim();
+      ref.read(searchQueryProvider.notifier).state = query;
+      ref.read(techniciansProvider.notifier).search(next);
     });
   }
 
@@ -54,6 +64,12 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canEdit = !['technician', 'labour'].contains(role);
     final state = ref.watch(techniciansProvider);
+
+    ref.listen<String>(searchQueryProvider, (_, next) {
+      if (_searchController.text != next) {
+        _searchController.text = next;
+      }
+    });
 
     return RefreshIndicator(
       onRefresh: () => ref.read(techniciansProvider.notifier).refresh(),

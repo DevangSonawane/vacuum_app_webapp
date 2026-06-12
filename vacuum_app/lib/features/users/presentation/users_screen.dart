@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/ui/ui_providers.dart';
 import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -23,11 +24,30 @@ String _titleCase(String value) {
   return value[0].toUpperCase() + value.substring(1);
 }
 
-class UsersScreen extends ConsumerWidget {
+class UsersScreen extends ConsumerStatefulWidget {
   const UsersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<UsersScreen> createState() => _UsersScreenState();
+}
+
+class _UsersScreenState extends ConsumerState<UsersScreen> {
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.text = ref.read(searchQueryProvider);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authProvider).valueOrNull;
     final isAdmin = auth?.user?.role == 'admin';
     if (!isAdmin) {
@@ -39,6 +59,13 @@ class UsersScreen extends ConsumerWidget {
     }
 
     final users = ref.watch(usersProvider);
+    ref.watch(searchQueryProvider);
+
+    ref.listen<String>(searchQueryProvider, (_, next) {
+      if (_searchController.text != next) {
+        _searchController.text = next;
+      }
+    });
 
     return users.when(
       loading: () => const _UsersSkeleton(),
@@ -66,9 +93,11 @@ class UsersScreen extends ConsumerWidget {
               padding: EdgeInsets.zero,
               child: _UsersPremiumTable(
                 data: data,
-                onSearch: (query) => ref
-                    .read(usersProvider.notifier)
-                    .search(query.trim()),
+                controller: _searchController,
+                onSearch: (query) {
+                  ref.read(searchQueryProvider.notifier).state = query;
+                  ref.read(usersProvider.notifier).search(query.trim());
+                },
                 onPrev: data.page <= 1
                     ? null
                     : () => ref.read(usersProvider.notifier).prevPage(),
@@ -148,6 +177,7 @@ const _roles = ['admin', 'manager', 'engineer', 'technician', 'labour'];
 class _UsersPremiumTable extends StatelessWidget {
   const _UsersPremiumTable({
     required this.data,
+    required this.controller,
     required this.onSearch,
     required this.onPrev,
     required this.onNext,
@@ -156,6 +186,7 @@ class _UsersPremiumTable extends StatelessWidget {
   });
 
   final UsersState data;
+  final TextEditingController controller;
   final ValueChanged<String> onSearch;
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
@@ -184,7 +215,8 @@ class _UsersPremiumTable extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
+              child: TextField(
+                  controller: controller,
                   decoration: InputDecoration(
                     hintText: 'Search users…',
                     prefixIcon: const Icon(Icons.search),

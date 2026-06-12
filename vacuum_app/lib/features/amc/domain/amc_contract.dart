@@ -13,6 +13,11 @@ class AmcContract {
     required this.nextServiceDate,
     this.daysLeft,
     this.poNumber,
+    this.visitCount,
+    this.pumpsCount,
+    this.perPumpPrice,
+    this.totalPrice,
+    this.gstPercent,
   });
 
   final String id;
@@ -28,6 +33,11 @@ class AmcContract {
   final String? nextServiceDate;
   final int? daysLeft; // json: days_left
   final String? poNumber; // json: po_number
+  final int? visitCount; // json: visit_count
+  final int? pumpsCount; // json: pumps_count
+  final num? perPumpPrice; // json: per_pump_price
+  final num? totalPrice; // json: total_price
+  final num? gstPercent; // json: gst_percent
 
   static AmcContract fromJson(Map<String, dynamic> json) {
     String s(Object? v) => v == null ? '' : v.toString();
@@ -43,6 +53,12 @@ class AmcContract {
       if (v is int) return v;
       if (v is num) return v.toInt();
       return int.tryParse(s(v));
+    }
+
+    num? nOrNull(Object? v) {
+      if (v == null) return null;
+      if (v is num) return v;
+      return num.tryParse(s(v));
     }
 
     List<dynamic> l(Object? v) => v is List ? v : const [];
@@ -61,6 +77,11 @@ class AmcContract {
       nextServiceDate: json['next_service_date']?.toString(),
       daysLeft: iOrNull(json['days_left']),
       poNumber: (json['po_number'] as Object?)?.toString(),
+      visitCount: iOrNull(json['visit_count']),
+      pumpsCount: iOrNull(json['pumps_count']),
+      perPumpPrice: nOrNull(json['per_pump_price']),
+      totalPrice: nOrNull(json['total_price']),
+      gstPercent: nOrNull(json['gst_percent']),
     );
   }
 }

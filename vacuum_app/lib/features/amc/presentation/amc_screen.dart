@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +19,7 @@ import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
+import '../../clients/domain/client.dart';
 import '../../clients/data/clients_repository.dart';
 import '../application/amc_notifier.dart';
 import '../domain/amc_contract.dart';
@@ -506,9 +509,57 @@ class _InfoGrid extends StatelessWidget {
               (contract.poNumber ?? '').trim().isEmpty
                   ? '—'
                   : contract.poNumber!.trim(),
-            ),
+              ),
           ],
         ),
+        if (contract.visitCount != null ||
+            contract.pumpsCount != null ||
+            contract.perPumpPrice != null ||
+            contract.totalPrice != null ||
+            contract.gstPercent != null) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              item(
+                'Visit Count',
+                contract.visitCount == null ? '—' : '${contract.visitCount}',
+              ),
+              const SizedBox(width: 10),
+              item(
+                'Pumps Count',
+                contract.pumpsCount == null ? '—' : '${contract.pumpsCount}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              item(
+                'Per Pump Price',
+                contract.perPumpPrice == null
+                    ? '—'
+                    : fmtRevenue(contract.perPumpPrice!),
+              ),
+              const SizedBox(width: 10),
+              item(
+                'Total Price',
+                contract.totalPrice == null
+                    ? '—'
+                    : fmtRevenue(contract.totalPrice!),
+              ),
+            ],
+          ),
+          if (contract.gstPercent != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                item('GST Percent', '${contract.gstPercent}%'),
+                const SizedBox(width: 10),
+                const Expanded(child: SizedBox()),
+              ],
+            ),
+          ],
+        ],
       ],
     );
   }
@@ -573,6 +624,11 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   final _poNumber = TextEditingController();
   final _value = TextEditingController();
   final _services = TextEditingController();
+  final _visitCount = TextEditingController();
+  final _pumpsCount = TextEditingController();
+  final _perPumpPrice = TextEditingController();
+  final _totalPrice = TextEditingController();
+  final _gstPercent = TextEditingController();
 
   DateTime? _start;
   DateTime? _end;
@@ -582,7 +638,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   bool _fetching = true;
 
   int? _clientId;
-  List<({int id, String name})> _clients = const [];
+  String _clientName = '';
   int _reminderDays = 30;
 
   bool get _isEdit => widget.existing != null;
@@ -601,6 +657,12 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       _end = _parse(e.endDate);
       _nextService = _parse(e.nextServiceDate);
       _clientId = e.clientId;
+      _clientName = e.clientName;
+      _visitCount.text = e.visitCount?.toString() ?? '';
+      _pumpsCount.text = e.pumpsCount?.toString() ?? '';
+      _perPumpPrice.text = e.perPumpPrice?.toString() ?? '';
+      _totalPrice.text = e.totalPrice?.toString() ?? '';
+      _gstPercent.text = e.gstPercent?.toString() ?? '';
     }
     _loadClients();
   }
@@ -611,20 +673,50 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     _poNumber.dispose();
     _value.dispose();
     _services.dispose();
+    _visitCount.dispose();
+    _pumpsCount.dispose();
+    _perPumpPrice.dispose();
+    _totalPrice.dispose();
+    _gstPercent.dispose();
     super.dispose();
   }
 
   DateTime? _parse(String? iso) => iso == null ? null : DateTime.tryParse(iso);
 
+  int? _parseInt(TextEditingController ctrl) {
+    final text = ctrl.text.trim();
+    if (text.isEmpty) return null;
+    return int.tryParse(text);
+  }
+
+  num? _parseNum(TextEditingController ctrl) {
+    final text = ctrl.text.trim();
+    if (text.isEmpty) return null;
+    return num.tryParse(text);
+  }
+
+  void _recalculateCommercials() {
+    final pumps = _parseNum(_pumpsCount) ?? 0;
+    final perPump = _parseNum(_perPumpPrice) ?? 0;
+    final gst = _parseNum(_gstPercent) ?? 0;
+    final total = pumps * perPump;
+    final value = total + (total * (gst / 100));
+
+    _totalPrice.text = total == 0 ? '' : total.toStringAsFixed(0);
+    _value.text = value == 0 ? '' : value.toStringAsFixed(0);
+  }
+
   Future<void> _loadClients() async {
     setState(() => _fetching = true);
     try {
-      final repo = ClientsRepository(dio: widget.dio);
-      final clients = await repo.fetchClients(limit: 100, search: '', type: '');
-      _clients = [for (final c in clients) (id: c.id, name: c.name)];
-      _clientId ??= _clients.isNotEmpty ? _clients.first.id : null;
+      if (widget.existing != null) {
+        _clientId ??= widget.existing!.clientId;
+        if (_clientName.trim().isEmpty) {
+          _clientName = widget.existing!.clientName;
+        }
+      }
     } catch (_) {
-      // ignore
+      // ignore; the searchable picker will surface its own loading state
     } finally {
       if (mounted) setState(() => _fetching = false);
     }
@@ -635,11 +727,10 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     if (_clientId == null ||
         _title.text.trim().isEmpty ||
         _start == null ||
-        _end == null ||
-        _value.text.trim().isEmpty) {
+        _end == null) {
       AppToast.show(
         context,
-        message: 'Client, title, start/end dates and value are required.',
+        message: 'Client, title, start and end dates are required.',
         type: AppToastType.error,
       );
       return;
@@ -652,7 +743,17 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       if (_poNumber.text.trim().isNotEmpty) 'po_number': _poNumber.text.trim(),
       'start_date': _start!.toIso8601String().substring(0, 10),
       'end_date': _end!.toIso8601String().substring(0, 10),
-      'value': num.tryParse(_value.text.trim()) ?? 0,
+      if (_visitCount.text.trim().isNotEmpty)
+        'visit_count': _parseInt(_visitCount),
+      if (_pumpsCount.text.trim().isNotEmpty)
+        'pumps_count': _parseInt(_pumpsCount),
+      if (_perPumpPrice.text.trim().isNotEmpty)
+        'per_pump_price': _parseNum(_perPumpPrice),
+      if (_totalPrice.text.trim().isNotEmpty)
+        'total_price': _parseNum(_totalPrice),
+      if (_gstPercent.text.trim().isNotEmpty)
+        'gst_percent': _parseNum(_gstPercent),
+      'value': _parseNum(_value) ?? 0,
       'renewal_reminder_days': _reminderDays,
       'services': _services.text
           .split(',')
@@ -724,9 +825,12 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                       'On creation — confirmation email sent to client automatically.',
                 ),
                 const SizedBox(height: 12),
+                _clientSelector(),
+                const SizedBox(height: 12),
+              ] else ...[
+                _ReadOnlyField(label: 'Client', value: _clientName),
+                const SizedBox(height: 12),
               ],
-              _dropdownClient(),
-              const SizedBox(height: 12),
               _field('Title *', _title, hint: 'Annual Maintenance'),
               const SizedBox(height: 12),
               _field('PO Number', _poNumber, hint: 'PO-1234'),
@@ -757,16 +861,83 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                 children: [
                   Expanded(
                     child: _field(
-                      'Value (₹) *',
-                      _value,
-                      hint: '250000',
+                      'Visit Count',
+                      _visitCount,
+                      hint: '12',
                       keyboard: TextInputType.number,
+                      onChanged: (_) => _recalculateCommercials(),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(child: _reminderDropdown()),
+                  Expanded(
+                    child: _field(
+                      'Pumps Count',
+                      _pumpsCount,
+                      hint: '4',
+                      keyboard: TextInputType.number,
+                      onChanged: (_) => _recalculateCommercials(),
+                    ),
+                  ),
                 ],
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _field(
+                      'Per Pump Price (₹)',
+                      _perPumpPrice,
+                      hint: '18000',
+                      keyboard: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      onChanged: (_) => _recalculateCommercials(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _field(
+                      'Total Price (₹)',
+                      _totalPrice,
+                      hint: '72000',
+                      keyboard: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      readOnly: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _field(
+                      'GST Percent',
+                      _gstPercent,
+                      hint: '18',
+                      keyboard: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      onChanged: (_) => _recalculateCommercials(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _field(
+                      'Contract Value (₹) *',
+                      _value,
+                      hint: '84720',
+                      keyboard: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      readOnly: true,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _reminderDropdown(),
               const SizedBox(height: 12),
               _field(
                 'Services (comma-separated)',
@@ -822,15 +993,71 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     );
   }
 
-  Widget _dropdownClient() {
-    return AppDropdownField<int>(
-      label: 'Client *',
-      value: _clientId,
-      items: [
-        for (final c in _clients) AppDropdownItem(value: c.id, label: c.name),
+  Widget _clientSelector() {
+    final hasSelection = _clientId != null && _clientName.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Client *',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _loading
+              ? null
+              : () async {
+                  final selected = await showModalBottomSheet<_ClientChoice>(
+                    context: context,
+                    isScrollControlled: true,
+                    showDragHandle: true,
+                    useSafeArea: true,
+                    builder: (ctx) => _ClientSearchPickerSheet(
+                      dio: widget.dio,
+                      initialClientId: _clientId,
+                    ),
+                  );
+                  if (selected == null || !mounted) return;
+                  setState(() {
+                    _clientId = selected.id;
+                    _clientName = selected.name;
+                  });
+                },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF374151)
+                    : AppColors.gray200,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF0B1220)
+                  : AppColors.gray50,
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.search, size: 16, color: AppColors.gray400),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    hasSelection ? _clientName : 'Search and select a client',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: hasSelection ? null : AppColors.gray400,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+              ],
+            ),
+          ),
+        ),
       ],
-      enabled: !_loading,
-      onChanged: (v) => setState(() => _clientId = v),
     );
   }
 
@@ -851,6 +1078,8 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     String? hint,
     TextInputType? keyboard,
     int lines = 1,
+    bool readOnly = false,
+    ValueChanged<String>? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -862,10 +1091,12 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
-          enabled: !_loading,
+          enabled: readOnly ? true : !_loading,
+          readOnly: readOnly,
           keyboardType: keyboard,
           maxLines: lines,
           decoration: InputDecoration(hintText: hint),
+          onChanged: readOnly ? null : onChanged,
         ),
       ],
     );
@@ -932,6 +1163,199 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ClientChoice {
+  const _ClientChoice({required this.id, required this.name});
+
+  final int id;
+  final String name;
+}
+
+class _ReadOnlyField extends StatelessWidget {
+  const _ReadOnlyField({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF374151)
+                  : AppColors.gray200,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF0B1220)
+                : AppColors.gray50,
+          ),
+          child: Text(
+            value.isEmpty ? '—' : value,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: value.isEmpty ? AppColors.gray400 : null,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ClientSearchPickerSheet extends StatefulWidget {
+  const _ClientSearchPickerSheet({
+    required this.dio,
+    required this.initialClientId,
+  });
+
+  final Dio dio;
+  final int? initialClientId;
+
+  @override
+  State<_ClientSearchPickerSheet> createState() =>
+      _ClientSearchPickerSheetState();
+}
+
+class _ClientSearchPickerSheetState extends State<_ClientSearchPickerSheet> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+  bool _loading = true;
+  List<Client> _clients = const [];
+  int? _selectedId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedId = widget.initialClientId;
+    _loadClients();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadClients({String search = ''}) async {
+    setState(() => _loading = true);
+    try {
+      final repo = ClientsRepository(dio: widget.dio);
+      final clients = await repo.fetchClients(limit: 100, search: search, type: '');
+      if (!mounted) return;
+      setState(() {
+        _clients = clients;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _clients = const [];
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _loadClients(search: value.trim());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = _selectedId;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                decoration: const InputDecoration(
+                  hintText: 'Search clients by name...',
+                  prefixIcon: Icon(Icons.search),
+                  isDense: true,
+                ),
+              ),
+            ),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.62,
+              ),
+              child: _loading
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  : _clients.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text('No clients found'),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: _clients.length,
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final client = _clients[index];
+                            final isSelected = selected == client.id;
+                            return ListTile(
+                              title: Text(
+                                client.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                'ID ${client.id}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(
+                                      Icons.check_circle,
+                                      color: AppColors.blue600,
+                                    )
+                                  : const Icon(Icons.chevron_right),
+                              onTap: () => Navigator.of(context).pop(
+                                _ClientChoice(id: client.id, name: client.name),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

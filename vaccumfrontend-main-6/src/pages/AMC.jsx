@@ -31,6 +31,11 @@ const EMPTY_FORM = {
   renewal_reminder_days: 30,
   services_raw:          "",
   next_service_date:     "",
+  visit_count:           "",
+  pumps_count:           "",
+  per_pump_price:        "",
+  total_price:           "",
+  gst_percent:           "",
 };
 
 export default function AMC() {
@@ -42,6 +47,7 @@ export default function AMC() {
   const [clients, setClients]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
+  const [search, setSearch] = useState("");
 
   const [modalOpen, setModalOpen]   = useState(false);
   const [editId, setEditId]         = useState(null);
@@ -54,7 +60,7 @@ export default function AMC() {
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => { fetchContracts(); fetchClients(); }, []);
-  useEffect(() => { fetchContracts(); }, [statusFilter]);
+  useEffect(() => { fetchContracts(); }, [statusFilter, search]);
 
   // ── Fetch ─────────────────────────────────────────────────
   const fetchContracts = async () => {
@@ -63,6 +69,7 @@ export default function AMC() {
       const token  = localStorage.getItem("token");
       const params = { limit: 100 };
       if (statusFilter !== "All") params.status = statusFilter;
+      if (search) params.search = search;
       const res = await axios.get(`${API_BASE_URL}/amc`, {
         headers: { Authorization: `Bearer ${token}` }, params,
       });
@@ -78,7 +85,7 @@ export default function AMC() {
     try {
       const token = localStorage.getItem("token");
       const res   = await axios.get(`${API_BASE_URL}/clients`, {
-        headers: { Authorization: `Bearer ${token}` }, params: { limit: 100 },
+        headers: { Authorization: `Bearer ${token}` }, params: { limit: 1000 }
       });
       if (res.data.success) setClients(res.data.data || []);
     } catch {}
@@ -100,7 +107,29 @@ export default function AMC() {
     }
   };
 
-  const f = (field) => (e) => setForm(p => ({ ...p, [field]: e.target.value }));
+  const f = (field) => (e) => {
+    const value = e.target.value;
+    setForm(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-calculate total_price when pumps_count or per_pump_price changes
+      if (field === 'pumps_count' || field === 'per_pump_price') {
+        const pumps = parseFloat(updated.pumps_count) || 0;
+        const perPump = parseFloat(updated.per_pump_price) || 0;
+        updated.total_price = pumps * perPump;
+      }
+      
+      // Auto-calculate value (contract value) when total_price or gst_percent changes
+      if (field === 'total_price' || field === 'gst_percent' || field === 'pumps_count' || field === 'per_pump_price') {
+        const total = parseFloat(updated.total_price) || 0;
+        const gst = parseFloat(updated.gst_percent) || 0;
+        const gstAmount = total * (gst / 100);
+        updated.value = total + gstAmount;
+      }
+      
+      return updated;
+    });
+  };
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
@@ -119,6 +148,11 @@ export default function AMC() {
       renewal_reminder_days: amc.renewal_reminder_days || 30,
       services_raw:          (amc.services || []).join(", "),
       next_service_date:     amc.next_service_date?.slice(0, 10) || "",
+      visit_count:           amc.visit_count           || "",
+      pumps_count:           amc.pumps_count           || "",
+      per_pump_price:        amc.per_pump_price        || "",
+      total_price:           amc.total_price           || "",
+      gst_percent:           amc.gst_percent           || "",
     });
     setEditId(amc.id);
     setModalOpen(true);
@@ -140,6 +174,11 @@ export default function AMC() {
         renewal_reminder_days: parseInt(form.renewal_reminder_days),
         services,
         po_number:             form.po_number.trim() || undefined,
+        visit_count:           form.visit_count ? parseInt(form.visit_count) : undefined,
+        pumps_count:           form.pumps_count ? parseInt(form.pumps_count) : undefined,
+        per_pump_price:        form.per_pump_price ? parseFloat(form.per_pump_price) : undefined,
+        total_price:           form.total_price ? parseFloat(form.total_price) : undefined,
+        gst_percent:           form.gst_percent ? parseFloat(form.gst_percent) : undefined,
       };
 
       if (editId) {
@@ -215,8 +254,16 @@ export default function AMC() {
           ))}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-5 flex-wrap">
+        {/* Search + Filter tabs */}
+        <div className="flex flex-wrap gap-2 mb-5 items-center">
+          <div className="relative flex-1 min-w-48 max-w-sm">
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search AMC contracts..."
+              className="w-full pl-3 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
           {STATUS_TABS.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition
@@ -378,6 +425,42 @@ export default function AMC() {
                     </div>
                   </div>
 
+                  {/* Additional fields */}
+                  {(detail.visit_count || detail.pumps_count || detail.per_pump_price || detail.total_price || detail.gst_percent) && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {detail.visit_count !== undefined && detail.visit_count !== null && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Visit Count</p>
+                          <p className="font-bold text-gray-800 dark:text-white">{detail.visit_count}</p>
+                        </div>
+                      )}
+                      {detail.pumps_count !== undefined && detail.pumps_count !== null && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Pumps Count</p>
+                          <p className="font-bold text-gray-800 dark:text-white">{detail.pumps_count}</p>
+                        </div>
+                      )}
+                      {detail.per_pump_price !== undefined && detail.per_pump_price !== null && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Per Pump Price</p>
+                          <p className="font-bold text-gray-800 dark:text-white">₹{Number(detail.per_pump_price || 0).toLocaleString()}</p>
+                        </div>
+                      )}
+                      {detail.total_price !== undefined && detail.total_price !== null && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Total Price</p>
+                          <p className="font-bold text-gray-800 dark:text-white">₹{Number(detail.total_price || 0).toLocaleString()}</p>
+                        </div>
+                      )}
+                      {detail.gst_percent !== undefined && detail.gst_percent !== null && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 col-span-2">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">GST Percent</p>
+                          <p className="font-bold text-gray-800 dark:text-white">{detail.gst_percent}%</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Dates */}
                   <div className="space-y-2.5">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contract Period</p>
@@ -436,7 +519,7 @@ export default function AMC() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {!editId && (
-                <Select label="Client" value={form.client_id} onChange={f("client_id")} required className="col-span-2"
+                <Select label="Client" value={form.client_id} onChange={f("client_id")} required className="col-span-2" searchable
                   options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
               )}
               <Input label="Contract Title" value={form.title} onChange={f("title")} required className="col-span-2" />
@@ -449,7 +532,6 @@ export default function AMC() {
               />
               {!editId && <DatePicker label="Start Date" value={form.start_date} onChange={f("start_date")} required />}
               <DatePicker label="End Date" value={form.end_date} onChange={f("end_date")} required={!editId} />
-              <Input label="Contract Value (₹)" type="number" value={form.value} onChange={f("value")} required />
               <DatePicker label="Next Service Date" value={form.next_service_date} onChange={f("next_service_date")} />
               <Select label="Renewal Reminder (days)" value={form.renewal_reminder_days} onChange={f("renewal_reminder_days")} className="col-span-2"
                 options={[{ value: 15, label: "15 days" }, { value: 30, label: "30 days" }, { value: 60, label: "60 days" }, { value: 90, label: "90 days" }]} />
@@ -457,6 +539,12 @@ export default function AMC() {
                 <Input label="Services Covered (comma-separated)" value={form.services_raw} onChange={f("services_raw")}
                   placeholder="HVAC Servicing, Filter Replacement, Emergency Support" />
               </div>
+              <Input label="Visit Count" type="number" value={form.visit_count} onChange={f("visit_count")} />
+              <Input label="Pumps Count" type="number" value={form.pumps_count} onChange={f("pumps_count")} />
+              <Input label="Per Pump Price (₹)" type="number" value={form.per_pump_price} onChange={f("per_pump_price")} />
+              <Input label="Total Price (₹)" type="number" value={form.total_price} readOnly />
+              <Input label="GST Percent" type="number" value={form.gst_percent} onChange={f("gst_percent")} />
+              <Input label="Contract Value (₹)" type="number" value={form.value} readOnly className="col-span-2" required />
             </div>
 
             {!editId && (

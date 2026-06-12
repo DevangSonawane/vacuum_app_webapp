@@ -289,8 +289,9 @@ export default function Technicians() {
                   onChange={f("specialization")}
                   options={["", ...SPECIALIZATIONS].map(s => ({ value: s, label: s || "Select..." }))}
                   required
+                  searchable
                 />
-                <Select label="Status" value={form.status} onChange={f("status")} options={STATUSES} />
+                <Select label="Status" value={form.status} onChange={f("status")} options={STATUSES} searchable />
                 <DatePicker label="Join Date" value={form.join_date} onChange={f("join_date")} className="col-span-2" />
               </div>
 

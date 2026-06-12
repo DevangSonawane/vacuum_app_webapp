@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,7 +26,13 @@ import 'close_job_sheet.dart';
 
 const _statuses = ['Raised', 'Assigned', 'In Progress', 'Closed'];
 const _priorities = ['Low', 'Medium', 'High', 'Critical'];
-const _categories = ['Maintenance', 'Repair', 'Installation', 'Inspection'];
+const _categories = [
+  'Service',
+  'AMC Visit',
+  'Breakdown',
+  'Installation & Commissioning',
+  'Inspection',
+];
 
 const _statusBorderColor = <String, Color>{
   'Raised': AppColors.purple500,

@@ -1,12 +1,9 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
@@ -279,10 +276,11 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
         String clientName,
         String clientEmail,
         String contactPerson,
+        String location,
       })> _jobs = const [];
   List<({int id, String name})> _techs = const [];
-  List<({int id, String name, String email, String contactPerson})> _clients =
-      const [];
+  List<({int id, String name, String email, String contactPerson, String address})>
+      _clients = const [];
   List<String> _poNumbers = const [];
 
   // form fields
@@ -296,6 +294,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   final _clientEmail = TextEditingController();
   final _companyName = TextEditingController();
   final _contactPerson = TextEditingController();
+  final _location = TextEditingController();
   final _modelSerialInstallation = TextEditingController();
   final _operatingHoursPerDay = TextEditingController();
   final _applicationProcessDescription = TextEditingController();
@@ -316,8 +315,6 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   final List<_SpareRow> _spares =
       _defaultSpares.map((e) => e.copy()).toList();
 
-  final _picker = ImagePicker();
-  final List<XFile> _photos = [];
   final List<({String path, String name})> _technicalReports = [];
 
   @override
@@ -333,6 +330,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     _clientEmail.dispose();
     _companyName.dispose();
     _contactPerson.dispose();
+    _location.dispose();
     _modelSerialInstallation.dispose();
     _operatingHoursPerDay.dispose();
     _applicationProcessDescription.dispose();
@@ -366,6 +364,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
               clientName: (e['client_name'] ?? '').toString(),
               clientEmail: (e['client_email'] ?? '').toString(),
               contactPerson: (e['contact_person'] ?? '').toString(),
+              location: (e['location'] ?? '').toString(),
             );
           })
           .where((e) => e.id.isNotEmpty)
@@ -384,6 +383,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             name: c.name,
             email: c.email,
             contactPerson: c.contactPerson,
+            address: c.address,
           ),
       ];
 
@@ -435,6 +435,13 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     if (_contactPerson.text.trim().isEmpty && cp.isNotEmpty) {
       _contactPerson.text = cp;
     }
+
+    final location = job.location.trim().isNotEmpty
+        ? job.location.trim()
+        : (selected?.address ?? '').trim();
+    if (location.isNotEmpty) {
+      _location.text = location;
+    }
   }
 
   ({
@@ -444,6 +451,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     String clientName,
     String clientEmail,
     String contactPerson,
+    String location,
   })?
   _findJob(String id) {
     for (final j in _jobs) {
@@ -452,7 +460,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     return null;
   }
 
-  ({int id, String name, String email, String contactPerson})? _findClient(
+  ({int id, String name, String email, String contactPerson, String address})?
+  _findClient(
     int? id,
   ) {
     if (id == null) return null;
@@ -485,23 +494,10 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
 
   void _prev() => setState(() => _step = (_step - 1).clamp(1, 5));
 
-  Future<void> _pickPhotos() async {
-    final imgs = await _picker.pickMultiImage();
-    if (imgs.isEmpty) return;
-    setState(() => _photos.addAll(imgs));
-  }
-
-  Future<void> _camera() async {
-    final img = await _picker.pickImage(source: ImageSource.camera);
-    if (img == null) return;
-    setState(() => _photos.add(img));
-  }
-
   Future<void> _pickTechnicalReports() async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'],
+      type: FileType.any,
     );
     if (result == null) return;
 
@@ -579,6 +575,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
         'company_name': _companyName.text.trim(),
         if (_contactPerson.text.trim().isNotEmpty)
           'contact_person': _contactPerson.text.trim(),
+        if (_location.text.trim().isNotEmpty)
+          'location': _location.text.trim(),
         if (_modelSerialInstallation.text.trim().isNotEmpty)
           'model_serial_installation': _modelSerialInstallation.text.trim(),
         if (_operatingHoursPerDay.text.trim().isNotEmpty)
@@ -612,7 +610,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
 
       await widget.onSubmit(
         payload,
-        [for (final f in _photos) (path: f.path, name: f.name)],
+        const [],
         _technicalReports,
       );
     } finally {
@@ -837,6 +835,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                 selected.contactPerson.trim().isNotEmpty) {
               _contactPerson.text = selected.contactPerson.trim();
             }
+            if (selected.address.trim().isNotEmpty) {
+              _location.text = selected.address.trim();
+            }
           }
         });
       },
@@ -928,6 +929,12 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          _field(
+            'Location / Address',
+            _location,
+            hint: 'Plot No. 123, GIDC Sachin, Surat',
           ),
           const SizedBox(height: 12),
           Row(
@@ -1146,41 +1153,25 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             lines: 3,
           ),
           const SizedBox(height: 16),
-          Text('Uploads', style: Theme.of(context).textTheme.titleMedium),
+          Text('Technical Reports', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: 'Technical Reports',
-                  variant: AppButtonVariant.secondary,
-                  leading: const Icon(Icons.upload_file_outlined),
-                  onPressed: _loading ? null : _pickTechnicalReports,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppButton(
-                  label: 'Photos',
-                  variant: AppButtonVariant.secondary,
-                  leading: const Icon(Icons.photo_library_outlined),
-                  onPressed: _loading ? null : _pickPhotos,
-                ),
-              ),
-              const SizedBox(width: 12),
-              AppButton(
-                label: '',
-                variant: AppButtonVariant.secondary,
-                leading: const Icon(Icons.camera_alt_outlined),
-                onPressed: _loading ? null : _camera,
-              ),
-            ],
+          _UploadActionCard(
+            title: 'Technical Reports',
+            subtitle: 'PDF, DOCX, XLSX, or any file type',
+            icon: Icons.upload_file_outlined,
+            onTap: _loading ? null : _pickTechnicalReports,
           ),
           const SizedBox(height: 12),
           if (_technicalReports.isNotEmpty) ...[
             AppCard(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    'Uploaded technical reports',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
                   for (int i = 0; i < _technicalReports.length; i++)
                     ListTile(
                       dense: true,
@@ -1207,55 +1198,6 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             ),
             const SizedBox(height: 12),
           ],
-          if (_photos.isNotEmpty) ...[
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: _photos.length,
-              itemBuilder: (context, i) => Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(_photos[i].path),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image_outlined),
-                    ),
-                  ),
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: InkWell(
-                      onTap: _loading
-                          ? null
-                          : () => setState(() => _photos.removeAt(i)),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
           const SizedBox(height: 12),
           Text('Signatures', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
@@ -1279,6 +1221,75 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UploadActionCard extends StatelessWidget {
+  const _UploadActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF111827) : AppColors.gray50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDBEAFE),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: AppColors.blue600),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Theme.of(context).hintColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.add_circle_outline, size: 18),
+          ],
+        ),
       ),
     );
   }

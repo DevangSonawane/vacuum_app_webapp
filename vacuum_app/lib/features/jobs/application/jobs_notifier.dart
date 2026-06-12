@@ -10,15 +10,29 @@ final jobsRepositoryProvider = Provider<JobsRepository>((ref) {
 });
 
 class JobsState {
-  const JobsState({required this.items, this.statusFilter = 'All'});
+  const JobsState({
+    required this.items,
+    required this.allItems,
+    this.statusFilter = 'All',
+    this.search = '',
+  });
 
   final List<Job> items;
+  final List<Job> allItems;
   final String statusFilter;
+  final String search;
 
-  JobsState copyWith({List<Job>? items, String? statusFilter}) {
+  JobsState copyWith({
+    List<Job>? items,
+    List<Job>? allItems,
+    String? statusFilter,
+    String? search,
+  }) {
     return JobsState(
       items: items ?? this.items,
+      allItems: allItems ?? this.allItems,
       statusFilter: statusFilter ?? this.statusFilter,
+      search: search ?? this.search,
     );
   }
 }
@@ -41,29 +55,52 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
   @override
   Future<JobsState> build() async {
     final items = await _repo.fetchJobs(userId: _scopedUserId());
-    return JobsState(items: items);
+    return JobsState(items: items, allItems: items);
   }
 
   Future<void> setFilter(String status) async {
+    final prev = state.valueOrNull;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final items = await _repo.fetchJobs(
         status: status,
         userId: _scopedUserId(),
       );
-      return JobsState(items: items, statusFilter: status);
+      return _applySearch(
+        JobsState(
+          items: items,
+          allItems: items,
+          statusFilter: status,
+          search: prev?.search ?? '',
+        ),
+      );
     });
   }
 
+  Future<void> search(String query) async {
+    final prev = state.valueOrNull;
+    if (prev == null) return;
+    final nextQuery = query.trim();
+    state = AsyncData(_applySearch(prev.copyWith(search: nextQuery)));
+  }
+
   Future<void> refresh() async {
-    final filter = state.valueOrNull?.statusFilter ?? 'All';
+    final current = state.valueOrNull;
+    final filter = current?.statusFilter ?? 'All';
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final items = await _repo.fetchJobs(
         status: filter,
         userId: _scopedUserId(),
       );
-      return JobsState(items: items, statusFilter: filter);
+      return _applySearch(
+        JobsState(
+          items: items,
+          allItems: items,
+          statusFilter: filter,
+          search: current?.search ?? '',
+        ),
+      );
     });
   }
 
@@ -109,5 +146,21 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
     } catch (_) {
       return false;
     }
+  }
+
+  JobsState _applySearch(JobsState state) {
+    final query = state.search.trim().toLowerCase();
+    if (query.isEmpty) return state;
+    final filtered = state.allItems.where((job) {
+      return [
+        job.title,
+        job.status,
+        job.category,
+        job.clientName,
+        job.technicianName,
+        job.description,
+      ].any((value) => value.toLowerCase().contains(query));
+    }).toList();
+    return state.copyWith(items: filtered);
   }
 }

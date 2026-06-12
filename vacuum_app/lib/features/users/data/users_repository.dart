@@ -7,8 +7,17 @@ class UsersRepository {
 
   final Dio _dio;
 
-  Future<UsersPage> fetchUsers({required int page}) async {
-    final response = await _dio.get('users', queryParameters: {'page': page});
+  Future<UsersPage> fetchUsers({
+    required int page,
+    String search = '',
+  }) async {
+    final response = await _dio.get(
+      'users',
+      queryParameters: {
+        'page': page,
+        if (search.trim().isNotEmpty) 'search': search.trim(),
+      },
+    );
     final data = _asMap(response.data);
 
     final list = (data['data'] as List?) ?? const [];

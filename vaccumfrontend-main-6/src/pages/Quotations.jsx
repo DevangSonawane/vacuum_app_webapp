@@ -52,6 +52,7 @@ export default function Quotations() {
   const fetchErpQuotations = useCallback(async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem("token");
       const params = {
         page: filters.page,
         limit: filters.limit,
@@ -61,7 +62,10 @@ export default function Quotations() {
       if (filters.to_date) params.to_date = filters.to_date;
       if (debouncedSearch) params.search = debouncedSearch;
 
-      const response = await axios.get(`${API_BASE_URL}/erp/quotations`, { params });
+      const response = await axios.get(`${API_BASE_URL}/erp/quotations`, { 
+        params, 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
       if (response.data.success) {
         const data = response.data.data || [];
         setErpQuotations(data);
@@ -186,7 +190,7 @@ export default function Quotations() {
                     const pageNum = i + 1;
                     // Only show limited page numbers if there are many
                     if (totalPages > 5 && (pageNum < filters.page - 1 || pageNum > filters.page + 1) && pageNum !== 1 && pageNum !== totalPages) {
-                      if (pageNum === 2 || pageNum === totalPages - 1) return <span key={pageNum} className="px-2">...</span>;
+                      if (pageNum === 2 || pageNum === totalPages - 1) return <span key={pageNum} className="px-2 text-gray-900 dark:text-white">...</span>;
                       return null;
                     }
                     return (

@@ -16,6 +16,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../../core/ui/ui_providers.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../../erp/application/erp_customers_notifier.dart';
 import '../application/clients_notifier.dart';
@@ -54,6 +55,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   int _tabIndex = 0; // 0 = Local, 1 = ERP
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.text = ref.read(searchQueryProvider);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _erpSearchController.dispose();
@@ -65,14 +72,18 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   void _onSearch(String query) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      ref.read(clientsProvider.notifier).filter(search: query);
+      if (!mounted) return;
+      final next = query.trim();
+      ref.read(searchQueryProvider.notifier).state = query;
+      ref.read(clientsProvider.notifier).filter(search: next);
     });
   }
 
   void _onErpSearch(String query) {
     _erpDebounce?.cancel();
     _erpDebounce = Timer(const Duration(milliseconds: 400), () {
-      ref.read(erpCustomersProvider.notifier).setSearch(query);
+      if (!mounted) return;
+      ref.read(erpCustomersProvider.notifier).setSearch(query.trim());
     });
   }
 
@@ -83,6 +94,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
     final state = ref.watch(clientsProvider);
     final erp = ref.watch(erpCustomersProvider);
+
+    ref.listen<String>(searchQueryProvider, (_, next) {
+      if (_tabIndex == 0 && _searchController.text != next) {
+        _searchController.text = next;
+      }
+    });
 
     Future<void> refreshCurrent() async {
       if (_tabIndex == 0) {

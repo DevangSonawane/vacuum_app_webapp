@@ -41,11 +41,11 @@ class ReportsScreen extends ConsumerWidget {
                 data: (d) => '${d.items.length} reports',
               ),
               action: canEdit
-                  ? AppButton(
+              ? AppButton(
                       label: 'New Report',
                       onPressed: () => context.push('/reports/new'),
                     )
-                  : null,
+              : null,
             ),
             const SizedBox(height: 12),
             state.when(
@@ -84,17 +84,16 @@ class ReportsScreen extends ConsumerWidget {
                           final cols = width >= 720 ? 2 : 1;
                           // Use a fixed tile height so cards don't overflow on
                           // smaller devices / with more metadata pills.
-                          final tileHeight = cols == 1 ? 235.0 : 210.0;
+                          final tileHeight = cols == 1 ? 255.0 : 230.0;
                           return GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: cols,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  mainAxisExtent: tileHeight,
-                                ),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: cols,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              mainAxisExtent: tileHeight,
+                            ),
                             itemCount: data.items.length,
                             itemBuilder: (context, i) {
                               final r = data.items[i];

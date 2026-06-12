@@ -10,15 +10,29 @@ final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
 });
 
 class ReportsState {
-  const ReportsState({required this.items, this.statusFilter = 'All'});
+  const ReportsState({
+    required this.items,
+    required this.allItems,
+    this.statusFilter = 'All',
+    this.search = '',
+  });
 
   final List<Report> items;
+  final List<Report> allItems;
   final String statusFilter;
+  final String search;
 
-  ReportsState copyWith({List<Report>? items, String? statusFilter}) {
+  ReportsState copyWith({
+    List<Report>? items,
+    List<Report>? allItems,
+    String? statusFilter,
+    String? search,
+  }) {
     return ReportsState(
       items: items ?? this.items,
+      allItems: allItems ?? this.allItems,
       statusFilter: statusFilter ?? this.statusFilter,
+      search: search ?? this.search,
     );
   }
 }
@@ -33,23 +47,53 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
   @override
   Future<ReportsState> build() async {
     final items = await _repo.fetchReports();
-    return ReportsState(items: items);
+    return ReportsState(
+      items: items,
+      allItems: items,
+    );
   }
 
   Future<void> setFilter(String status) async {
+    final prev = state.valueOrNull;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final items = await _repo.fetchReports(status: status);
-      return ReportsState(items: items, statusFilter: status);
+      return _applySearch(
+        ReportsState(
+          items: items,
+          allItems: items,
+          statusFilter: status,
+          search: prev?.search ?? '',
+        ),
+      );
     });
   }
 
+  Future<void> search(String query) async {
+    final prev = state.valueOrNull;
+    if (prev == null) return;
+    final nextQuery = query.trim();
+    state = AsyncData(
+      _applySearch(
+        prev.copyWith(search: nextQuery),
+      ),
+    );
+  }
+
   Future<void> refresh() async {
-    final filter = state.valueOrNull?.statusFilter ?? 'All';
+    final current = state.valueOrNull;
+    final filter = current?.statusFilter ?? 'All';
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final items = await _repo.fetchReports(status: filter);
-      return ReportsState(items: items, statusFilter: filter);
+      return _applySearch(
+        ReportsState(
+          items: items,
+          allItems: items,
+          statusFilter: filter,
+          search: current?.search ?? '',
+        ),
+      );
     });
   }
 
@@ -161,5 +205,25 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
     } catch (_) {
       return null;
     }
+  }
+
+  ReportsState _applySearch(ReportsState state) {
+    final query = state.search.trim().toLowerCase();
+    if (query.isEmpty) return state;
+    final filtered = state.allItems.where((r) {
+      return [
+        r.title,
+        r.status,
+        r.jobTitle,
+        r.clientName,
+        r.technicianName,
+        r.companyName ?? '',
+        r.contactPerson ?? '',
+        r.location ?? '',
+        r.serialNo ?? '',
+        r.poNumber ?? '',
+      ].any((value) => value.toLowerCase().contains(query));
+    }).toList();
+    return state.copyWith(items: filtered);
   }
 }

@@ -49,11 +49,10 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
   }
 
   Future<UsersState> _fetch({required int page, required String query}) async {
-    final result = await _repo.fetchUsers(page: page);
-    final filtered = _applyQuery(result.users, query);
+    final result = await _repo.fetchUsers(page: page, search: query);
     return UsersState(
       allUsers: result.users,
-      users: filtered,
+      users: result.users,
       page: result.page,
       totalPages: result.totalPages,
       total: result.total,
@@ -62,9 +61,10 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
   }
 
   Future<void> search(String query) async {
-    final current = state.valueOrNull ?? UsersState.empty;
-    final filtered = _applyQuery(current.allUsers, query);
-    state = AsyncData(current.copyWith(query: query, users: filtered));
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => _fetch(page: 1, query: query.trim()),
+    );
   }
 
   Future<bool> createUser(Map<String, dynamic> payload) async {
@@ -105,14 +105,4 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
     }
   }
 
-  List<AppUser> _applyQuery(List<AppUser> users, String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return users;
-    return users.where((u) {
-      final name = u.fullName.toLowerCase();
-      final email = u.email.toLowerCase();
-      final phone = (u.phoneNumber ?? '').toLowerCase();
-      return name.contains(q) || email.contains(q) || phone.contains(q);
-    }).toList();
-  }
 }
