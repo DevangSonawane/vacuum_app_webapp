@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,11 +49,34 @@ const _statusFlow = <String, String>{
   'In Progress': 'Closed',
 };
 
-class JobsScreen extends ConsumerWidget {
+class JobsScreen extends ConsumerStatefulWidget {
   const JobsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<JobsScreen> createState() => _JobsScreenState();
+}
+
+class _JobsScreenState extends ConsumerState<JobsScreen> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearch(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      ref.read(jobsProvider.notifier).search(query.trim());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canRaise = !['technician', 'labour'].contains(role);
 
@@ -76,6 +101,16 @@ class JobsScreen extends ConsumerWidget {
                       onPressed: () => context.push('/jobs/new'),
                     )
                   : null,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchController,
+              onChanged: _onSearch,
+              decoration: const InputDecoration(
+                hintText: 'Search work orders...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
             ),
             const SizedBox(height: 12),
             state.when(

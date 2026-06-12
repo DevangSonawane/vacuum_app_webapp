@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,11 +18,34 @@ import '../domain/report.dart';
 
 const _reportStatuses = ['Pending', 'Approved', 'Rejected'];
 
-class ReportsScreen extends ConsumerWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearch(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      ref.read(reportsProvider.notifier).search(query.trim());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canEdit = !['technician', 'labour'].contains(role);
     final canApprove = role == 'admin';
@@ -46,6 +71,16 @@ class ReportsScreen extends ConsumerWidget {
                       onPressed: () => context.push('/reports/new'),
                     )
               : null,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchController,
+              onChanged: _onSearch,
+              decoration: const InputDecoration(
+                hintText: 'Search reports...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
             ),
             const SizedBox(height: 12),
             state.when(

@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../../clients/application/clients_notifier.dart';
+import '../../amc/application/amc_notifier.dart';
 import '../../erp/application/erp_quotations_notifier.dart';
 import '../../jobs/application/jobs_notifier.dart';
 import '../../reports/application/reports_notifier.dart';
@@ -180,7 +181,10 @@ class _TopBar extends ConsumerWidget {
 
   bool _hideSearchForLocation(String location) {
     return location.startsWith('/technicians') ||
-        location.startsWith('/clients');
+        location.startsWith('/clients') ||
+        location.startsWith('/jobs') ||
+        location.startsWith('/reports') ||
+        location.startsWith('/amc');
   }
 
   String _titleForLocation(String location) {
@@ -344,6 +348,11 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
 
     if (location.startsWith('/clients')) {
       ref.read(clientsProvider.notifier).filter(search: query);
+      return;
+    }
+
+    if (location.startsWith('/amc')) {
+      ref.read(amcProvider.notifier).search(query);
       return;
     }
 

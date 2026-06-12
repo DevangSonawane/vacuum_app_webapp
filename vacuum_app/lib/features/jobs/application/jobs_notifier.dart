@@ -153,8 +153,10 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
     if (query.isEmpty) return state;
     final filtered = state.allItems.where((job) {
       return [
+        job.id,
         job.title,
         job.status,
+        job.priority,
         job.category,
         job.clientName,
         job.technicianName,

@@ -212,8 +212,10 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
     if (query.isEmpty) return state;
     final filtered = state.allItems.where((r) {
       return [
+        r.id,
         r.title,
         r.status,
+        r.jobId,
         r.jobTitle,
         r.clientName,
         r.technicianName,
@@ -222,6 +224,10 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
         r.location ?? '',
         r.serialNo ?? '',
         r.poNumber ?? '',
+        r.clientEmail ?? '',
+        r.findings,
+        r.recommendations,
+        r.remarks ?? '',
       ].any((value) => value.toLowerCase().contains(query));
     }).toList();
     return state.copyWith(items: filtered);

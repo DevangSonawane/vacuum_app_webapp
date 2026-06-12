@@ -32,11 +32,34 @@ const _statusGrad = <String, List<Color>>{
   'Expired': [AppColors.gray400, AppColors.gray500],
 };
 
-class AmcScreen extends ConsumerWidget {
+class AmcScreen extends ConsumerStatefulWidget {
   const AmcScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AmcScreen> createState() => _AmcScreenState();
+}
+
+class _AmcScreenState extends ConsumerState<AmcScreen> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearch(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      ref.read(amcProvider.notifier).search(query.trim());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canEdit = !['technician', 'labour'].contains(role);
 
@@ -84,6 +107,16 @@ class AmcScreen extends ConsumerWidget {
                       : null,
                 );
               },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchController,
+              onChanged: _onSearch,
+              decoration: const InputDecoration(
+                hintText: 'Search contracts...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
             ),
             const SizedBox(height: 12),
             state.when(
