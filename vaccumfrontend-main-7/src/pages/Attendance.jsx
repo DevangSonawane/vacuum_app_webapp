@@ -13,7 +13,7 @@ import {
   SectionHeader, StatCard, useToast, Toast,
 } from "../components/ui";
 
-const API = "https://vaccumapi-o4ol.onrender.com/api";
+const API = "https://apivdti.asynk.in/api";
 
 function formatDate(str) {
   if (!str) return "—";

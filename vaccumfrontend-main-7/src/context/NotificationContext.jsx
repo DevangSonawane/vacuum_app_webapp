@@ -10,16 +10,18 @@ import { useWebSocket } from "../hooks/useWebSocket";
 
 const NotificationContext = createContext();
 
-const API_BASE_URL = "https://vaccumapi-o4ol.onrender.com/api";
+const API_BASE_URL = "https://apivdti.asynk.in/api";
 
 const EVENT_LABELS = {
-  job_raised:       { title: "New Job Raised",        color: "blue"    },
-  job_status:       { title: "Job Status Updated",    color: "amber"   },
-  report_submitted: { title: "Report Submitted",      color: "gray"    },
-  report_reviewed:  { title: "Report Reviewed",       color: "emerald" },
-  amc_expiring:     { title: "AMC Renewal Reminder",  color: "orange"  },
-  amc_created:      { title: "New AMC Contract",      color: "blue"    },
-  notification:     { title: "Notification",          color: "blue"    },
+  job_raised:           { title: "New Job Raised",             color: "blue"    },
+  job_status:           { title: "Job Status Updated",         color: "amber"   },
+  job_assigned:         { title: "Job Assigned",               color: "blue"    },
+  report_submitted:     { title: "Report Submitted",           color: "gray"    },
+  report_reviewed:      { title: "Report Reviewed",            color: "emerald" },
+  amc_expiring:         { title: "AMC Renewal Reminder",       color: "orange"  },
+  amc_created:          { title: "New AMC Contract",           color: "blue"    },
+  amc_service_upcoming: { title: "AMC Service Upcoming",       color: "amber"   },
+  notification:         { title: "Notification",               color: "blue"    },
 };
 
 // Shape a DB row (from GET /api/notifications) into the same
@@ -158,12 +160,14 @@ export const useNotifications = () => useContext(NotificationContext);
 function formatEventMessage(msg) {
   const d = msg.data || {};
   switch (msg.event) {
-    case "job_raised":       return `${d.entity_id || "A new job"} was raised`;
-    case "job_status":       return `${d.entity_id || "Job"} moved to "${d.status || "new status"}"`;
-    case "report_submitted": return `${d.entity_id || "A report"} submitted for review`;
-    case "report_reviewed":  return `${d.entity_id || "Report"} was ${d.status?.toLowerCase() || "reviewed"}`;
-    case "amc_expiring":     return `${d.entity_id || "An AMC"} is expiring soon`;
-    case "amc_created":      return `${d.entity_id || "A new AMC"} contract was created`;
-    default:                 return d.message || "New notification";
+    case "job_raised":           return `${d.entity_id || "A new job"} was raised`;
+    case "job_status":           return `${d.entity_id || "Job"} moved to "${d.status || "new status"}"`;
+    case "job_assigned":         return `${d.entity_id || "Job"} assigned to you`;
+    case "report_submitted":     return `${d.entity_id || "A report"} submitted for review`;
+    case "report_reviewed":      return `${d.entity_id || "Report"} was ${d.status?.toLowerCase() || "reviewed"}`;
+    case "amc_expiring":         return `${d.entity_id || "An AMC"} is expiring soon`;
+    case "amc_created":          return `${d.entity_id || "A new AMC"} contract was created`;
+    case "amc_service_upcoming": return `${d.entity_id || "AMC"} service upcoming in 10 days`;
+    default:                     return d.message || "New notification";
   }
 }

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -73,13 +74,14 @@ class TechniciansNotifier extends AsyncNotifier<TechniciansState> {
     }
   }
 
-  Future<bool> delete(int id) async {
+  Future<void> delete(int id) async {
     try {
       await _repo.delete(id);
       await refresh();
-      return true;
-    } catch (_) {
-      return false;
+    } on DioException catch (e) {
+      throw Exception(_messageFromDio(e, fallback: 'Delete failed.'));
+    } catch (e) {
+      throw Exception(e.toString());
     }
   }
 
@@ -89,5 +91,20 @@ class TechniciansNotifier extends AsyncNotifier<TechniciansState> {
     } catch (_) {
       return null;
     }
+  }
+
+  static String _messageFromDio(DioException e, {required String fallback}) {
+    final data = e.response?.data;
+    if (data is Map && data['message'] != null) {
+      final msg = data['message'].toString().trim();
+      if (msg.isNotEmpty) return msg;
+    }
+    if (data is Map && data['error'] != null) {
+      final msg = data['error'].toString().trim();
+      if (msg.isNotEmpty) return msg;
+    }
+    final msg = e.message?.trim();
+    if (msg != null && msg.isNotEmpty) return msg;
+    return fallback;
   }
 }

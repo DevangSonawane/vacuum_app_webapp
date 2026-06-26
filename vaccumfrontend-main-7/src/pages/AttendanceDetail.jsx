@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { PageTransition, Badge, Button, Card } from "../components/ui";
 
-const API = "https://vaccumapi-o4ol.onrender.com/api";
+const API = "https://apivdti.asynk.in/api";
 const today = new Date().toISOString().split("T")[0];
 
 function formatDate(str) {

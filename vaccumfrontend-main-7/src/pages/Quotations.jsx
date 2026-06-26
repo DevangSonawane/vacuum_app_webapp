@@ -5,7 +5,7 @@ import { useApp } from "../context/AppContext";
 import { PageTransition, Card, Badge, Button, Modal, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast, PageLoader } from "../components/ui";
 import axios from "axios";
 
-const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
+const API_BASE_URL = 'https://apivdti.asynk.in/api';
 
 export default function Quotations() {
   const { clients, currentUser } = useApp();
@@ -69,7 +69,9 @@ export default function Quotations() {
       if (response.data.success) {
         const data = response.data.data || [];
         setErpQuotations(data);
-        setTotalCount(response.data.count || data.length);
+        const r = response.data;
+        const total = r.totalCount ?? r.total_count ?? r.total ?? r.count ?? r.pagination?.total;
+        setTotalCount(total != null ? total : (data.length === filters.limit ? (filters.page * filters.limit) + 1 : data.length));
       }
     } catch (error) {
       console.error("Error fetching ERP quotations:", error);

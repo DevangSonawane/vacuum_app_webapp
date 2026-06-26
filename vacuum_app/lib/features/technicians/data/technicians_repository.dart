@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
+import 'dart:io';
 
 import '../domain/technician.dart';
+
+const _maxTechnicianDocumentBytes = 20 * 1024 * 1024;
 
 class TechniciansRepository {
   TechniciansRepository({required Dio dio}) : _dio = dio;
@@ -68,6 +71,67 @@ class TechniciansRepository {
 
   Future<void> create(Map<String, dynamic> payload) async {
     await _dio.post('technicians', data: payload);
+  }
+
+  Future<Map<String, dynamic>> uploadTechnicianDocument({
+    required String filePath,
+    required String filename,
+    String? documentType,
+    String? documentName,
+    String? expiryDate,
+    String? notes,
+  }) async {
+    final file = File(filePath);
+    final size = await file.length();
+    if (size > _maxTechnicianDocumentBytes) {
+      throw Exception(
+        'Document is too large. Please choose a file smaller than 20 MB.',
+      );
+    }
+
+    final formData = FormData();
+    formData.files.add(
+      MapEntry(
+        'files',
+        await MultipartFile.fromFile(filePath, filename: filename),
+      ),
+    );
+
+    try {
+      final response = await _dio.post(
+        'upload/technician-documents',
+        queryParameters: {
+          if (documentType != null && documentType.trim().isNotEmpty)
+            'document_type': documentType.trim(),
+          if (documentName != null && documentName.trim().isNotEmpty)
+            'document_name': documentName.trim(),
+          if (expiryDate != null && expiryDate.trim().isNotEmpty)
+            'expiry_date': expiryDate.trim(),
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        },
+        data: formData,
+      );
+
+      final root = _asMap(response.data);
+      final uploaded = _asList(root['data']);
+      if (uploaded.isEmpty) {
+        throw Exception(
+          (root['message'] ?? 'Failed to upload technician document')
+              .toString(),
+        );
+      }
+      return _asMap(uploaded.first);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 413) {
+        throw Exception(
+          'Document is too large. Please choose a file smaller than 20 MB.',
+        );
+      }
+      final root = _asMap(e.response?.data);
+      final message = (root['message'] ?? e.message ?? 'Upload failed')
+          .toString();
+      throw Exception(message);
+    }
   }
 
   Future<void> update(int id, Map<String, dynamic> payload) async {

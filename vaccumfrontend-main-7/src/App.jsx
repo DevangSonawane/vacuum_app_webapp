@@ -14,14 +14,16 @@ import Profile        from "./pages/Profile";
 import SettingsPage   from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
 import Dashboard      from "./pages/Dashboard";
-import Technicians    from "./pages/Technicians";
-import Clients        from "./pages/Clients";
+import Technicians      from "./pages/Technicians";
+import TechnicianDetail from "./pages/TechnicianDetail";
+import Clients          from "./pages/Clients";
 import Jobs           from "./pages/Jobs";
 import JobDetail      from "./pages/JobDetail";
 import Reports        from "./pages/Reports";
 import ReportDetail   from "./pages/ReportDetail";
 import Quotations     from "./pages/Quotations";
 import AMC            from "./pages/AMC";
+import AMCDetail      from "./pages/AMCDetail";
 import Attendance       from "./pages/Attendance";
 import AttendanceDetail from "./pages/AttendanceDetail";
 import EmailSettings  from "./pages/EmailSettings";
@@ -55,10 +57,13 @@ const ProtectedLayout = ({ children, sidebarOpen, setSidebarOpen }) => {
 function AppContent() {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { isAuthenticated, loading } = useSelector((state) => state.auth);
+  const { isAuthenticated, loading, user: authUser } = useSelector((state) => state.auth);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [appReady, setAppReady]       = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+
+  const userRole = authUser?.role?.toLowerCase();
+  const isRestricted = ["technician", "engineer", "labour"].includes(userRole);
 
   useEffect(() => {
     const init = async () => {
@@ -83,6 +88,8 @@ function AppContent() {
     </ProtectedLayout>
   );
 
+  const Guarded = ({ children }) => isRestricted ? <Navigate to="/" /> : children;
+
   return (
     <>
       <AnimatePresence>
@@ -98,8 +105,9 @@ function AppContent() {
         <Route path="/" element={<PL><Dashboard /></PL>} />
 
         {/* Core modules */}
-        <Route path="/technicians" element={<PL><Technicians /></PL>} />
-        <Route path="/clients"     element={<PL><Clients /></PL>} />
+        <Route path="/technicians"     element={<PL><Guarded><Technicians /></Guarded></PL>} />
+        <Route path="/technicians/:id" element={<PL><Guarded><TechnicianDetail /></Guarded></PL>} />
+        <Route path="/clients"         element={<PL><Guarded><Clients /></Guarded></PL>} />
 
         {/* Jobs + detail */}
         <Route path="/jobs"     element={<PL><Jobs /></PL>} />
@@ -112,9 +120,10 @@ function AppContent() {
 
         {/* Other modules */}
         <Route path="/quotations" element={<PL><Quotations /></PL>} />
-        <Route path="/amc"        element={<PL><AMC /></PL>} />
-        <Route path="/attendance"                    element={<PL><Attendance /></PL>} />
-        <Route path="/attendance/:employee_id"       element={<PL><AttendanceDetail /></PL>} />
+        <Route path="/amc"        element={<PL><Guarded><AMC /></Guarded></PL>} />
+        <Route path="/amc/:id"    element={<PL><Guarded><AMCDetail /></Guarded></PL>} />
+        <Route path="/attendance"                    element={<PL><Guarded><Attendance /></Guarded></PL>} />
+        <Route path="/attendance/:employee_id"       element={<PL><Guarded><AttendanceDetail /></Guarded></PL>} />
         <Route path="/activity"   element={<PL><ActivityHistory /></PL>} />
 
         {/* Admin only */}

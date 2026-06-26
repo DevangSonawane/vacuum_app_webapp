@@ -11,6 +11,7 @@ class AmcContract {
     required this.renewalReminderDays,
     required this.services,
     required this.nextServiceDate,
+    required this.lastServiceDate,
     this.daysLeft,
     this.poNumber,
     this.visitCount,
@@ -31,6 +32,7 @@ class AmcContract {
   final int renewalReminderDays;
   final List<String> services;
   final String? nextServiceDate;
+  final String? lastServiceDate;
   final int? daysLeft; // json: days_left
   final String? poNumber; // json: po_number
   final int? visitCount; // json: visit_count
@@ -75,6 +77,7 @@ class AmcContract {
       renewalReminderDays: i(json['renewal_reminder_days'] ?? 30),
       services: l(json['services']).map((e) => e.toString()).toList(),
       nextServiceDate: json['next_service_date']?.toString(),
+      lastServiceDate: json['last_service_date']?.toString(),
       daysLeft: iOrNull(json['days_left']),
       poNumber: (json['po_number'] as Object?)?.toString(),
       visitCount: iOrNull(json['visit_count']),

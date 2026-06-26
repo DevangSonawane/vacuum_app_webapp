@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Users, Phone, Mail, MapPin, Building2,
   X, Briefcase, ShieldCheck, TrendingUp, Loader2,
-  Calendar, DollarSign, FileText, ChevronLeft, ChevronRight
+  Calendar, DollarSign, FileText, ChevronLeft, ChevronRight,
+  MoreVertical, Eye,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -12,7 +13,7 @@ import {
   SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = "https://vaccumapi-o4ol.onrender.com/api";
+const API_BASE_URL = "https://apivdti.asynk.in/api";
 
 const EMPTY = {
   name:           "",
@@ -36,6 +37,41 @@ const TYPE_COLORS = {
   Government:  "bg-amber-100  text-amber-700",
 };
 
+function ActionMenu({ items, onClose }) {
+  const menuRef = useRef();
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) onClose(); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      ref={menuRef}
+      initial={{ opacity: 0, scale: 0.95, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -4 }}
+      transition={{ duration: 0.1 }}
+      className="absolute right-0 top-full mt-1 z-50 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1 overflow-hidden"
+    >
+      {items.map((item) => (
+        <button
+          key={item.label}
+          onClick={item.onClick}
+          className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+            item.danger
+              ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+          }`}
+        >
+          <item.icon size={14} />
+          {item.label}
+        </button>
+      ))}
+    </motion.div>
+  );
+}
+
 export default function Clients() {
   const { currentUser } = useApp();
   const { toast, showToast } = useToast();
@@ -52,17 +88,20 @@ export default function Clients() {
   const [form, setForm]             = useState(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId]     = useState(null);
+  const [menuOpen, setMenuOpen]     = useState(null);
 
   const [detailClient, setDetailClient]   = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // Filter clients client-side
   const filteredClients = allClients.filter(c => {
-    const matchesSearch = !search || 
-      c.name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.contact_person?.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone?.includes(search);
+    const q = search.toLowerCase();
+    const matchesSearch = !search ||
+      c.name?.toLowerCase().includes(q) ||
+      c.contact_person?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.phone?.includes(search) ||
+      c.address?.toLowerCase().includes(q);
     const matchesType = filterType === "All" || c.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -250,10 +289,11 @@ export default function Clients() {
                       <tr>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                        <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Address</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Contract Value</th>
-                        {canEdit && <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>}
+                        <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-16"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -284,6 +324,16 @@ export default function Clients() {
                             </div>
                           </td>
                           <td className="px-5 py-4">
+                            {c.address ? (
+                              <div className="flex items-start gap-1.5 max-w-[200px]">
+                                <MapPin size={12} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">{c.address}</p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${TYPE_COLORS[c.type] || "bg-gray-100 text-gray-600"}`}>{c.type}</span>
                           </td>
                           <td className="px-5 py-4">
@@ -294,14 +344,30 @@ export default function Clients() {
                               ₹{Number(c.contract_value || 0).toLocaleString()}
                             </p>
                           </td>
-                          {canEdit && (
-                            <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
-                              <div className="flex gap-2 justify-end">
-                                <Button variant="secondary" size="sm" onClick={() => openEdit(c)}><Pencil size={13} /></Button>
-                                <Button variant="danger" size="sm" onClick={() => setDeleteId(c.id)}><Trash2 size={13} /></Button>
-                              </div>
-                            </td>
-                          )}
+                          <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
+                            <div className="relative inline-block">
+                              <button
+                                onClick={() => setMenuOpen(menuOpen === c.id ? null : c.id)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                              >
+                                <MoreVertical size={16} />
+                              </button>
+                              <AnimatePresence>
+                                {menuOpen === c.id && (
+                                  <ActionMenu
+                                    onClose={() => setMenuOpen(null)}
+                                    items={[
+                                      { label: "View", icon: Eye, onClick: () => { setMenuOpen(null); openDetail(c); } },
+                                      ...(canEdit ? [
+                                        { label: "Edit", icon: Pencil, onClick: () => { setMenuOpen(null); openEdit(c); } },
+                                        { label: "Delete", icon: Trash2, danger: true, onClick: () => { setMenuOpen(null); setDeleteId(c.id); } },
+                                      ] : []),
+                                    ]}
+                                  />
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </td>
                         </motion.tr>
                       ))}
                     </tbody>
@@ -470,7 +536,7 @@ export default function Clients() {
                   {canEdit && (
                     <div className="flex gap-2 pt-1">
                       <Button className="flex-1" onClick={() => openEdit(detailClient)}>
-                        <Pencil size={14} className="mr-1.5" /> Edit Client
+                        <Pencil size={14} /> Edit
                       </Button>
                       <Button variant="danger" onClick={() => setDeleteId(detailClient.id)}>
                         <Trash2 size={14} />

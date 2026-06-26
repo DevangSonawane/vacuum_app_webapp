@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +26,23 @@ import '../domain/technician.dart';
 
 const _specializations = ['ITR'];
 const _statuses = ['Active', 'On Leave', 'Inactive'];
+const _documentTypes = [
+  'Aadhaar Card',
+  'Technician Photo',
+  'WC Policy',
+  'Medical Insurance Policy',
+  'Other',
+];
+const _documentFileExtensions = [
+  'pdf',
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'doc',
+  'docx',
+];
+const _maxTechnicianDocumentBytes = 20 * 1024 * 1024;
 
 class TechniciansScreen extends ConsumerStatefulWidget {
   const TechniciansScreen({super.key});
@@ -62,7 +81,9 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
-    final canEdit = !['technician', 'labour'].contains(role);
+    final lowerRole = role.toLowerCase();
+    final canEdit = !['technician', 'labour'].contains(lowerRole);
+    final canDelete = ['admin', 'manager'].contains(lowerRole);
     final state = ref.watch(techniciansProvider);
 
     ref.listen<String>(searchQueryProvider, (_, next) {
@@ -139,6 +160,8 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                     return _TechnicianCard(
                       tech: tech,
                       canEdit: canEdit,
+                      canDelete: canDelete,
+                      onOpen: () => context.go('/technicians/${tech.id}'),
                       onEdit: () => _openFormSheet(context, tech),
                       onDelete: () => _confirmDelete(context, tech),
                     );
@@ -163,27 +186,6 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
         fetchById: tech == null
             ? null
             : () => ref.read(techniciansProvider.notifier).fetchById(tech.id),
-        onSubmit: (payload, isEdit, id, password) async {
-          bool ok;
-          if (isEdit && id != null) {
-            ok = await ref
-                .read(techniciansProvider.notifier)
-                .updateTechnician(id, payload);
-          } else {
-            if (password.isNotEmpty) payload['password'] = password;
-            ok = await ref.read(techniciansProvider.notifier).create(payload);
-          }
-
-          if (!context.mounted) return;
-          Navigator.of(ctx).pop();
-          AppToast.show(
-            context,
-            message: ok
-                ? (isEdit ? 'Technician updated!' : 'Technician added!')
-                : 'Operation failed',
-            type: ok ? AppToastType.success : AppToastType.error,
-          );
-        },
       ),
     );
   }
@@ -198,13 +200,22 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
     );
 
     if (!confirmed || !context.mounted) return;
-    final ok = await ref.read(techniciansProvider.notifier).delete(tech.id);
-    if (!context.mounted) return;
-    AppToast.show(
-      context,
-      message: ok ? 'Technician removed' : 'Delete failed',
-      type: ok ? AppToastType.error : AppToastType.error,
-    );
+    try {
+      await ref.read(techniciansProvider.notifier).delete(tech.id);
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: 'Technician removed',
+        type: AppToastType.success,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: e.toString(),
+        type: AppToastType.error,
+      );
+    }
   }
 }
 
@@ -217,15 +228,44 @@ class TechnicianCreateScreen extends ConsumerWidget {
       asSheet: false,
       existing: null,
       fetchById: null,
-      onSubmit: (payload, isEdit, id, password) async {
-        if (password.trim().isNotEmpty) payload['password'] = password.trim();
-        final ok = await ref.read(techniciansProvider.notifier).create(payload);
-        if (!context.mounted) return;
-        if (ok) context.pop();
-        AppToast.show(
-          context,
-          message: ok ? 'Technician added!' : 'Operation failed',
-          type: ok ? AppToastType.success : AppToastType.error,
+    );
+  }
+}
+
+class TechnicianEditScreen extends ConsumerWidget {
+  const TechnicianEditScreen({super.key, required this.id});
+
+  final String id;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final parsedId = int.tryParse(id);
+    if (parsedId == null) {
+      return const Scaffold(
+        body: Center(child: Text('Invalid technician id')),
+      );
+    }
+
+    return FutureBuilder<Technician?>(
+      future: ref.read(techniciansProvider.notifier).fetchById(parsedId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final tech = snapshot.data;
+        if (tech == null) {
+          return const Scaffold(
+            body: Center(child: Text('Technician not found')),
+          );
+        }
+
+        return _TechnicianFormSheet(
+          asSheet: false,
+          existing: tech,
+          fetchById: () => ref.read(techniciansProvider.notifier).fetchById(parsedId),
         );
       },
     );
@@ -236,12 +276,16 @@ class _TechnicianCard extends StatelessWidget {
   const _TechnicianCard({
     required this.tech,
     required this.canEdit,
+    required this.canDelete,
+    required this.onOpen,
     required this.onEdit,
     required this.onDelete,
   });
 
   final Technician tech;
   final bool canEdit;
+  final bool canDelete;
+  final VoidCallback onOpen;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -251,6 +295,8 @@ class _TechnicianCard extends StatelessWidget {
     final boxBg = isDark ? const Color(0xFF111827) : AppColors.gray50;
 
     return AppCard(
+      onTap: onOpen,
+      hover: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -340,14 +386,16 @@ class _TechnicianCard extends StatelessWidget {
                     onPressed: onEdit,
                   ),
                 ),
-                const SizedBox(width: 8),
-                AppButton(
-                  label: '',
-                  variant: AppButtonVariant.danger,
-                  size: AppButtonSize.sm,
-                  leading: const Icon(Icons.delete_outline),
-                  onPressed: onDelete,
-                ),
+                if (canDelete) ...[
+                  const SizedBox(width: 8),
+                  AppButton(
+                    label: '',
+                    variant: AppButtonVariant.danger,
+                    size: AppButtonSize.sm,
+                    leading: const Icon(Icons.delete_outline),
+                    onPressed: onDelete,
+                  ),
+                ],
               ],
             ),
           ],
@@ -435,34 +483,28 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-class _TechnicianFormSheet extends StatefulWidget {
+class _TechnicianFormSheet extends ConsumerStatefulWidget {
   const _TechnicianFormSheet({
     required this.existing,
-    required this.onSubmit,
     required this.fetchById,
     this.asSheet = true,
   });
 
   final Technician? existing;
   final Future<Technician?> Function()? fetchById;
-  final Future<void> Function(
-    Map<String, dynamic> payload,
-    bool isEdit,
-    int? id,
-    String password,
-  )
-  onSubmit;
   final bool asSheet;
 
   @override
-  State<_TechnicianFormSheet> createState() => _TechnicianFormSheetState();
+  ConsumerState<_TechnicianFormSheet> createState() =>
+      _TechnicianFormSheetState();
 }
 
-class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
+class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _password = TextEditingController();
+  final List<_TechnicianDocumentDraft> _documents = [];
 
   String _specialization = _specializations.first;
   String _status = _statuses.first;
@@ -496,6 +538,9 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     _email.dispose();
     _phone.dispose();
     _password.dispose();
+    for (final doc in _documents) {
+      doc.dispose();
+    }
     super.dispose();
   }
 
@@ -526,6 +571,145 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     setState(() {});
   }
 
+  void _close() {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop();
+    } else {
+      context.go('/technicians');
+    }
+  }
+
+  void _addDocument() {
+    setState(() => _documents.add(_TechnicianDocumentDraft()));
+  }
+
+  void _removeDocument(int index) {
+    final doc = _documents.removeAt(index);
+    doc.dispose();
+    setState(() {});
+  }
+
+  Future<void> _pickDocumentFile(int index) async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: _documentFileExtensions,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+    if (file.path == null || file.path!.isEmpty) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'File picking is not supported on this platform yet.',
+        type: AppToastType.info,
+      );
+      return;
+    }
+
+    final size = await File(file.path!).length();
+    if (size > _maxTechnicianDocumentBytes) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Document is too large. Please choose a file smaller than 20 MB.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
+    setState(() {
+      _documents[index].file = file;
+      if (_documents[index].documentName.text.trim().isEmpty) {
+        _documents[index].documentName.text = file.name;
+      }
+    });
+  }
+
+  Future<void> _pickJoinDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _joinDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _joinDate = picked);
+    }
+  }
+
+  Future<void> _pickExpiryDate(_TechnicianDocumentDraft doc) async {
+    final initial = doc.expiryDate.text.isNotEmpty
+        ? DateTime.tryParse(doc.expiryDate.text)
+        : DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 3650)),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (picked != null) {
+      setState(() {
+        doc.expiryDate.text = picked.toIso8601String().substring(0, 10);
+      });
+    }
+  }
+
+  Future<Map<String, dynamic>> _uploadDocument(
+    _TechnicianDocumentDraft doc,
+  ) async {
+    final file = doc.file;
+    if (file == null || file.path == null || file.path!.isEmpty) {
+      throw Exception('Please attach a file for each technician document.');
+    }
+
+    return ref.read(techniciansRepositoryProvider).uploadTechnicianDocument(
+      filePath: file.path!,
+      filename: file.name,
+      documentType: doc.documentType,
+      documentName: doc.documentName.text.trim().isEmpty
+          ? file.name
+          : doc.documentName.text.trim(),
+      expiryDate: doc.expiryDate.text.trim().isEmpty
+          ? null
+          : doc.expiryDate.text.trim(),
+      notes: doc.notes.text.trim().isEmpty ? null : doc.notes.text.trim(),
+    );
+  }
+
+  Map<String, dynamic> _normalizeUploadedDocument(
+    Map<String, dynamic> uploaded,
+    _TechnicianDocumentDraft draft,
+  ) {
+    final documentName = draft.documentName.text.trim().isEmpty
+        ? (uploaded['original_name'] ?? uploaded['file_name'] ?? '')
+            .toString()
+        : draft.documentName.text.trim();
+    final fileName = (uploaded['file_name'] ?? uploaded['original_name'] ?? '')
+        .toString();
+    return <String, dynamic>{
+      if ((uploaded['document_type'] ?? draft.documentType ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty)
+        'document_type':
+            (uploaded['document_type'] ?? draft.documentType).toString(),
+      'document_name': documentName,
+      'file_name': fileName.isNotEmpty ? fileName : documentName,
+      if ((uploaded['file_url'] ?? '').toString().isNotEmpty)
+        'file_url': uploaded['file_url'].toString(),
+      if ((uploaded['mime_type'] ?? '').toString().isNotEmpty)
+        'mime_type': uploaded['mime_type'].toString(),
+      if ((uploaded['expiry_date'] ?? draft.expiryDate.text).toString().isNotEmpty)
+        'expiry_date': (uploaded['expiry_date'] ?? draft.expiryDate.text)
+            .toString(),
+      if ((uploaded['notes'] ?? draft.notes.text).toString().isNotEmpty)
+        'notes': (uploaded['notes'] ?? draft.notes.text).toString(),
+    };
+  }
+
   Future<void> _submit() async {
     if (_loading) return;
     if (_name.text.trim().isEmpty || _phone.text.trim().isEmpty) {
@@ -538,185 +722,405 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     }
 
     setState(() => _loading = true);
-    final payload = <String, dynamic>{
-      'name': _name.text.trim(),
-      'phone': _phone.text.trim(),
-      'specialization': _specialization,
-      'status': _status,
-      if (_joinDate != null)
-        'join_date': _joinDate!.toIso8601String().substring(0, 10),
-      if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
-    };
-    await widget.onSubmit(
-      payload,
-      _isEdit,
-      widget.existing?.id,
-      _password.text,
-    );
-    if (!mounted) return;
-    setState(() => _loading = false);
+    try {
+      final payload = <String, dynamic>{
+        'name': _name.text.trim(),
+        'phone': _phone.text.trim(),
+        'specialization': _specialization,
+        'status': _status,
+        if (_joinDate != null)
+          'join_date': _joinDate!.toIso8601String().substring(0, 10),
+        if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
+      };
+
+      if (!_isEdit) {
+        final password = _password.text.trim();
+        if (password.isNotEmpty) {
+          payload['password'] = password;
+        }
+
+        final uploadedDocs = <Map<String, dynamic>>[];
+        for (final doc in _documents) {
+          if (doc.file == null) continue;
+          try {
+            final uploaded = await _uploadDocument(doc);
+            uploadedDocs.add(_normalizeUploadedDocument(uploaded, doc));
+          } catch (e) {
+            if (!mounted) return;
+            AppToast.show(
+              context,
+              message: e.toString(),
+              type: AppToastType.error,
+            );
+            return;
+          }
+        }
+
+        if (uploadedDocs.isNotEmpty) {
+          payload['documents'] = uploadedDocs;
+        }
+      }
+
+      final notifier = ref.read(techniciansProvider.notifier);
+      final ok = _isEdit && widget.existing != null
+          ? await notifier.updateTechnician(widget.existing!.id, payload)
+          : await notifier.create(payload);
+
+      if (!mounted) return;
+      if (ok) {
+        _close();
+        AppToast.show(
+          context,
+          message: _isEdit ? 'Technician updated!' : 'Technician added!',
+          type: AppToastType.success,
+        );
+      } else {
+        AppToast.show(
+          context,
+          message: 'Operation failed',
+          type: AppToastType.error,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: e.toString(),
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    void close() {
-      final r = GoRouter.of(context);
-      if (r.canPop()) {
-        r.pop();
-      } else {
-        context.go('/technicians');
-      }
-    }
 
-    Widget content(ScrollController? scroll) => SingleChildScrollView(
-      controller: scroll,
-      padding: EdgeInsets.fromLTRB(
-        16,
-        widget.asSheet ? 0 : 16,
-        16,
-        bottomInset + 16,
-      ),
-      child: SafeArea(
-        top: !widget.asSheet,
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!widget.asSheet) ...[
-              Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Back',
-                    onPressed: _loading ? null : close,
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                  Text(
-                    _isEdit ? 'Edit Technician' : 'Add Technician',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ] else ...[
-              Text(
-                _isEdit ? 'Edit Technician' : 'Add Technician',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (_fetchingDetails)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else ...[
-              _field('Full Name *', _name, hint: 'Ravi Kumar'),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _field(
-                      'Email',
-                      _email,
-                      hint: 'ravi@vdti.com',
-                      keyboard: TextInputType.emailAddress,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _field(
-                      'Phone *',
-                      _phone,
-                      hint: '9876543210',
-                      keyboard: TextInputType.phone,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _dropdown(
-                      'Specialization',
-                      _specialization,
-                      (_specialization.isNotEmpty &&
-                              !_specializations.contains(_specialization))
-                          ? [..._specializations, _specialization]
-                          : _specializations,
-                      (v) => setState(
-                        () => _specialization = v ?? _specializations.first,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _dropdown(
-                      'Status',
-                      _status,
-                      _statuses,
-                      (v) => setState(() => _status = v ?? _statuses.first),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _datePicker(context),
-              if (!_isEdit) ...[
-                const SizedBox(height: 12),
-                _field(
-                  'Password (optional)',
-                  _password,
-                  hint: 'Leave blank if no login needed',
-                  obscure: true,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'If provided, this technician can log in via the mobile app.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              BottomSafeArea(
-                child: Row(
+    Widget content(ScrollController? scroll) {
+      final width = MediaQuery.sizeOf(context).width;
+      final wide = width >= 720;
+
+      return SingleChildScrollView(
+        controller: scroll,
+        padding: EdgeInsets.fromLTRB(
+          16,
+          widget.asSheet ? 0 : 16,
+          16,
+          bottomInset + 16,
+        ),
+        child: SafeArea(
+          top: !widget.asSheet,
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!widget.asSheet) ...[
+                Row(
                   children: [
-                    Expanded(
-                      child: AppButton(
-                        label: 'Cancel',
-                        variant: AppButtonVariant.secondary,
-                        expanded: true,
-                        onPressed: _loading ? null : close,
-                      ),
+                    IconButton(
+                      tooltip: 'Back',
+                      onPressed: _loading ? null : _close,
+                      icon: const Icon(Icons.arrow_back),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppButton(
-                        label: _isEdit ? 'Update Technician' : 'Add Technician',
-                        expanded: true,
-                        loading: _loading,
-                        onPressed: _loading ? null : _submit,
-                      ),
+                    Text(
+                      _isEdit ? 'Edit Technician' : 'Add Technician',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+              ] else ...[
+                Text(
+                  _isEdit ? 'Edit Technician' : 'Add Technician',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+              ],
+              Text(
+                _isEdit
+                    ? 'Update the technician details.'
+                    : 'Add the technician details, optional login password, and any documents you want linked at creation time.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).hintColor,
+                ),
               ),
+              const SizedBox(height: 16),
+              if (_fetchingDetails)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else ...[
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Basic Info',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 16),
+                      _field('Full Name *', _name, hint: 'Ravi Kumar'),
+                      const SizedBox(height: 12),
+                      if (wide)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _field(
+                                'Email',
+                                _email,
+                                hint: 'ravi@ism.com',
+                                keyboard: TextInputType.emailAddress,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _field(
+                                'Phone *',
+                                _phone,
+                                hint: '9876543210',
+                                keyboard: TextInputType.phone,
+                              ),
+                            ),
+                          ],
+                        )
+                      else ...[
+                        _field(
+                          'Email',
+                          _email,
+                          hint: 'ravi@ism.com',
+                          keyboard: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 12),
+                        _field(
+                          'Phone *',
+                          _phone,
+                          hint: '9876543210',
+                          keyboard: TextInputType.phone,
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      if (wide)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _dropdown(
+                                'Specialization',
+                                _specialization,
+                                (_specialization.isNotEmpty &&
+                                        !_specializations.contains(
+                                          _specialization,
+                                        ))
+                                    ? [..._specializations, _specialization]
+                                    : _specializations,
+                                (v) => setState(
+                                  () => _specialization =
+                                      v ?? _specializations.first,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _dropdown(
+                                'Status',
+                                _status,
+                                _statuses,
+                                (v) =>
+                                    setState(() => _status = v ?? _statuses.first),
+                              ),
+                            ),
+                          ],
+                        )
+                      else ...[
+                        _dropdown(
+                          'Specialization',
+                          _specialization,
+                          (_specialization.isNotEmpty &&
+                                  !_specializations.contains(_specialization))
+                              ? [..._specializations, _specialization]
+                              : _specializations,
+                          (v) => setState(
+                            () => _specialization = v ?? _specializations.first,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _dropdown(
+                          'Status',
+                          _status,
+                          _statuses,
+                          (v) => setState(() => _status = v ?? _statuses.first),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      _datePicker(context),
+                    ],
+                  ),
+                ),
+                if (!_isEdit) ...[
+                  const SizedBox(height: 16),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Login Account',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 12),
+                        _field(
+                          'Password (optional)',
+                          _password,
+                          hint: 'Leave blank if no login needed',
+                          obscure: true,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'If provided, this technician can log in via /api/technicians/login.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).hintColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Documents',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                            AppButton(
+                              label: 'Add Document',
+                              variant: AppButtonVariant.secondary,
+                              size: AppButtonSize.sm,
+                              leading: const Icon(Icons.add),
+                              onPressed: _loading ? null : _addDocument,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Upload files first, then the app will attach their URLs to the technician create request.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).hintColor,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_documents.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? const Color(0xFF0B1220)
+                                  : AppColors.gray50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Theme.of(context).dividerColor.withValues(
+                                      alpha: 0.12,
+                                    ),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'No documents added yet',
+                                  style:
+                                      Theme.of(context).textTheme.titleSmall,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Add Aadhaar, photo, insurance, or policy documents if you want them linked at creation time.',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context).hintColor,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _documents.length,
+                            separatorBuilder: (context, _) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final doc = _documents[index];
+                              return _TechnicianDocumentCard(
+                                index: index,
+                                draft: doc,
+                                onRemove: _loading
+                                    ? null
+                                    : () => _removeDocument(index),
+                                onPickFile: _loading
+                                    ? null
+                                    : () => _pickDocumentFile(index),
+                                onPickExpiry: _loading
+                                    ? null
+                                    : () => _pickExpiryDate(doc),
+                                onChanged: () => setState(() {}),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                BottomSafeArea(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          label: 'Cancel',
+                          variant: AppButtonVariant.secondary,
+                          expanded: true,
+                          onPressed: _loading ? null : _close,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          label: _isEdit ? 'Update Technician' : 'Add Technician',
+                          expanded: true,
+                          loading: _loading,
+                          onPressed: _loading ? null : _submit,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    }
 
     if (!widget.asSheet) return content(null);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      minChildSize: 0.55,
-      maxChildSize: 0.95,
+      initialChildSize: 0.9,
+      minChildSize: 0.6,
+      maxChildSize: 0.96,
       expand: false,
       builder: (context, scroll) => content(scroll),
     );
@@ -728,6 +1132,7 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
     String? hint,
     TextInputType? keyboard,
     bool obscure = false,
+    int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -742,6 +1147,7 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
           keyboardType: keyboard,
           obscureText: obscure,
           enabled: !_loading,
+          maxLines: maxLines,
           decoration: InputDecoration(hintText: hint),
         ),
       ],
@@ -775,17 +1181,7 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
         const SizedBox(height: 6),
         InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: _loading
-              ? null
-              : () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _joinDate ?? DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) setState(() => _joinDate = picked);
-                },
+          onTap: _loading ? null : _pickJoinDate,
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -817,6 +1213,159 @@ class _TechnicianFormSheetState extends State<_TechnicianFormSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TechnicianDocumentDraft {
+  _TechnicianDocumentDraft()
+      : documentName = TextEditingController(),
+        expiryDate = TextEditingController(),
+        notes = TextEditingController();
+
+  String? documentType;
+  PlatformFile? file;
+  final TextEditingController documentName;
+  final TextEditingController expiryDate;
+  final TextEditingController notes;
+
+  void dispose() {
+    documentName.dispose();
+    expiryDate.dispose();
+    notes.dispose();
+  }
+}
+
+class _TechnicianDocumentCard extends StatelessWidget {
+  const _TechnicianDocumentCard({
+    required this.index,
+    required this.draft,
+    required this.onRemove,
+    required this.onPickFile,
+    required this.onPickExpiry,
+    required this.onChanged,
+  });
+
+  final int index;
+  final _TechnicianDocumentDraft draft;
+  final VoidCallback? onRemove;
+  final VoidCallback? onPickFile;
+  final VoidCallback? onPickExpiry;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final file = draft.file;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0B1220) : AppColors.gray50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Document ${index + 1}',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              if (onRemove != null)
+                IconButton(
+                  tooltip: 'Remove document',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.delete_outline),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AppDropdownField<String>(
+            label: 'Document Type',
+            value: draft.documentType,
+            items: [
+              for (final type in _documentTypes)
+                AppDropdownItem(value: type, label: type),
+            ],
+            allowNull: true,
+            nullLabel: 'Select document type',
+            onChanged: (value) {
+              draft.documentType = value;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: draft.documentName,
+            enabled: onPickFile != null,
+            onChanged: (_) => onChanged(),
+            decoration: const InputDecoration(
+              labelText: 'Document Name',
+              hintText: 'Ravi Aadhaar Front',
+            ),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onPickExpiry,
+            child: IgnorePointer(
+              child: TextField(
+                controller: draft.expiryDate,
+                onChanged: (_) => onChanged(),
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Expiry Date',
+                  hintText: 'YYYY-MM-DD',
+                  suffixIcon: const Icon(Icons.calendar_today_outlined),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: draft.notes,
+            onChanged: (_) => onChanged(),
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Notes',
+              hintText: 'Optional notes',
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: file == null ? 'Choose File' : 'Replace File',
+                  variant: AppButtonVariant.secondary,
+                  leading: const Icon(Icons.attach_file),
+                  onPressed: onPickFile,
+                ),
+              ),
+              if (file != null) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    file.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

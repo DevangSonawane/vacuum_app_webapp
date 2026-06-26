@@ -14,19 +14,20 @@ import { useApp } from "../context/AppContext";
 import { useNotifications } from "../context/NotificationContext";
 import { Avatar } from "./ui";
 
+const RESTRICTED_ROLES = ["technician", "engineer", "labour"];
+
 const NAV_ITEMS = [
   { id: "dashboard",   label: "Dashboard",        icon: LayoutDashboard, path: "/"            },
-  { id: "technicians", label: "Technicians",       icon: UserCog,         path: "/technicians" },
-  { id: "clients",     label: "Clients",           icon: Users,           path: "/clients"     },
-   { id: "quotations",    label: "Quotations",        icon: DollarSign,      path: "/quotations",   adminOnly: true },
-  { id: "amc",         label: "AMC Contracts",     icon: ShieldCheck,     path: "/amc"         },
+  { id: "technicians", label: "Technicians",       icon: UserCog,         path: "/technicians", hideForRoles: RESTRICTED_ROLES },
+  { id: "clients",     label: "Clients",           icon: Users,           path: "/clients",     hideForRoles: RESTRICTED_ROLES },
+  { id: "quotations",  label: "Quotations",        icon: DollarSign,      path: "/quotations",  adminOnly: true },
+  { id: "amc",         label: "AMC Contracts",     icon: ShieldCheck,     path: "/amc",         hideForRoles: RESTRICTED_ROLES },
   { id: "jobs",        label: "Visit Scheduled",   icon: CalendarCheck,   path: "/jobs"        },
   { id: "reports",     label: "Service & Reports", icon: ClipboardList,   path: "/reports"     },
-  { id: "attendance",  label: "Attendance",        icon: Clock,           path: "/attendance"  },
-  { id: "email",       label: "Email Settings",    icon: Mail,            path: "/email",      adminOnly: true },
-  { id: "activity",    label: "Activity History",  icon: FileText,        path: "/activity",   adminOnly: true },
-  { id: "users",       label: "Users",             icon: Users,           path: "/users",      adminOnly: true },
- 
+  { id: "attendance",  label: "Attendance",        icon: Clock,           path: "/attendance",  hideForRoles: RESTRICTED_ROLES },
+  { id: "email",       label: "Email Settings",    icon: Mail,            path: "/email",       adminOnly: true },
+  { id: "activity",    label: "Activity History",  icon: FileText,        path: "/activity",    adminOnly: true },
+  { id: "users",       label: "Users",             icon: Users,           path: "/users",       adminOnly: true },
 ];
 
 // ── Colour per notification event ────────────────────────────
@@ -68,8 +69,13 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
     return () => window.removeEventListener("resize", h);
   }, []);
 
-  const isAdmin     = currentUser?.role?.toLowerCase() === "admin";
-  const filteredNav = NAV_ITEMS.filter(n => !n.adminOnly || isAdmin);
+  const userRole    = currentUser?.role?.toLowerCase();
+  const isAdmin     = userRole === "admin";
+  const filteredNav = NAV_ITEMS.filter(n => {
+    if (n.adminOnly && !isAdmin) return false;
+    if (n.hideForRoles && n.hideForRoles.includes(userRole)) return false;
+    return true;
+  });
 
   return (
     <>
@@ -294,7 +300,7 @@ export function TopBar({ setSidebarOpen }) {
                         const isClickable = !!n.entity_type && ["job", "report", "amc"].includes(n.entity_type);
                         const handleClick = () => {
                           if (!n.read) markRead(n.id);
-                          const paths = { job: `/jobs/${n.entity_id}`, report: `/reports/${n.entity_id}`, amc: "/amc" };
+                          const paths = { job: `/jobs/${n.entity_id}`, report: `/reports/${n.entity_id}`, amc: `/amc/${n.entity_id}` };
                           const path  = isClickable ? paths[n.entity_type] : null;
                           if (path) { navigate(path); setShowNotifMenu(false); }
                         };

@@ -24,6 +24,7 @@ import '../../features/reports/presentation/report_detail_screen.dart';
 import '../../features/reports/presentation/report_create_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/technicians/presentation/technician_detail_screen.dart';
 import '../../features/technicians/presentation/technicians_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
 import '../../shared/widgets/page_loader.dart';
@@ -92,6 +93,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/technicians/new',
             builder: (context, state) => const TechnicianCreateScreen(),
+          ),
+          GoRoute(
+            path: '/technicians/:id',
+            builder: (context, state) =>
+                TechnicianDetailScreen(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/technicians/:id/edit',
+            builder: (context, state) =>
+                TechnicianEditScreen(id: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/clients',

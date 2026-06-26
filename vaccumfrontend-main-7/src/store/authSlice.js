@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
+const API_BASE_URL = 'https://apivdti.asynk.in/api';
 
 // Set up axios interceptor for token
 axios.interceptors.request.use((config) => {

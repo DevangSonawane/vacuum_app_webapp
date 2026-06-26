@@ -440,6 +440,29 @@ class _AmcCard extends StatelessWidget {
               ],
             ),
           ],
+          if ((contract.lastServiceDate ?? '').isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(
+                  Icons.history_outlined,
+                  size: 14,
+                  color: AppColors.gray400,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Last service: ${_shortDate(contract.lastServiceDate)}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (canEdit) ...[
             const SizedBox(height: 12),
             Row(
@@ -666,6 +689,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   DateTime? _start;
   DateTime? _end;
   DateTime? _nextService;
+  DateTime? _lastService;
 
   bool _loading = false;
   bool _fetching = true;
@@ -696,6 +720,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       _perPumpPrice.text = e.perPumpPrice?.toString() ?? '';
       _totalPrice.text = e.totalPrice?.toString() ?? '';
       _gstPercent.text = e.gstPercent?.toString() ?? '';
+      _lastService = _parse(e.lastServiceDate);
     }
     _loadClients();
   }
@@ -795,6 +820,8 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
           .toList(),
       if (_nextService != null)
         'next_service_date': _nextService!.toIso8601String().substring(0, 10),
+      if (_lastService != null)
+        'last_service_date': _lastService!.toIso8601String().substring(0, 10),
     };
 
     await widget.onSubmit(payload, _isEdit, widget.existing?.id);
@@ -984,6 +1011,13 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                 'Next Service Date',
                 _nextService,
                 (v) => setState(() => _nextService = v),
+              ),
+              const SizedBox(height: 12),
+              _datePicker(
+                context,
+                'Last Service Date',
+                _lastService,
+                (v) => setState(() => _lastService = v),
               ),
               const SizedBox(height: 20),
               BottomSafeArea(
