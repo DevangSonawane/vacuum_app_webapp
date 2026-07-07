@@ -21,7 +21,8 @@ import Jobs           from "./pages/Jobs";
 import JobDetail      from "./pages/JobDetail";
 import Reports        from "./pages/Reports";
 import ReportDetail   from "./pages/ReportDetail";
-import Quotations     from "./pages/Quotations";
+import Quotations       from "./pages/Quotations";
+import QuotationDetail  from "./pages/QuotationDetail";
 import AMC            from "./pages/AMC";
 import AMCDetail      from "./pages/AMCDetail";
 import Attendance       from "./pages/Attendance";
@@ -119,7 +120,8 @@ function AppContent() {
         <Route path="/reports/:id" element={<PL><ReportDetail /></PL>} />
 
         {/* Other modules */}
-        <Route path="/quotations" element={<PL><Quotations /></PL>} />
+        <Route path="/quotations"     element={<PL><Quotations /></PL>} />
+        <Route path="/quotations/:id" element={<PL><QuotationDetail /></PL>} />
         <Route path="/amc"        element={<PL><Guarded><AMC /></Guarded></PL>} />
         <Route path="/amc/:id"    element={<PL><Guarded><AMCDetail /></Guarded></PL>} />
         <Route path="/attendance"                    element={<PL><Guarded><Attendance /></Guarded></PL>} />

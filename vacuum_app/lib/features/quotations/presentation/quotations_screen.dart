@@ -37,7 +37,13 @@ class QuotationsScreen extends ConsumerStatefulWidget {
 
 class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
   final _erpSearch = TextEditingController();
-  Timer? _erpDebounce;
+  final _preparedBy = TextEditingController();
+  final _enteredBy = TextEditingController();
+  Timer? _filterDebounce;
+  bool _openingFilters = false;
+  String _status = 'All';
+  String _priority = 'All';
+  String _category = 'All';
   String _fromDate = '';
   String _toDate = '';
   int _limit = 10;
@@ -51,54 +57,274 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
   @override
   void dispose() {
     _erpSearch.dispose();
-    _erpDebounce?.cancel();
+    _preparedBy.dispose();
+    _enteredBy.dispose();
+    _filterDebounce?.cancel();
     super.dispose();
   }
 
-  void _onErpSearch(String q) {
-    _erpDebounce?.cancel();
-    _erpDebounce = Timer(const Duration(milliseconds: 450), () {
-      ref.read(searchQueryProvider.notifier).state = q;
-      ref.read(erpQuotationsProvider.notifier).applyFilters(
-            search: q.trim(),
-            page: 1,
-          );
+  void _scheduleFilterRefresh() {
+    _filterDebounce?.cancel();
+    _filterDebounce = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted) return;
+      _applyFilters(page: 1);
     });
   }
 
-  Future<void> _pickDate({
-    required bool isFrom,
-  }) async {
-    final now = DateTime.now();
-    DateTime? initial;
-    try {
-      final raw = isFrom ? _fromDate : _toDate;
-      if (raw.isNotEmpty) initial = DateTime.parse(raw);
-    } catch (_) {
-      initial = null;
-    }
-
-    final picked = await showDatePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(now.year + 5),
-      initialDate: initial ?? now,
-    );
-    if (picked == null) return;
-    final iso = picked.toIso8601String().substring(0, 10);
-    setState(() {
-      if (isFrom) {
-        _fromDate = iso;
-      } else {
-        _toDate = iso;
-      }
-    });
+  void _applyFilters({int? page}) {
+    final search = _erpSearch.text.trim();
+    ref.read(searchQueryProvider.notifier).state = search;
     ref.read(erpQuotationsProvider.notifier).applyFilters(
+          search: search,
+          status: _status,
+          priority: _priority,
+          category: _category,
+          preparedBy: _preparedBy.text.trim(),
+          enteredBy: _enteredBy.text.trim(),
           fromDate: _fromDate,
           toDate: _toDate,
-          page: 1,
+          page: page ?? 1,
           limit: _limit,
         );
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _erpSearch.clear();
+      _preparedBy.clear();
+      _enteredBy.clear();
+      _status = 'All';
+      _priority = 'All';
+      _category = 'All';
+      _fromDate = '';
+      _toDate = '';
+      _limit = 10;
+    });
+    _applyFilters(page: 1);
+  }
+
+  Future<void> _openFiltersSheet() async {
+    if (_openingFilters) return;
+    setState(() => _openingFilters = true);
+    await Future.delayed(const Duration(milliseconds: 140));
+    if (!mounted) return;
+    setState(() => _openingFilters = false);
+
+    String status = _status;
+    String priority = _priority;
+    String category = _category;
+    String fromDate = _fromDate;
+    String toDate = _toDate;
+    int limit = _limit;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> pickDate({required bool isFrom}) async {
+              final now = DateTime.now();
+              DateTime? initial;
+              try {
+                final raw = isFrom ? fromDate : toDate;
+                if (raw.isNotEmpty) initial = DateTime.parse(raw);
+              } catch (_) {
+                initial = null;
+              }
+
+              final picked = await showDatePicker(
+                context: sheetContext,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(now.year + 5),
+                initialDate: initial ?? now,
+              );
+              if (picked == null) return;
+
+              setModalState(() {
+                final iso = picked.toIso8601String().substring(0, 10);
+                if (isFrom) {
+                  fromDate = iso;
+                } else {
+                  toDate = iso;
+                }
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                4,
+                16,
+                MediaQuery.of(sheetContext).viewPadding.bottom +
+                    MediaQuery.of(sheetContext).viewInsets.bottom +
+                    16,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Quotation Filters',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                        AppButton(
+                          label: 'Reset',
+                          variant: AppButtonVariant.secondary,
+                          size: AppButtonSize.sm,
+                          onPressed: () {
+                            Navigator.of(sheetContext).pop();
+                            _resetFilters();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Filter ERP quotations, then apply when ready.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).hintColor,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _preparedBy,
+                      decoration: const InputDecoration(
+                        labelText: 'Prepared By',
+                        hintText: 'Name contains...',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _enteredBy,
+                      decoration: const InputDecoration(
+                        labelText: 'Entered By',
+                        hintText: 'Name contains...',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    AppDropdownField<String>(
+                      label: 'Status',
+                      value: status,
+                      items: const [
+                        AppDropdownItem(value: 'All', label: 'All Status'),
+                        AppDropdownItem(value: 'Open', label: 'Open'),
+                        AppDropdownItem(value: 'Approved', label: 'Approved'),
+                        AppDropdownItem(value: 'Cancelled', label: 'Cancelled'),
+                        AppDropdownItem(value: 'Rejected', label: 'Rejected'),
+                      ],
+                      onChanged: (v) => setModalState(() => status = v ?? 'All'),
+                    ),
+                    const SizedBox(height: 14),
+                    AppDropdownField<String>(
+                      label: 'Priority',
+                      value: priority,
+                      items: const [
+                        AppDropdownItem(value: 'All', label: 'All Priority'),
+                        AppDropdownItem(value: 'High', label: 'High'),
+                        AppDropdownItem(value: 'Medium', label: 'Medium'),
+                        AppDropdownItem(value: 'Low', label: 'Low'),
+                      ],
+                      onChanged: (v) => setModalState(() => priority = v ?? 'All'),
+                    ),
+                    const SizedBox(height: 14),
+                    AppDropdownField<String>(
+                      label: 'Category',
+                      value: category,
+                      items: const [
+                        AppDropdownItem(value: 'All', label: 'All Category'),
+                        AppDropdownItem(value: 'AMC Service', label: 'AMC Service'),
+                        AppDropdownItem(value: 'Spare', label: 'Spare'),
+                        AppDropdownItem(value: 'Accessories', label: 'Accessories'),
+                      ],
+                      onChanged: (v) => setModalState(() => category = v ?? 'All'),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: fromDate.isEmpty ? 'From Date' : fromDate,
+                            variant: AppButtonVariant.secondary,
+                            leading: const Icon(Icons.calendar_month_outlined),
+                            onPressed: () => pickDate(isFrom: true),
+                            expanded: true,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: AppButton(
+                            label: toDate.isEmpty ? 'To Date' : toDate,
+                            variant: AppButtonVariant.secondary,
+                            leading: const Icon(Icons.calendar_month_outlined),
+                            onPressed: () => pickDate(isFrom: false),
+                            expanded: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    AppDropdownField<int>(
+                      label: 'Limit',
+                      value: limit,
+                      items: const [
+                        AppDropdownItem(value: 10, label: '10'),
+                        AppDropdownItem(value: 20, label: '20'),
+                        AppDropdownItem(value: 50, label: '50'),
+                      ],
+                      onChanged: (v) => setModalState(() => limit = v ?? 10),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            label: 'Cancel',
+                            variant: AppButtonVariant.secondary,
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            expanded: true,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: AppButton(
+                            label: 'Apply Filters',
+                            variant: AppButtonVariant.primary,
+                            onPressed: () {
+                              setState(() {
+                                _status = status;
+                                _priority = priority;
+                                _category = category;
+                                _fromDate = fromDate;
+                                _toDate = toDate;
+                                _limit = limit;
+                              });
+                              Navigator.of(sheetContext).pop();
+                              _applyFilters(page: 1);
+                            },
+                            expanded: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -146,12 +372,21 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                       ?.copyWith(fontWeight: FontWeight.w900),
                 ),
               ),
-              IconButton(
-                tooltip: 'Refresh',
-                onPressed: () => ref
-                    .read(erpQuotationsProvider.notifier)
-                    .applyFilters(page: erp.valueOrNull?.page ?? 1, limit: _limit),
-                icon: const Icon(Icons.refresh),
+              AppButton(
+                label: 'Refresh',
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                leading: const Icon(Icons.refresh),
+                onPressed: () => _applyFilters(page: erp.valueOrNull?.page ?? 1),
+              ),
+              const SizedBox(width: 10),
+              AppButton(
+                label: 'Filters',
+                variant: AppButtonVariant.outline,
+                size: AppButtonSize.sm,
+                leading: const Icon(Icons.tune),
+                loading: _openingFilters,
+                onPressed: _openFiltersSheet,
               ),
             ],
           ),
@@ -162,119 +397,19 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
               children: [
                 TextField(
                   controller: _erpSearch,
-                  onChanged: _onErpSearch,
+                  onChanged: (_) => _scheduleFilterRefresh(),
                   decoration: const InputDecoration(
                     hintText: 'Search by ID or Customer...',
                     prefixIcon: Icon(Icons.search),
                     isDense: true,
                   ),
                 ),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (context, c) {
-                    final narrow = c.maxWidth < 740;
-                    final statusValue = erp.valueOrNull?.status ?? 'All';
-
-                    final statusField = AppDropdownField<String>(
-                      label: 'Status',
-                      value: statusValue,
-                      items: const [
-                        AppDropdownItem(value: 'All', label: 'All Status'),
-                        AppDropdownItem(value: 'Draft', label: 'Draft'),
-                        AppDropdownItem(value: 'Confirmed', label: 'Confirmed'),
-                        AppDropdownItem(value: 'Cancelled', label: 'Cancelled'),
-                      ],
-                      onChanged: (v) => ref
-                          .read(erpQuotationsProvider.notifier)
-                          .applyFilters(status: v ?? 'All', page: 1),
-                    );
-
-                    final limitField = AppDropdownField<int>(
-                      label: 'Limit',
-                      value: _limit,
-                      items: const [
-                        AppDropdownItem(value: 10, label: '10'),
-                        AppDropdownItem(value: 20, label: '20'),
-                        AppDropdownItem(value: 50, label: '50'),
-                      ],
-                      onChanged: (v) {
-                        final next = v ?? 10;
-                        setState(() => _limit = next);
-                        ref
-                            .read(erpQuotationsProvider.notifier)
-                            .applyFilters(page: 1, limit: next);
-                      },
-                    );
-
-                    final fromBtn = AppButton(
-                      label: _fromDate.isEmpty ? 'From Date' : _fromDate,
-                      variant: AppButtonVariant.secondary,
-                      size: AppButtonSize.sm,
-                      leading: const Icon(Icons.calendar_month_outlined),
-                      onPressed: () => _pickDate(isFrom: true),
-                    );
-
-                    final toBtn = AppButton(
-                      label: _toDate.isEmpty ? 'To Date' : _toDate,
-                      variant: AppButtonVariant.secondary,
-                      size: AppButtonSize.sm,
-                      leading: const Icon(Icons.calendar_month_outlined),
-                      onPressed: () => _pickDate(isFrom: false),
-                    );
-
-                    final resetBtn = AppButton(
-                      label: 'Reset',
-                      variant: AppButtonVariant.secondary,
-                      size: AppButtonSize.sm,
-                      onPressed: () {
-                        setState(() {
-                          _erpSearch.clear();
-                          _fromDate = '';
-                          _toDate = '';
-                          _limit = 10;
-                        });
-                        ref.read(erpQuotationsProvider.notifier).applyFilters(
-                              search: '',
-                              status: 'All',
-                              fromDate: '',
-                              toDate: '',
-                              page: 1,
-                              limit: 10,
-                            );
-                      },
-                    );
-
-                    if (narrow) {
-                      return Column(
-                        children: [
-                          Row(children: [Expanded(child: statusField)]),
-                          const SizedBox(height: 12),
-                          Row(children: [Expanded(child: limitField)]),
-                          const SizedBox(height: 12),
-                          Row(children: [Expanded(child: fromBtn)]),
-                          const SizedBox(height: 10),
-                          Row(children: [Expanded(child: toBtn)]),
-                          const SizedBox(height: 10),
-                          Row(children: [Expanded(child: resetBtn)]),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(child: statusField),
-                        const SizedBox(width: 12),
-                        SizedBox(width: 110, child: limitField),
-                        const SizedBox(width: 12),
-                        fromBtn,
-                        const SizedBox(width: 10),
-                        toBtn,
-                        const SizedBox(width: 10),
-                        resetBtn,
-                      ],
-                    );
-                  },
+                const SizedBox(height: 8),
+                Text(
+                  'Use Filters for status, priority, dates, and ERP staff names.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
                 ),
               ],
             ),
@@ -326,21 +461,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                     itemCount: data.items.length,
                     itemBuilder: (context, i) => _ErpQuotationCard(
                       quotation: data.items[i],
-                      onTap: () async {
-                        final full = await ref
-                            .read(erpQuotationsProvider.notifier)
-                            .fetchDetail(data.items[i].id);
-                        if (!context.mounted) return;
-                        await showModalBottomSheet<void>(
-                          context: context,
-                          isScrollControlled: true,
-                          showDragHandle: true,
-                          useSafeArea: true,
-                          builder: (_) => _ErpQuotationDetailSheet(
-                            quotation: full ?? data.items[i],
-                          ),
-                        );
-                      },
+                      onTap: () => context.push('/quotations/${data.items[i].quotId}'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -349,9 +470,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                     totalPages: data.totalPages,
                     totalCount: data.count,
                     limit: data.limit,
-                    onPage: (p) => ref
-                        .read(erpQuotationsProvider.notifier)
-                        .applyFilters(page: p),
+                    onPage: (p) => _applyFilters(page: p),
                   ),
                 ],
               );
@@ -436,44 +555,48 @@ class _ErpPaginationBar extends StatelessWidget {
             style: TextStyle(color: Theme.of(context).hintColor),
           );
 
-          final right = Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppButton(
-                label: 'Previous',
-                variant: AppButtonVariant.secondary,
-                size: AppButtonSize.sm,
-                leading: const Icon(Icons.chevron_left),
-                onPressed: page <= 1 ? null : () => onPage(page - 1),
-              ),
-              const SizedBox(width: 10),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < pages.length; i++) ...[
-                    if (i > 0 && pages[i] - pages[i - 1] > 1) ...[
-                      const SizedBox(width: 10),
-                      Text(
-                        '...',
-                        style: TextStyle(color: Theme.of(context).hintColor),
-                      ),
-                      const SizedBox(width: 10),
-                    ] else if (i > 0) ...[
-                      const SizedBox(width: 8),
+          final right = SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppButton(
+                  label: 'Previous',
+                  variant: AppButtonVariant.secondary,
+                  size: AppButtonSize.sm,
+                  leading: const Icon(Icons.chevron_left),
+                  onPressed: page <= 1 ? null : () => onPage(page - 1),
+                ),
+                const SizedBox(width: 10),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int i = 0; i < pages.length; i++) ...[
+                      if (i > 0 && pages[i] - pages[i - 1] > 1) ...[
+                        const SizedBox(width: 10),
+                        Text(
+                          '...',
+                          style: TextStyle(color: Theme.of(context).hintColor),
+                        ),
+                        const SizedBox(width: 10),
+                      ] else if (i > 0) ...[
+                        const SizedBox(width: 8),
+                      ],
+                      pageButton(pages[i]),
                     ],
-                    pageButton(pages[i]),
                   ],
-                ],
-              ),
-              const SizedBox(width: 10),
-              AppButton(
-                label: 'Next',
-                variant: AppButtonVariant.secondary,
-                size: AppButtonSize.sm,
-                leading: const Icon(Icons.chevron_right),
-                onPressed: page >= totalPages ? null : () => onPage(page + 1),
-              ),
-            ],
+                ),
+                const SizedBox(width: 10),
+                AppButton(
+                  label: 'Next',
+                  variant: AppButtonVariant.secondary,
+                  size: AppButtonSize.sm,
+                  leading: const Icon(Icons.chevron_right),
+                  onPressed: page >= totalPages ? null : () => onPage(page + 1),
+                ),
+              ],
+            ),
           );
 
           if (narrow) {
@@ -524,7 +647,7 @@ class _ErpQuotationCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      quotation.id,
+                      quotation.quotNo.isEmpty ? quotation.id : quotation.quotNo,
                       style: const TextStyle(
                         fontFamily: 'monospace',
                         fontWeight: FontWeight.w900,
@@ -558,7 +681,7 @@ class _ErpQuotationCard extends StatelessWidget {
                 ),
               ),
               StatusBadge(
-                label: quotation.status.isEmpty ? 'Confirmed' : quotation.status,
+                label: quotation.status.isEmpty ? 'Approved' : quotation.status,
               ),
             ],
           ),
@@ -610,103 +733,6 @@ class _ErpQuotationCard extends StatelessWidget {
     } catch (_) {
       return t;
     }
-  }
-}
-
-class _ErpQuotationDetailSheet extends StatelessWidget {
-  const _ErpQuotationDetailSheet({required this.quotation});
-  final ErpQuotation quotation;
-
-  @override
-  Widget build(BuildContext context) {
-    final amountText = _inr0.format(quotation.totalAmount);
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            quotation.customerName.isEmpty ? 'ERP Quotation' : quotation.customerName,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            quotation.id,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w900,
-              color: AppColors.blue600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              StatusBadge(label: quotation.status),
-              const Spacer(),
-              Text(amountText, style: const TextStyle(fontWeight: FontWeight.w900)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _kv(context, 'Customer ID', quotation.customerId),
-          _kv(context, 'Date', quotation.date),
-          _kv(context, 'Valid Until', quotation.validUntil ?? '—'),
-          if (quotation.items.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Items',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            for (final it in quotation.items)
-              AppCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        it.description.isEmpty ? '—' : it.description,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Text(
-                      '${it.quantity} × ${_inr0.format(it.unitPrice)}',
-                      style: TextStyle(color: Theme.of(context).hintColor),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      _inr0.format(it.total),
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _kv(BuildContext context, String k, String v) {
-    final val = v.trim().isEmpty ? '—' : v.trim();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(k, style: TextStyle(color: Theme.of(context).hintColor)),
-          ),
-          Expanded(child: Text(val, style: const TextStyle(fontWeight: FontWeight.w700))),
-        ],
-      ),
-    );
   }
 }
 

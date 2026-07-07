@@ -466,7 +466,7 @@ export default function Clients() {
                           <p className="font-bold text-gray-900 dark:text-white text-base">{s.value}</p>
                           <p className="text-gray-400 text-[10px] leading-tight">{s.label}</p>
                         </div>
-                      ))}
+                      ))} 
                     </div>
                   ) : null}
 

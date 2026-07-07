@@ -11,9 +11,13 @@ class ErpQuotationsRepository {
     int page = 1,
     int limit = 10,
     String status = '',
+    String priority = '',
+    String category = '',
     String fromDate = '',
     String toDate = '',
     String search = '',
+    String preparedBy = '',
+    String enteredBy = '',
     String customerId = '',
   }) async {
     final res = await _dio.get(
@@ -22,9 +26,13 @@ class ErpQuotationsRepository {
         'page': page,
         'limit': limit,
         if (status.trim().isNotEmpty && status != 'All') 'status': status.trim(),
+        if (priority.trim().isNotEmpty && priority != 'All') 'priority': priority.trim(),
+        if (category.trim().isNotEmpty && category != 'All') 'category': category.trim(),
         if (fromDate.trim().isNotEmpty) 'from_date': fromDate.trim(),
         if (toDate.trim().isNotEmpty) 'to_date': toDate.trim(),
         if (search.trim().isNotEmpty) 'search': search.trim(),
+        if (preparedBy.trim().isNotEmpty) 'prepared_by': preparedBy.trim(),
+        if (enteredBy.trim().isNotEmpty) 'entered_by': enteredBy.trim(),
         if (customerId.trim().isNotEmpty) 'customer_id': customerId.trim(),
       },
     );
@@ -36,7 +44,8 @@ class ErpQuotationsRepository {
         .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
         .map(ErpQuotation.fromJson)
         .toList();
-    final count = _asInt(root['count'], fallback: items.length);
+    final pagination = _asMap(root['pagination']);
+    final count = _asInt(pagination['total'] ?? root['count'] ?? root['total'], fallback: items.length);
     return (items: items, count: count);
   }
 
@@ -60,4 +69,3 @@ int _asInt(Object? v, {required int fallback}) {
   if (v is num) return v.toInt();
   return int.tryParse((v ?? '').toString()) ?? fallback;
 }
-

@@ -16,6 +16,10 @@ class ErpQuotationsState {
     required this.count,
     this.search = '',
     this.status = 'All',
+    this.priority = 'All',
+    this.category = 'All',
+    this.preparedBy = '',
+    this.enteredBy = '',
     this.fromDate = '',
     this.toDate = '',
   });
@@ -26,6 +30,10 @@ class ErpQuotationsState {
   final int count;
   final String search;
   final String status;
+  final String priority;
+  final String category;
+  final String preparedBy;
+  final String enteredBy;
   final String fromDate;
   final String toDate;
 
@@ -38,6 +46,10 @@ class ErpQuotationsState {
     int? count,
     String? search,
     String? status,
+    String? priority,
+    String? category,
+    String? preparedBy,
+    String? enteredBy,
     String? fromDate,
     String? toDate,
   }) {
@@ -48,6 +60,10 @@ class ErpQuotationsState {
       count: count ?? this.count,
       search: search ?? this.search,
       status: status ?? this.status,
+      priority: priority ?? this.priority,
+      category: category ?? this.category,
+      preparedBy: preparedBy ?? this.preparedBy,
+      enteredBy: enteredBy ?? this.enteredBy,
       fromDate: fromDate ?? this.fromDate,
       toDate: toDate ?? this.toDate,
     );
@@ -76,6 +92,10 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
   Future<void> applyFilters({
     String? search,
     String? status,
+    String? priority,
+    String? category,
+    String? preparedBy,
+    String? enteredBy,
     String? fromDate,
     String? toDate,
     int? page,
@@ -85,6 +105,10 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
     final next = prev?.copyWith(
           search: search ?? prev.search,
           status: status ?? prev.status,
+          priority: priority ?? prev.priority,
+          category: category ?? prev.category,
+          preparedBy: preparedBy ?? prev.preparedBy,
+          enteredBy: enteredBy ?? prev.enteredBy,
           fromDate: fromDate ?? prev.fromDate,
           toDate: toDate ?? prev.toDate,
           page: page ?? prev.page,
@@ -97,6 +121,10 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
           limit: limit ?? 10,
           search: search ?? '',
           status: status ?? 'All',
+          priority: 'All',
+          category: 'All',
+          preparedBy: preparedBy ?? '',
+          enteredBy: enteredBy ?? '',
           fromDate: fromDate ?? '',
           toDate: toDate ?? '',
         );
@@ -108,6 +136,10 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
         limit: next.limit,
         search: next.search,
         status: next.status == 'All' ? '' : next.status,
+        priority: next.priority == 'All' ? '' : next.priority,
+        category: next.category == 'All' ? '' : next.category,
+        preparedBy: next.preparedBy,
+        enteredBy: next.enteredBy,
         fromDate: next.fromDate,
         toDate: next.toDate,
       );
