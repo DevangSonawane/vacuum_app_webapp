@@ -142,6 +142,7 @@ class AmcNotifier extends AsyncNotifier<AmcState> {
         contract.nextServiceDate ?? '',
         contract.daysLeft?.toString() ?? '',
         contract.visitCount?.toString() ?? '',
+        contract.breakdownVisitCount?.toString() ?? '',
         contract.pumpsCount?.toString() ?? '',
         contract.perPumpPrice?.toString() ?? '',
         contract.totalPrice?.toString() ?? '',

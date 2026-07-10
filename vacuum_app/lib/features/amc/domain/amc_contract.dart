@@ -21,6 +21,7 @@ class AmcContract {
     this.daysLeft,
     this.poNumber,
     this.visitCount,
+    this.breakdownVisitCount,
     this.pumpsCount,
     this.perPumpPrice,
     this.totalPrice,
@@ -48,6 +49,7 @@ class AmcContract {
   final int? daysLeft; // json: days_left
   final String? poNumber; // json: po_number
   final int? visitCount; // json: visit_count
+  final int? breakdownVisitCount; // json: breakdown_visit_count
   final int? pumpsCount; // json: pumps_count
   final num? perPumpPrice; // json: per_pump_price
   final num? totalPrice; // json: total_price
@@ -99,6 +101,7 @@ class AmcContract {
       daysLeft: iOrNull(json['days_left']),
       poNumber: (json['po_number'] as Object?)?.toString(),
       visitCount: iOrNull(json['visit_count']),
+      breakdownVisitCount: iOrNull(json['breakdown_visit_count']),
       pumpsCount: iOrNull(json['pumps_count']),
       perPumpPrice: nOrNull(json['per_pump_price']),
       totalPrice: nOrNull(json['total_price']),

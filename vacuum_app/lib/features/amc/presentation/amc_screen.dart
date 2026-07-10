@@ -571,6 +571,7 @@ class _InfoGrid extends StatelessWidget {
           ],
         ),
         if (contract.visitCount != null ||
+            contract.breakdownVisitCount != null ||
             contract.pumpsCount != null ||
             contract.perPumpPrice != null ||
             contract.totalPrice != null ||
@@ -584,8 +585,10 @@ class _InfoGrid extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               item(
-                'Pumps Count',
-                contract.pumpsCount == null ? '—' : '${contract.pumpsCount}',
+                'Breakdown Visits',
+                contract.breakdownVisitCount == null
+                    ? '—'
+                    : '${contract.breakdownVisitCount}',
               ),
             ],
           ),
@@ -593,12 +596,21 @@ class _InfoGrid extends StatelessWidget {
           Row(
             children: [
               item(
+                'Pumps Count',
+                contract.pumpsCount == null ? '—' : '${contract.pumpsCount}',
+              ),
+              const SizedBox(width: 10),
+              item(
                 'Per Pump Price',
                 contract.perPumpPrice == null
                     ? '—'
                     : fmtRevenue(contract.perPumpPrice!),
               ),
-              const SizedBox(width: 10),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
               item(
                 'Total Price',
                 contract.totalPrice == null
@@ -704,6 +716,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   final _value = TextEditingController();
   final _services = TextEditingController();
   final _visitCount = TextEditingController();
+  final _breakdownVisitCount = TextEditingController();
   final _pumpsCount = TextEditingController();
   final _perPumpPrice = TextEditingController();
   final _totalPrice = TextEditingController();
@@ -740,6 +753,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       _clientId = e.clientId;
       _clientName = e.clientName;
       _visitCount.text = e.visitCount?.toString() ?? '';
+      _breakdownVisitCount.text = e.breakdownVisitCount?.toString() ?? '';
       _pumpsCount.text = e.pumpsCount?.toString() ?? '';
       _perPumpPrice.text = e.perPumpPrice?.toString() ?? '';
       _totalPrice.text = e.totalPrice?.toString() ?? '';
@@ -762,6 +776,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     _value.dispose();
     _services.dispose();
     _visitCount.dispose();
+    _breakdownVisitCount.dispose();
     _pumpsCount.dispose();
     _perPumpPrice.dispose();
     _totalPrice.dispose();
@@ -887,6 +902,8 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       'end_date': _end!.toIso8601String().substring(0, 10),
       if (_visitCount.text.trim().isNotEmpty)
         'visit_count': _parseInt(_visitCount),
+      if (_breakdownVisitCount.text.trim().isNotEmpty)
+        'breakdown_visit_count': _parseInt(_breakdownVisitCount),
       if (_pumpsCount.text.trim().isNotEmpty)
         'pumps_count': _parseInt(_pumpsCount),
       if (_perPumpPrice.text.trim().isNotEmpty)
@@ -1027,6 +1044,19 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  Expanded(
+                    child: _field(
+                      'Breakdown Visit Count',
+                      _breakdownVisitCount,
+                      hint: '2',
+                      keyboard: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
                   Expanded(
                     child: _field(
                       'Pumps Count',

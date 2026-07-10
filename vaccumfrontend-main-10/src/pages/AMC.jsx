@@ -273,6 +273,7 @@ const EMPTY_FORM = {
   gst_percent:           "",
   service_date_1: "", service_date_2: "", service_date_3: "",
   service_date_4: "", service_date_5: "", service_date_6: "",
+  breakdown_visit_count: "",
 };
 
 export default function AMC() {
@@ -393,6 +394,7 @@ export default function AMC() {
       service_date_4: amc.service_date_4?.slice(0, 10) || "",
       service_date_5: amc.service_date_5?.slice(0, 10) || "",
       service_date_6: amc.service_date_6?.slice(0, 10) || "",
+      breakdown_visit_count: amc.breakdown_visit_count || "",
     });
     setEditId(amc.id);
     setModalOpen(true);
@@ -417,6 +419,7 @@ export default function AMC() {
         renewal_reminder_days: parseInt(form.renewal_reminder_days), services,
         po_number: form.po_number.trim() || undefined,
         visit_count: form.visit_count ? parseInt(form.visit_count) : undefined,
+        breakdown_visit_count: form.breakdown_visit_count ? parseInt(form.breakdown_visit_count) : undefined,
         pumps_count: form.pumps_count ? parseInt(form.pumps_count) : undefined,
         per_pump_price: form.per_pump_price ? parseFloat(form.per_pump_price) : undefined,
         total_price: form.total_price ? parseFloat(form.total_price) : undefined,
@@ -631,7 +634,7 @@ export default function AMC() {
             {/* ── 3. Service Planning ── */}
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Service Planning</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <Select label="Visit Count" value={form.visit_count} onChange={f("visit_count")}
                   options={[
                     { value: "", label: "Select visits" },
@@ -643,6 +646,7 @@ export default function AMC() {
                     { value: 6, label: "6 visits" },
                   ]}
                 />
+                <Input label="Breakdown Visit Count" type="number" min={0} value={form.breakdown_visit_count} onChange={f("breakdown_visit_count")} placeholder="e.g. 2" />
                 <Select label="Renewal Reminder" value={form.renewal_reminder_days} onChange={f("renewal_reminder_days")}
                   options={[{ value: 15, label: "15 days" }, { value: 30, label: "30 days" }, { value: 60, label: "60 days" }, { value: 90, label: "90 days" }]}
                 />
