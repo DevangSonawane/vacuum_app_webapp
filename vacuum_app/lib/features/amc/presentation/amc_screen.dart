@@ -1351,76 +1351,78 @@ class _ClientSearchPickerSheetState extends State<_ClientSearchPickerSheet> {
     final selected = _selectedId;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Padding(
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
       padding: EdgeInsets.only(bottom: bottomInset),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                decoration: const InputDecoration(
-                  hintText: 'Search clients by name...',
-                  prefixIcon: Icon(Icons.search),
-                  isDense: true,
+      child: FractionallySizedBox(
+        heightFactor: 0.85,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  decoration: const InputDecoration(
+                    hintText: 'Search clients by name...',
+                    prefixIcon: Icon(Icons.search),
+                    isDense: true,
+                  ),
                 ),
               ),
-            ),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.62,
-              ),
-              child: _loading
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                  : _clients.isEmpty
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Text('No clients found'),
-                          ),
-                        )
-                      : ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: _clients.length,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1),
-                          itemBuilder: (context, index) {
-                            final client = _clients[index];
-                            final isSelected = selected == client.id;
-                            return ListTile(
-                              title: Text(
-                                client.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                'ID ${client.id}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: isSelected
-                                  ? const Icon(
-                                      Icons.check_circle,
-                                      color: AppColors.blue600,
-                                    )
-                                  : const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.of(context).pop(
-                                _ClientChoice(id: client.id, name: client.name),
-                              ),
-                            );
-                          },
+              Expanded(
+                child: _loading
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: CircularProgressIndicator(),
                         ),
-            ),
-          ],
+                      )
+                    : _clients.isEmpty
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text('No clients found'),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: _clients.length,
+                            separatorBuilder: (context, index) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final client = _clients[index];
+                              final isSelected = selected == client.id;
+                              return ListTile(
+                                title: Text(
+                                  client.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  'ID ${client.id}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(
+                                        Icons.check_circle,
+                                        color: AppColors.blue600,
+                                      )
+                                    : const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.of(context).pop(
+                                  _ClientChoice(
+                                    id: client.id,
+                                    name: client.name,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          ),
         ),
       ),
     );
