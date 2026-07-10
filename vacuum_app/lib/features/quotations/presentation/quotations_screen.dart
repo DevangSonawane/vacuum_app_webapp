@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/ui/ui_providers.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_dropdown_field.dart';
@@ -431,7 +432,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
             error: (e, _) => EmptyState(
               icon: Icons.error_outline,
               title: 'Failed to load quotations',
-              description: e.toString(),
+              description: friendlyErrorMessage(e),
             ),
             data: (data) {
               if (data.items.isEmpty) {

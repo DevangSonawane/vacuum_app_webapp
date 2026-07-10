@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../core/utils/revenue.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -87,7 +88,7 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
               ),
               error: (e, _) => SectionHeader(
                 title: 'AMC Contracts',
-                subtitle: e.toString(),
+                subtitle: friendlyErrorMessage(e),
                 action: canEdit
                     ? AppButton(
                         label: 'Add Contract',
@@ -125,7 +126,7 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
               error: (e, _) => EmptyState(
                 icon: Icons.error_outline,
                 title: 'Failed to load',
-                description: e.toString(),
+                description: friendlyErrorMessage(e),
               ),
               data: (data) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

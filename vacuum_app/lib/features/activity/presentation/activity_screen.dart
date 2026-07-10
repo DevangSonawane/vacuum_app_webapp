@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -224,7 +225,7 @@ class _ActivityLogTab extends ConsumerWidget {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'Failed to load',
-        description: e.toString(),
+        description: friendlyErrorMessage(e),
       ),
       data: (data) {
         final q = ref.watch(activitySearchProvider).trim().toLowerCase();
@@ -365,7 +366,7 @@ class _NotificationsTab extends ConsumerWidget {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'Failed to load',
-        description: e.toString(),
+        description: friendlyErrorMessage(e),
       ),
       data: (data) {
         final unreadCount = data.unreadCount;

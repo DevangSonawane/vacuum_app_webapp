@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_input.dart';
@@ -100,7 +101,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'Failed to load',
-        description: e.toString(),
+        description: friendlyErrorMessage(e),
       ),
       data: (s) {
         _hydrate(s);
@@ -210,7 +211,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                           if (!context.mounted) return;
                           AppToast.show(
                             context,
-                            message: e.toString(),
+                            message: friendlyErrorMessage(e),
                             type: AppToastType.error,
                           );
                         }

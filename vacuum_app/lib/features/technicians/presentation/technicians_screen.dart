@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -129,7 +130,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
               error: (e, _) => EmptyState(
                 icon: Icons.error_outline,
                 title: 'Failed to load',
-                description: e.toString(),
+                description: friendlyErrorMessage(e),
               ),
               data: (data) {
                 if (data.items.isEmpty) {
@@ -212,7 +213,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
       if (!context.mounted) return;
       AppToast.show(
         context,
-        message: e.toString(),
+        message: friendlyErrorMessage(e),
         type: AppToastType.error,
       );
     }
@@ -749,7 +750,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
             if (!mounted) return;
             AppToast.show(
               context,
-              message: e.toString(),
+              message: friendlyErrorMessage(e),
               type: AppToastType.error,
             );
             return;
@@ -785,7 +786,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: e.toString(),
+        message: friendlyErrorMessage(e),
         type: AppToastType.error,
       );
     } finally {

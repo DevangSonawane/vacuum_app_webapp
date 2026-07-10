@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -79,7 +80,7 @@ class _TechnicianDetailScreenState extends ConsumerState<TechnicianDetailScreen>
         error: (e, _) => EmptyState(
           icon: Icons.error_outline,
           title: 'Failed to load',
-          description: e.toString(),
+          description: friendlyErrorMessage(e),
         ),
         data: (tech) {
           if (tech == null) {
@@ -330,7 +331,7 @@ class _TechnicianDetailScreenState extends ConsumerState<TechnicianDetailScreen>
                           if (!context.mounted) return;
                           AppToast.show(
                             context,
-                            message: e.toString(),
+                            message: friendlyErrorMessage(e),
                             type: AppToastType.error,
                           );
                         }

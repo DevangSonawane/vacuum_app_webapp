@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_dropdown_field.dart';
@@ -118,7 +119,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
               error: (e, _) => EmptyState(
                 icon: Icons.error_outline,
                 title: 'Failed to load',
-                description: e.toString(),
+                description: friendlyErrorMessage(e),
               ),
               data: (data) {
                 final counts = <String, int>{

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/error_message.dart';
 import '../data/technicians_repository.dart';
 import '../domain/technician.dart';
 
@@ -81,7 +82,7 @@ class TechniciansNotifier extends AsyncNotifier<TechniciansState> {
     } on DioException catch (e) {
       throw Exception(_messageFromDio(e, fallback: 'Delete failed.'));
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(friendlyErrorMessage(e));
     }
   }
 

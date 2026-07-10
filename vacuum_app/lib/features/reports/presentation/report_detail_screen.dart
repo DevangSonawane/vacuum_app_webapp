@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
@@ -124,7 +125,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         error: (e, _) => EmptyState(
           icon: Icons.error_outline,
           title: 'Failed to load',
-          description: e.toString(),
+          description: friendlyErrorMessage(e),
         ),
         data: (report) {
           if (report == null) {
