@@ -20,7 +20,7 @@ import {
   PageTransition, Card, Badge, Button, useToast, Toast, EmptyState, SectionHeader
 } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 export default function Reports() {
   const { currentUser } = useApp();

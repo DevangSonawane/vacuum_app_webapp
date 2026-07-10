@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // used in quotation card animations
 import { DollarSign, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { PageTransition, Card, Button, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
 import axios from "axios";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const PRIORITY_COLORS = {
   High:   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
@@ -51,7 +51,7 @@ export default function Quotations() {
       if (filters.to_date)   params.to_date   = filters.to_date;
       if (debouncedSearch)   params.search    = debouncedSearch;
 
-      const res = await axios.get(`${API_BASE_URL}/erp/quotations`, {
+      const res = await axios.get(`${API_BASE_URL}/erp/local/quotations`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });

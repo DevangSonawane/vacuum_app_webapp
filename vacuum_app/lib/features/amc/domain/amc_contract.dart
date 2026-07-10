@@ -12,6 +12,12 @@ class AmcContract {
     required this.services,
     required this.nextServiceDate,
     required this.lastServiceDate,
+    required this.serviceDate1,
+    required this.serviceDate2,
+    required this.serviceDate3,
+    required this.serviceDate4,
+    required this.serviceDate5,
+    required this.serviceDate6,
     this.daysLeft,
     this.poNumber,
     this.visitCount,
@@ -33,6 +39,12 @@ class AmcContract {
   final List<String> services;
   final String? nextServiceDate;
   final String? lastServiceDate;
+  final String? serviceDate1;
+  final String? serviceDate2;
+  final String? serviceDate3;
+  final String? serviceDate4;
+  final String? serviceDate5;
+  final String? serviceDate6;
   final int? daysLeft; // json: days_left
   final String? poNumber; // json: po_number
   final int? visitCount; // json: visit_count
@@ -78,6 +90,12 @@ class AmcContract {
       services: l(json['services']).map((e) => e.toString()).toList(),
       nextServiceDate: json['next_service_date']?.toString(),
       lastServiceDate: json['last_service_date']?.toString(),
+      serviceDate1: json['service_date_1']?.toString(),
+      serviceDate2: json['service_date_2']?.toString(),
+      serviceDate3: json['service_date_3']?.toString(),
+      serviceDate4: json['service_date_4']?.toString(),
+      serviceDate5: json['service_date_5']?.toString(),
+      serviceDate6: json['service_date_6']?.toString(),
       daysLeft: iOrNull(json['days_left']),
       poNumber: (json['po_number'] as Object?)?.toString(),
       visitCount: iOrNull(json['visit_count']),

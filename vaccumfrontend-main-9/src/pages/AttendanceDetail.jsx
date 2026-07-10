@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { PageTransition, Badge, Button, Card } from "../components/ui";
 
-const API = "https://apivdti.asynk.in/api";
+const API = "https://api.vdtil.com/api";
 const today = new Date().toISOString().split("T")[0];
 
 function formatDate(str) {

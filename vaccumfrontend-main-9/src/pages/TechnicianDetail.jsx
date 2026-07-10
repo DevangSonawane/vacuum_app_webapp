@@ -14,7 +14,7 @@ import {
   DatePicker, Modal, Textarea, useToast, Toast,
 } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 const DOC_TYPES    = ["Aadhaar Card", "Technician Photo", "WC Policy", "Medical Insurance Policy", "Other"];
 const ACCEPTED     = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx";
 const DOC_PER_PAGE = 10;

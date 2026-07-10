@@ -5,7 +5,7 @@ import { ArrowLeft, CheckCircle, Clock, AlertCircle, WifiOff, ServerCrash, FileX
 import axios from "axios";
 import { PageTransition } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const PRIORITY_COLORS = {
   High:   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
@@ -172,7 +172,7 @@ export default function QuotationDetail() {
     setErrorInfo(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_BASE_URL}/erp/quotations/${id}`, {
+      const res = await axios.get(`${API_BASE_URL}/erp/local/quotations/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) {

@@ -13,7 +13,7 @@ import {
   DatePicker, Modal, useToast, Toast,
 } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const STATUS_GRAD = {
   Active:          "from-blue-500 to-blue-700",

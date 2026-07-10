@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -565,7 +566,7 @@ class _InfoGrid extends StatelessWidget {
               (contract.poNumber ?? '').trim().isEmpty
                   ? '—'
                   : contract.poNumber!.trim(),
-              ),
+            ),
           ],
         ),
         if (contract.visitCount != null ||
@@ -650,7 +651,28 @@ class _Pill extends StatelessWidget {
 String _shortDate(String? iso) {
   final v = (iso ?? '').trim();
   if (v.isEmpty) return '—';
-  return v.length >= 10 ? v.substring(0, 10) : v;
+  final raw = v.length >= 10 ? v.substring(0, 10) : v;
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return raw;
+  return _formatFriendlyDate(parsed);
+}
+
+String _formatFriendlyDate(DateTime date) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${date.day} ${months[date.month - 1]} ${date.year}';
 }
 
 class _AmcFormSheet extends StatefulWidget {
@@ -685,6 +707,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   final _perPumpPrice = TextEditingController();
   final _totalPrice = TextEditingController();
   final _gstPercent = TextEditingController();
+  final List<DateTime?> _serviceDates = List<DateTime?>.filled(6, null);
 
   DateTime? _start;
   DateTime? _end;
@@ -721,6 +744,12 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       _totalPrice.text = e.totalPrice?.toString() ?? '';
       _gstPercent.text = e.gstPercent?.toString() ?? '';
       _lastService = _parse(e.lastServiceDate);
+      _serviceDates[0] = _parse(e.serviceDate1);
+      _serviceDates[1] = _parse(e.serviceDate2);
+      _serviceDates[2] = _parse(e.serviceDate3);
+      _serviceDates[3] = _parse(e.serviceDate4);
+      _serviceDates[4] = _parse(e.serviceDate5);
+      _serviceDates[5] = _parse(e.serviceDate6);
     }
     _loadClients();
   }
@@ -751,6 +780,41 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     final text = ctrl.text.trim();
     if (text.isEmpty) return null;
     return num.tryParse(text);
+  }
+
+  DateTime _autoEndDate(DateTime start) {
+    final end = DateTime(start.year + 1, start.month, start.day);
+    return end.subtract(const Duration(days: 1));
+  }
+
+  void _syncAutoServiceDates() {
+    final start = _start;
+    final end = _end;
+    final visits = _parseInt(_visitCount) ?? 0;
+
+    if (start == null || end == null || visits <= 0) return;
+
+    final totalMonths =
+        ((end.year - start.year) * 12) + (end.month - start.month);
+    final interval = math.max(1, (totalMonths / visits).round());
+    final maxVisits = math.min(visits, 6);
+    final dates = List<DateTime?>.filled(6, null);
+
+    for (var i = 0; i < maxVisits; i++) {
+      dates[i] = DateTime(
+        start.year,
+        start.month + (interval * (i + 1)),
+        start.day,
+      );
+    }
+
+    setState(() {
+      for (var i = 0; i < maxVisits; i++) {
+        _serviceDates[i] = dates[i];
+      }
+      _nextService = dates.first;
+      _lastService = dates[maxVisits - 1];
+    });
   }
 
   void _recalculateCommercials() {
@@ -794,6 +858,25 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       return;
     }
 
+    if (_lastService != null) {
+      if (_lastService!.isBefore(_start!)) {
+        AppToast.show(
+          context,
+          message: 'Last service date cannot be before the start date',
+          type: AppToastType.error,
+        );
+        return;
+      }
+      if (_lastService!.isAfter(_end!)) {
+        AppToast.show(
+          context,
+          message: 'Last service date cannot be after the end date',
+          type: AppToastType.error,
+        );
+        return;
+      }
+    }
+
     setState(() => _loading = true);
     final payload = <String, dynamic>{
       'client_id': _clientId,
@@ -823,6 +906,16 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       if (_lastService != null)
         'last_service_date': _lastService!.toIso8601String().substring(0, 10),
     };
+
+    for (var i = 0; i < _serviceDates.length; i++) {
+      final date = _serviceDates[i];
+      if (date != null) {
+        payload['service_date_${i + 1}'] = date.toIso8601String().substring(
+          0,
+          10,
+        );
+      }
+    }
 
     await widget.onSubmit(payload, _isEdit, widget.existing?.id);
     if (!mounted) return;
@@ -898,21 +991,22 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: _datePicker(
-                      context,
-                      'Start Date *',
-                      _start,
-                      (v) => setState(() => _start = v),
-                    ),
+                    child: _datePicker(context, 'Start Date *', _start, (v) {
+                      setState(() {
+                        _start = v;
+                        if (v != null) {
+                          _end = _autoEndDate(v);
+                        }
+                      });
+                      _syncAutoServiceDates();
+                    }),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _datePicker(
-                      context,
-                      'End Date *',
-                      _end,
-                      (v) => setState(() => _end = v),
-                    ),
+                    child: _datePicker(context, 'End Date *', _end, (v) {
+                      setState(() => _end = v);
+                      _syncAutoServiceDates();
+                    }),
                   ),
                 ],
               ),
@@ -925,7 +1019,10 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                       _visitCount,
                       hint: '12',
                       keyboard: TextInputType.number,
-                      onChanged: (_) => _recalculateCommercials(),
+                      onChanged: (_) {
+                        _recalculateCommercials();
+                        _syncAutoServiceDates();
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -940,6 +1037,8 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _serviceDatesSection(),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -1133,9 +1232,77 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     return AppDropdownField<int>(
       label: 'Renewal Reminder',
       value: options.contains(_reminderDays) ? _reminderDays : 30,
-      items: [for (final d in options) AppDropdownItem(value: d, label: '$d days')],
+      items: [
+        for (final d in options) AppDropdownItem(value: d, label: '$d days'),
+      ],
       enabled: !_loading,
       onChanged: (v) => setState(() => _reminderDays = v ?? 30),
+    );
+  }
+
+  Widget _serviceDatesSection() {
+    final visits = math.min(_parseInt(_visitCount) ?? 0, 6);
+    if (visits <= 0 || _start == null) return const SizedBox.shrink();
+
+    Widget row(int leftIndex, [int? rightIndex]) {
+      return Row(
+        children: [
+          Expanded(
+            child: _datePicker(
+              context,
+              'Visit ${leftIndex + 1}',
+              _serviceDates[leftIndex],
+              (v) => setState(() => _serviceDates[leftIndex] = v),
+            ),
+          ),
+          if (rightIndex != null) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: _datePicker(
+                context,
+                'Visit ${rightIndex + 1}',
+                _serviceDates[rightIndex],
+                (v) => setState(() => _serviceDates[rightIndex] = v),
+              ),
+            ),
+          ] else
+            const Expanded(child: SizedBox()),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Visit Dates',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF0F172A)
+                : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF1F2937)
+                  : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < visits; i += 2) ...[
+                row(i, i + 1 < visits ? i + 1 : null),
+                if (i + 2 < visits) const SizedBox(height: 12),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1218,9 +1385,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  value != null
-                      ? value.toIso8601String().substring(0, 10)
-                      : 'Select date',
+                  value != null ? _formatFriendlyDate(value) : 'Select date',
                   style: TextStyle(
                     color: value != null ? null : AppColors.gray400,
                   ),
@@ -1274,9 +1439,7 @@ class _ReadOnlyField extends StatelessWidget {
           child: Text(
             value.isEmpty ? '—' : value,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: value.isEmpty ? AppColors.gray400 : null,
-            ),
+            style: TextStyle(color: value.isEmpty ? AppColors.gray400 : null),
           ),
         ),
       ],
@@ -1323,7 +1486,11 @@ class _ClientSearchPickerSheetState extends State<_ClientSearchPickerSheet> {
     setState(() => _loading = true);
     try {
       final repo = ClientsRepository(dio: widget.dio);
-      final clients = await repo.fetchClients(limit: 100, search: search, type: '');
+      final clients = await repo.fetchClients(
+        limit: 100,
+        search: search,
+        type: '',
+      );
       if (!mounted) return;
       setState(() {
         _clients = clients;
@@ -1381,45 +1548,42 @@ class _ClientSearchPickerSheetState extends State<_ClientSearchPickerSheet> {
                         ),
                       )
                     : _clients.isEmpty
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(24),
-                              child: Text('No clients found'),
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('No clients found'),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: _clients.length,
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final client = _clients[index];
+                          final isSelected = selected == client.id;
+                          return ListTile(
+                            title: Text(
+                              client.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          )
-                        : ListView.separated(
-                            itemCount: _clients.length,
-                            separatorBuilder: (context, index) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final client = _clients[index];
-                              final isSelected = selected == client.id;
-                              return ListTile(
-                                title: Text(
-                                  client.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  'ID ${client.id}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: isSelected
-                                    ? const Icon(
-                                        Icons.check_circle,
-                                        color: AppColors.blue600,
-                                      )
-                                    : const Icon(Icons.chevron_right),
-                                onTap: () => Navigator.of(context).pop(
-                                  _ClientChoice(
-                                    id: client.id,
-                                    name: client.name,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                            subtitle: Text(
+                              'ID ${client.id}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: isSelected
+                                ? const Icon(
+                                    Icons.check_circle,
+                                    color: AppColors.blue600,
+                                  )
+                                : const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.of(context).pop(
+                              _ClientChoice(id: client.id, name: client.name),
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),

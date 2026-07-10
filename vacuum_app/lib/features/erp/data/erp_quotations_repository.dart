@@ -18,22 +18,25 @@ class ErpQuotationsRepository {
     String search = '',
     String preparedBy = '',
     String enteredBy = '',
-    String customerId = '',
+    String clientId = '',
   }) async {
     final res = await _dio.get(
-      'erp/quotations',
+      'erp/local/quotations',
       queryParameters: {
         'page': page,
         'limit': limit,
-        if (status.trim().isNotEmpty && status != 'All') 'status': status.trim(),
-        if (priority.trim().isNotEmpty && priority != 'All') 'priority': priority.trim(),
-        if (category.trim().isNotEmpty && category != 'All') 'category': category.trim(),
+        if (status.trim().isNotEmpty && status != 'All')
+          'status': status.trim(),
+        if (priority.trim().isNotEmpty && priority != 'All')
+          'priority': priority.trim(),
+        if (category.trim().isNotEmpty && category != 'All')
+          'category': category.trim(),
         if (fromDate.trim().isNotEmpty) 'from_date': fromDate.trim(),
         if (toDate.trim().isNotEmpty) 'to_date': toDate.trim(),
         if (search.trim().isNotEmpty) 'search': search.trim(),
         if (preparedBy.trim().isNotEmpty) 'prepared_by': preparedBy.trim(),
         if (enteredBy.trim().isNotEmpty) 'entered_by': enteredBy.trim(),
-        if (customerId.trim().isNotEmpty) 'customer_id': customerId.trim(),
+        if (clientId.trim().isNotEmpty) 'client_id': clientId.trim(),
       },
     );
 
@@ -45,12 +48,19 @@ class ErpQuotationsRepository {
         .map(ErpQuotation.fromJson)
         .toList();
     final pagination = _asMap(root['pagination']);
-    final count = _asInt(pagination['total'] ?? root['count'] ?? root['total'], fallback: items.length);
+    final count = _asInt(
+      pagination['total'] ?? root['count'] ?? root['total'],
+      fallback: items.length,
+    );
     return (items: items, count: count);
   }
 
+  Future<void> syncQuotations() async {
+    await _dio.post('erp/sync/quotations');
+  }
+
   Future<ErpQuotation> fetchById(String id) async {
-    final res = await _dio.get('erp/quotations/$id');
+    final res = await _dio.get('erp/local/quotations/$id');
     final root = _asMap(res.data);
     return ErpQuotation.fromJson(_asMap(root['data']));
   }

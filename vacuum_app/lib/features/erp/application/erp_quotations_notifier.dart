@@ -4,7 +4,9 @@ import '../../../core/network/api_client.dart';
 import '../data/erp_quotations_repository.dart';
 import '../domain/erp_quotation.dart';
 
-final erpQuotationsRepositoryProvider = Provider<ErpQuotationsRepository>((ref) {
+final erpQuotationsRepositoryProvider = Provider<ErpQuotationsRepository>((
+  ref,
+) {
   return ErpQuotationsRepository(dio: ref.read(dioProvider));
 });
 
@@ -76,7 +78,8 @@ final erpQuotationsProvider =
     );
 
 class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
-  ErpQuotationsRepository get _repo => ref.read(erpQuotationsRepositoryProvider);
+  ErpQuotationsRepository get _repo =>
+      ref.read(erpQuotationsRepositoryProvider);
 
   @override
   Future<ErpQuotationsState> build() async {
@@ -102,7 +105,8 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
     int? limit,
   }) async {
     final prev = state.valueOrNull;
-    final next = prev?.copyWith(
+    final next =
+        prev?.copyWith(
           search: search ?? prev.search,
           status: status ?? prev.status,
           priority: priority ?? prev.priority,
@@ -144,6 +148,32 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
         toDate: next.toDate,
       );
       return next.copyWith(items: res.items, count: res.count);
+    });
+  }
+
+  Future<void> refresh() async {
+    final current = state.valueOrNull;
+    if (current == null) {
+      await build();
+      return;
+    }
+
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await _repo.syncQuotations();
+      final res = await _repo.fetchQuotations(
+        page: current.page,
+        limit: current.limit,
+        search: current.search,
+        status: current.status == 'All' ? '' : current.status,
+        priority: current.priority == 'All' ? '' : current.priority,
+        category: current.category == 'All' ? '' : current.category,
+        preparedBy: current.preparedBy,
+        enteredBy: current.enteredBy,
+        fromDate: current.fromDate,
+        toDate: current.toDate,
+      );
+      return current.copyWith(items: res.items, count: res.count);
     });
   }
 

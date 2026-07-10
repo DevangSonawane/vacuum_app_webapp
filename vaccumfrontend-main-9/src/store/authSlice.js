@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = 'https://apivdti.asynk.in/api';
+const API_BASE_URL = 'https://api.vdtil.com/api';
 
 // Set up axios interceptor for token
 axios.interceptors.request.use((config) => {

@@ -74,7 +74,9 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
   void _applyFilters({int? page}) {
     final search = _erpSearch.text.trim();
     ref.read(searchQueryProvider.notifier).state = search;
-    ref.read(erpQuotationsProvider.notifier).applyFilters(
+    ref
+        .read(erpQuotationsProvider.notifier)
+        .applyFilters(
           search: search,
           status: _status,
           priority: _priority,
@@ -172,9 +174,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                         Expanded(
                           child: Text(
                             'Quotation Filters',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ),
@@ -191,10 +191,10 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Filter ERP quotations, then apply when ready.',
+                      'Filter quotations, then apply when ready.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).hintColor,
-                          ),
+                        color: Theme.of(context).hintColor,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -223,7 +223,8 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                         AppDropdownItem(value: 'Cancelled', label: 'Cancelled'),
                         AppDropdownItem(value: 'Rejected', label: 'Rejected'),
                       ],
-                      onChanged: (v) => setModalState(() => status = v ?? 'All'),
+                      onChanged: (v) =>
+                          setModalState(() => status = v ?? 'All'),
                     ),
                     const SizedBox(height: 14),
                     AppDropdownField<String>(
@@ -235,7 +236,8 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                         AppDropdownItem(value: 'Medium', label: 'Medium'),
                         AppDropdownItem(value: 'Low', label: 'Low'),
                       ],
-                      onChanged: (v) => setModalState(() => priority = v ?? 'All'),
+                      onChanged: (v) =>
+                          setModalState(() => priority = v ?? 'All'),
                     ),
                     const SizedBox(height: 14),
                     AppDropdownField<String>(
@@ -243,11 +245,18 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                       value: category,
                       items: const [
                         AppDropdownItem(value: 'All', label: 'All Category'),
-                        AppDropdownItem(value: 'AMC Service', label: 'AMC Service'),
+                        AppDropdownItem(
+                          value: 'AMC Service',
+                          label: 'AMC Service',
+                        ),
                         AppDropdownItem(value: 'Spare', label: 'Spare'),
-                        AppDropdownItem(value: 'Accessories', label: 'Accessories'),
+                        AppDropdownItem(
+                          value: 'Accessories',
+                          label: 'Accessories',
+                        ),
                       ],
-                      onChanged: (v) => setModalState(() => category = v ?? 'All'),
+                      onChanged: (v) =>
+                          setModalState(() => category = v ?? 'All'),
                     ),
                     const SizedBox(height: 14),
                     Row(
@@ -357,19 +366,20 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
           SectionHeader(
             title: 'Quotations',
             subtitle:
-                erp.whenOrNull(data: (d) => '${d.count} total quotations from ERP') ??
-                    'ERP quotations',
+                erp.whenOrNull(
+                  data: (d) => '${d.count} total quotations',
+                ) ??
+                'Quotations',
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  'ERP Quotations',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
+                  'Quotations',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               AppButton(
@@ -377,7 +387,8 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                 variant: AppButtonVariant.secondary,
                 size: AppButtonSize.sm,
                 leading: const Icon(Icons.refresh),
-                onPressed: () => _applyFilters(page: erp.valueOrNull?.page ?? 1),
+                onPressed: () =>
+                    ref.read(erpQuotationsProvider.notifier).refresh(),
               ),
               const SizedBox(width: 10),
               AppButton(
@@ -406,10 +417,10 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Use Filters for status, priority, dates, and ERP staff names.',
+                  'Use Filters for status, priority, dates, and staff names.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).hintColor,
-                      ),
+                    color: Theme.of(context).hintColor,
+                  ),
                 ),
               ],
             ),
@@ -419,7 +430,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => EmptyState(
               icon: Icons.error_outline,
-              title: 'Failed to load ERP quotations',
+              title: 'Failed to load quotations',
               description: e.toString(),
             ),
             data: (data) {
@@ -461,7 +472,8 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                     itemCount: data.items.length,
                     itemBuilder: (context, i) => _ErpQuotationCard(
                       quotation: data.items[i],
-                      onTap: () => context.push('/quotations/${data.items[i].quotId}'),
+                      onTap: () =>
+                          context.push('/quotations/${data.items[i].quotId}'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -480,7 +492,6 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
       ),
     );
   }
-
 }
 
 class _ErpPaginationBar extends StatelessWidget {
@@ -520,8 +531,9 @@ class _ErpPaginationBar extends StatelessWidget {
       final bg = active
           ? AppColors.blue600
           : (isDark ? const Color(0xFF111827) : AppColors.gray100);
-      final fg =
-          active ? Colors.white : (isDark ? Colors.white : AppColors.gray700);
+      final fg = active
+          ? Colors.white
+          : (isDark ? Colors.white : AppColors.gray700);
       return InkWell(
         onTap: () => onPage(p),
         borderRadius: BorderRadius.circular(10),
@@ -602,11 +614,7 @@ class _ErpPaginationBar extends StatelessWidget {
           if (narrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                left,
-                const SizedBox(height: 10),
-                right,
-              ],
+              children: [left, const SizedBox(height: 10), right],
             );
           }
 
@@ -647,7 +655,9 @@ class _ErpQuotationCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      quotation.quotNo.isEmpty ? quotation.id : quotation.quotNo,
+                      quotation.quotNo.isEmpty
+                          ? quotation.id
+                          : quotation.quotNo,
                       style: const TextStyle(
                         fontFamily: 'monospace',
                         fontWeight: FontWeight.w900,
@@ -686,7 +696,9 @@ class _ErpQuotationCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Divider(color: Theme.of(context).dividerColor.withValues(alpha: 0.14)),
+          Divider(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.14),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [

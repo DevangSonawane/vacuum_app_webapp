@@ -58,7 +58,7 @@ class _ErpQuotationDetailScreenState
                     const EmptyState(
                       icon: Icons.description_outlined,
                       title: 'Quotation not found',
-                      description: 'We could not load this ERP quotation.',
+                      description: 'We could not load this quotation.',
                     ),
                     const SizedBox(height: 12),
                     AppButton(
@@ -94,13 +94,12 @@ class _ErpQuotationDetailScreenState
                       Expanded(
                         child: Text(
                           quotation.customerName.isEmpty
-                              ? 'ERP Quotation'
+                              ? 'Quotation'
                               : quotation.customerName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                       ),
                     ],
@@ -122,7 +121,9 @@ class _ErpQuotationDetailScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            quotation.quotNo.isEmpty ? quotation.id : quotation.quotNo,
+                            quotation.quotNo.isEmpty
+                                ? quotation.id
+                                : quotation.quotNo,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 22,
@@ -162,9 +163,19 @@ class _ErpQuotationDetailScreenState
                           const SizedBox(height: 10),
                           _kv(context, 'Enquiry No', quotation.enquiryNo),
                           const SizedBox(height: 10),
-                          _kv(context, 'Customer ID', quotation.customerId),
+                          _kv(
+                            context,
+                            'Client ID',
+                            quotation.clientIdText.isEmpty
+                                ? 'Not linked'
+                                : quotation.clientIdText,
+                          ),
                           const SizedBox(height: 10),
-                          _kv(context, 'Kind Attention', quotation.kindAttention ?? ''),
+                          _kv(
+                            context,
+                            'Kind Attention',
+                            quotation.kindAttention ?? '',
+                          ),
                           const SizedBox(height: 10),
                           _kv(context, 'Date', quotation.date),
                           const SizedBox(height: 10),
@@ -178,7 +189,11 @@ class _ErpQuotationDetailScreenState
                           const SizedBox(height: 10),
                           _kv(context, 'Entered By', quotation.enteredBy),
                           const SizedBox(height: 10),
-                          _kv(context, 'Financial Year', quotation.validUntil ?? '—'),
+                          _kv(
+                            context,
+                            'Financial Year',
+                            quotation.validUntil ?? '—',
+                          ),
                         ],
                       ),
                     ),
@@ -187,7 +202,7 @@ class _ErpQuotationDetailScreenState
                   InkWell(
                     borderRadius: BorderRadius.circular(16),
                     onTap: () {
-                      final clientId = int.tryParse(quotation.customerId);
+                      final clientId = quotation.clientId;
                       if (clientId != null) {
                         context.push('/clients/$clientId');
                       }
@@ -224,7 +239,10 @@ class _ErpQuotationDetailScreenState
                                 ],
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                            ),
                           ],
                         ),
                       ),
@@ -233,10 +251,9 @@ class _ErpQuotationDetailScreenState
                   const SizedBox(height: 16),
                   Text(
                     'Items',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   for (final item in quotation.items)
@@ -249,8 +266,12 @@ class _ErpQuotationDetailScreenState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item.description.isEmpty ? '—' : item.description,
-                                style: const TextStyle(fontWeight: FontWeight.w800),
+                                item.description.isEmpty
+                                    ? '—'
+                                    : item.description,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                               const SizedBox(height: 8),
                               Row(
@@ -264,7 +285,9 @@ class _ErpQuotationDetailScreenState
                                   const Spacer(),
                                   Text(
                                     _inr0.format(item.total),
-                                    style: const TextStyle(fontWeight: FontWeight.w900),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -299,10 +322,7 @@ class _ErpQuotationDetailScreenState
           ),
         ),
         Expanded(
-          child: Text(
-            v,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
+          child: Text(v, style: const TextStyle(fontWeight: FontWeight.w700)),
         ),
       ],
     );

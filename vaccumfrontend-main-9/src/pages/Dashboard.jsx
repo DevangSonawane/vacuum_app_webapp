@@ -14,7 +14,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell, CartesianGrid,
 } from "recharts";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const PIE_COLORS = {
   Raised:        "#a855f7",

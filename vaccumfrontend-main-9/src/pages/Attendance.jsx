@@ -13,7 +13,7 @@ import {
   SectionHeader, StatCard, useToast, Toast,
 } from "../components/ui";
 
-const API = "https://apivdti.asynk.in/api";
+const API = "https://api.vdtil.com/api";
 
 function formatDate(str) {
   if (!str) return "—";

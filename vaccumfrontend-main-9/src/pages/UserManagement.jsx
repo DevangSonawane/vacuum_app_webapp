@@ -8,7 +8,7 @@ import {
 import axios from "axios";
 import { PageTransition, Card, Button, Input, Select, useToast, Toast } from "../components/ui";
 
-const API_BASE_URL = 'https://apivdti.asynk.in/api';
+const API_BASE_URL = 'https://api.vdtil.com/api';
 
 // All roles as per API doc — technician added
 const ROLES = [

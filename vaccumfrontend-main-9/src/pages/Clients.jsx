@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Plus, Pencil, Trash2, Users, Phone, Mail, MapPin, Building2,
+  Pencil, Trash2, Users, Phone, Mail, MapPin, Building2,
   X, Briefcase, ShieldCheck, TrendingUp, Loader2,
   Calendar, DollarSign, FileText, ChevronLeft, ChevronRight,
-  MoreVertical, Eye,
+  MoreVertical, Eye, Search,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -13,7 +13,7 @@ import {
   SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const EMPTY = {
   name:           "",
@@ -30,11 +30,11 @@ const EMPTY = {
 const TYPES = ["Corporate", "Residential", "Commercial", "Healthcare", "Government"];
 
 const TYPE_COLORS = {
-  Corporate:   "bg-blue-100   text-blue-700",
-  Residential: "bg-emerald-100 text-emerald-700",
-  Commercial:  "bg-purple-100 text-purple-700",
-  Healthcare:  "bg-red-100    text-red-700",
-  Government:  "bg-amber-100  text-amber-700",
+  Corporate:   "bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-400",
+  Residential: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  Commercial:  "bg-purple-100 text-purple-700  dark:bg-purple-900/30  dark:text-purple-400",
+  Healthcare:  "bg-red-100    text-red-700     dark:bg-red-900/30     dark:text-red-400",
+  Government:  "bg-amber-100  text-amber-700   dark:bg-amber-900/30   dark:text-amber-400",
 };
 
 function ActionMenu({ items, onClose }) {
@@ -76,69 +76,75 @@ export default function Clients() {
   const { currentUser } = useApp();
   const { toast, showToast } = useToast();
 
-  const [allClients, setAllClients] = useState([]);
+  // List state
+  const [clients, setClients]       = useState([]);
   const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState("");
-  const [filterType, setFilterType] = useState("All");
+  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage]             = useState(1);
   const limit = 10;
 
-  const [modalOpen, setModalOpen]   = useState(false);
-  const [editId, setEditId]         = useState(null);
-  const [form, setForm]             = useState(EMPTY);
-  const [submitting, setSubmitting] = useState(false);
-  const [deleteId, setDeleteId]     = useState(null);
-  const [menuOpen, setMenuOpen]     = useState(null);
+  // Filters (raw input)
+  const [search, setSearch]         = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
-  const [detailClient, setDetailClient]   = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // Debounced search value — only this triggers a fetch
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Filter clients client-side
-  const filteredClients = allClients.filter(c => {
-    const q = search.toLowerCase();
-    const matchesSearch = !search ||
-      c.name?.toLowerCase().includes(q) ||
-      c.contact_person?.toLowerCase().includes(q) ||
-      c.email?.toLowerCase().includes(q) ||
-      c.phone?.includes(search) ||
-      c.address?.toLowerCase().includes(q);
-    const matchesType = filterType === "All" || c.type === filterType;
-    return matchesSearch && matchesType;
-  });
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  // Get paginated clients
-  const startIndex = (page - 1) * limit;
-  const clients = filteredClients.slice(startIndex, startIndex + limit);
-  const totalClients = filteredClients.length;
-  const totalPages = Math.ceil(totalClients / limit);
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [filterType, filterStatus]);
 
-  useEffect(() => { 
-    fetchClients(); 
-  }, []);
-
-  const fetchClients = async () => {
+  // Fetch from API
+  const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
       const token  = localStorage.getItem("token");
-      // Fetch all clients (limit 1000 to get all)
+      const params = { page, limit };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (filterType)      params.type   = filterType;
+      if (filterStatus)    params.status = filterStatus;
+
       const res = await axios.get(`${API_BASE_URL}/clients`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 1000 }
+        params,
       });
       if (res.data.success) {
-        setAllClients(res.data.data || []);
+        setClients(res.data.data || []);
+        const total =
+          res.data.pagination?.total ??
+          res.data.totalCount ??
+          res.data.total ??
+          (res.data.data?.length || 0);
+        setTotalCount(total);
       }
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to fetch clients", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, debouncedSearch, filterType, filterStatus, showToast]);
 
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [search, filterType]);
+  useEffect(() => { fetchClients(); }, [fetchClients]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+  // Modal / detail state
+  const [modalOpen, setModalOpen]   = useState(false);
+  const [editId, setEditId]         = useState(null);
+  const [form, setForm]             = useState(EMPTY);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleteId, setDeleteId]     = useState(null);
+  const [menuOpen, setMenuOpen]     = useState(null);
+  const [detailClient, setDetailClient]   = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const openDetail = async (client) => {
     setDetailClient({ ...client, stats: null });
@@ -150,7 +156,7 @@ export default function Clients() {
       });
       if (res.data.success) setDetailClient(res.data.data);
     } catch {
-      showToast("Could not load full client details.", "error");
+      showToast("Could not load client details.", "error");
     } finally {
       setDetailLoading(false);
     }
@@ -230,61 +236,95 @@ export default function Clients() {
     }
   };
 
-  const canEdit     = currentUser?.role !== "technician";
-  const activeCount = clients.filter(c => c.status === "Active").length;
+  const canEdit = currentUser?.role !== "technician";
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilterType("");
+    setFilterStatus("");
+    setPage(1);
+  };
 
   return (
     <PageTransition>
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <SectionHeader
           title="Clients"
-          subtitle={`${activeCount} active clients`}
-          action={canEdit && <Button onClick={openAdd}><Plus size={16} /> Add Client</Button>}
+          subtitle={`${totalCount} client${totalCount !== 1 ? "s" : ""}`}
+          action={canEdit && <Button onClick={openAdd}><span className="text-lg leading-none">+</span> Add Client</Button>}
         />
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          <div className="relative flex-1 min-w-48 max-w-xs">
-            <input
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search clients..."
-              className="w-full pl-3 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-5 flex flex-wrap items-end gap-3">
+          {/* Search */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Search</label>
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name or contact person…"
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              />
+            </div>
+          </div>
+
+          {/* Type filter */}
+          <div className="w-full md:w-40">
+            <Select
+              label="Type"
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              options={[
+                { value: "", label: "All Types" },
+                ...TYPES.map(t => ({ value: t, label: t })),
+              ]}
             />
           </div>
-          <div className="flex gap-1 flex-wrap">
-            {["All", ...TYPES].map(t => (
-              <button key={t} onClick={() => { setFilterType(t); setPage(1); }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${filterType === t ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
-              >{t}</button>
-            ))}
+
+          {/* Status filter */}
+          <div className="w-full md:w-36">
+            <Select
+              label="Status"
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              options={[
+                { value: "", label: "All Status" },
+                { value: "Active",   label: "Active" },
+                { value: "Inactive", label: "Inactive" },
+              ]}
+            />
           </div>
+
+          <Button variant="secondary" onClick={resetFilters}>Reset</Button>
         </div>
 
         {/* Main layout */}
-        <div className={`flex gap-5 transition-all ${detailClient ? "items-start" : ""}`}>
-          {/* Client Table */}
-          <div className={`${detailClient ? "flex-1 min-w-0" : "w-full"}`}>
+        <div className={`flex gap-5 ${detailClient ? "items-start" : ""}`}>
+          {/* Table */}
+          <div className={detailClient ? "flex-1 min-w-0" : "w-full"}>
             {loading ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 animate-pulse">
                 <div className="p-5 space-y-4">
-                  {[...Array(4)].map((_, i) => (
+                  {[...Array(6)].map((_, i) => (
                     <div key={i} className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700" />
+                      <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-700 shrink-0" />
                       <div className="space-y-2 flex-1">
                         <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
                         <div className="h-3 w-1/2 bg-gray-100 dark:bg-gray-800 rounded" />
                       </div>
+                      <div className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
                     </div>
                   ))}
                 </div>
               </div>
             ) : clients.length === 0 ? (
-              <EmptyState icon={Users} title="No clients found" description="Adjust your filters or add a new client." />
+              <EmptyState icon={Users} title="No clients found" description="Try adjusting your search or filters." />
             ) : (
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left">
+                  <table className="w-full text-left min-w-[700px]">
                     <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
                       <tr>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
@@ -293,22 +333,22 @@ export default function Clients() {
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Contract Value</th>
-                        <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-16"></th>
+                        <th className="px-5 py-3 w-12" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {clients.map((c, i) => (
-                        <motion.tr 
-                          key={c.id} 
-                          initial={{ opacity: 0, y: 20 }} 
-                          animate={{ opacity: 1, y: 0 }} 
-                          transition={{ delay: i * 0.04 }}
+                        <motion.tr
+                          key={c.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.03 }}
                           onClick={() => openDetail(c)}
                           className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${detailClient?.id === c.id ? "bg-blue-50 dark:bg-blue-900/10" : ""}`}
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0">
                                 <Building2 size={18} className="text-white" />
                               </div>
                               <div>
@@ -319,19 +359,17 @@ export default function Clients() {
                           </td>
                           <td className="px-5 py-4">
                             <div className="space-y-1">
-                              {c.email && <p className="text-xs text-gray-600 dark:text-gray-300"><Mail size={10} className="inline mr-1" />{c.email}</p>}
-                              {c.phone && <p className="text-xs text-gray-600 dark:text-gray-300"><Phone size={10} className="inline mr-1" />{c.phone}</p>}
+                              {c.email && <p className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1"><Mail size={10} className="shrink-0" />{c.email}</p>}
+                              {c.phone && <p className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1"><Phone size={10} className="shrink-0" />{c.phone}</p>}
                             </div>
                           </td>
                           <td className="px-5 py-4">
                             {c.address ? (
-                              <div className="flex items-start gap-1.5 max-w-[200px]">
-                                <MapPin size={12} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex items-start gap-1.5 max-w-[180px]">
+                                <MapPin size={12} className="text-gray-400 mt-0.5 shrink-0" />
                                 <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">{c.address}</p>
                               </div>
-                            ) : (
-                              <span className="text-xs text-gray-400">—</span>
-                            )}
+                            ) : <span className="text-xs text-gray-400">—</span>}
                           </td>
                           <td className="px-5 py-4">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${TYPE_COLORS[c.type] || "bg-gray-100 text-gray-600"}`}>{c.type}</span>
@@ -340,11 +378,9 @@ export default function Clients() {
                             <Badge label={c.status} />
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                              ₹{Number(c.contract_value || 0).toLocaleString()}
-                            </p>
+                            <p className="font-semibold text-gray-900 dark:text-white text-sm">₹{Number(c.contract_value || 0).toLocaleString()}</p>
                           </td>
-                          <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
+                          <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
                             <div className="relative inline-block">
                               <button
                                 onClick={() => setMenuOpen(menuOpen === c.id ? null : c.id)}
@@ -359,7 +395,7 @@ export default function Clients() {
                                     items={[
                                       { label: "View", icon: Eye, onClick: () => { setMenuOpen(null); openDetail(c); } },
                                       ...(canEdit ? [
-                                        { label: "Edit", icon: Pencil, onClick: () => { setMenuOpen(null); openEdit(c); } },
+                                        { label: "Edit",   icon: Pencil, onClick: () => { setMenuOpen(null); openEdit(c); } },
                                         { label: "Delete", icon: Trash2, danger: true, onClick: () => { setMenuOpen(null); setDeleteId(c.id); } },
                                       ] : []),
                                     ]}
@@ -378,34 +414,35 @@ export default function Clients() {
 
             {/* Pagination */}
             {!loading && clients.length > 0 && (
-              <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Showing <span className="font-semibold text-gray-900 dark:text-white">{(page - 1) * limit + 1}</span> to <span className="font-semibold text-gray-900 dark:text-white">{Math.min(page * limit, totalClients)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalClients}</span> results
+                  Showing <span className="font-semibold text-gray-900 dark:text-white">{(page - 1) * limit + 1}</span>
+                  {" "}–{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">{Math.min(page * limit, totalCount)}</span>
+                  {" "}of{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">{totalCount}</span>
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-                    <ChevronLeft size="16" /> Previous
+                    <ChevronLeft size={16} /> Previous
                   </Button>
                   <div className="flex gap-1">
                     {[...Array(totalPages)].map((_, i) => {
-                      const pageNum = i + 1;
-                      if (totalPages > 5 && (pageNum < page - 1 || pageNum > page + 1) && pageNum !== 1 && pageNum !== totalPages) {
-                        if (pageNum === 2 || pageNum === totalPages - 1) return <span key={pageNum} className="px-2 text-gray-900 dark:text-white">...</span>;
+                      const pg = i + 1;
+                      if (totalPages > 7 && Math.abs(pg - page) > 1 && pg !== 1 && pg !== totalPages) {
+                        if (pg === 2 || pg === totalPages - 1) return <span key={pg} className="w-8 flex items-center justify-center text-gray-400">…</span>;
                         return null;
                       }
                       return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setPage(pageNum)}
-                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${page === pageNum ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
-                        >
-                          {pageNum}
+                        <button key={pg} onClick={() => setPage(pg)}
+                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${page === pg ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}>
+                          {pg}
                         </button>
                       );
                     })}
                   </div>
-                  <Button variant="secondary" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
-                    Next <ChevronRight size="16" />
+                  <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                    Next <ChevronRight size={16} />
                   </Button>
                 </div>
               </div>
@@ -421,12 +458,11 @@ export default function Clients() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 40 }}
                 transition={{ type: "spring", damping: 28, stiffness: 280 }}
-                className="w-full lg:w-96 flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg overflow-hidden sticky top-4"
+                className="w-full lg:w-96 shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg overflow-hidden sticky top-4"
               >
-                {/* Header */}
                 <div className="flex items-start justify-between p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-br from-blue-600 to-blue-800">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                       <Building2 size={22} className="text-white" />
                     </div>
                     <div>
@@ -440,8 +476,6 @@ export default function Clients() {
                 </div>
 
                 <div className="p-5 space-y-5 max-h-[calc(100vh-200px)] overflow-y-auto">
-
-                  {/* Status + Type */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge label={detailClient.status} />
                     <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${TYPE_COLORS[detailClient.type] || "bg-gray-100 text-gray-600"}`}>
@@ -449,10 +483,9 @@ export default function Clients() {
                     </span>
                   </div>
 
-                  {/* Stats */}
                   {detailLoading ? (
                     <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
-                      <Loader2 size={16} className="animate-spin" /> Loading stats…
+                      <Loader2 size={16} className="animate-spin" /> Loading…
                     </div>
                   ) : detailClient.stats ? (
                     <div className="grid grid-cols-3 gap-2">
@@ -466,16 +499,15 @@ export default function Clients() {
                           <p className="font-bold text-gray-900 dark:text-white text-base">{s.value}</p>
                           <p className="text-gray-400 text-[10px] leading-tight">{s.label}</p>
                         </div>
-                      ))} 
+                      ))}
                     </div>
                   ) : null}
 
-                  {/* Contact */}
                   <div className="space-y-2.5">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contact</p>
                     {detailClient.email && (
                       <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
                           <Mail size={13} className="text-blue-500" />
                         </div>
                         <span className="break-all">{detailClient.email}</span>
@@ -483,7 +515,7 @@ export default function Clients() {
                     )}
                     {detailClient.phone && (
                       <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
                           <Phone size={13} className="text-blue-500" />
                         </div>
                         <span>{detailClient.phone}</span>
@@ -491,7 +523,7 @@ export default function Clients() {
                     )}
                     {detailClient.address && (
                       <div className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0 mt-0.5">
                           <MapPin size={13} className="text-blue-500" />
                         </div>
                         <span className="leading-snug">{detailClient.address}</span>
@@ -499,7 +531,7 @@ export default function Clients() {
                     )}
                     {detailClient.gst_no && (
                       <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center shrink-0">
                           <FileText size={13} className="text-amber-500" />
                         </div>
                         <span className="font-mono text-xs">GST: {detailClient.gst_no}</span>
@@ -507,7 +539,6 @@ export default function Clients() {
                     )}
                   </div>
 
-                  {/* Contract */}
                   <div className="space-y-2.5">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contract</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -532,7 +563,6 @@ export default function Clients() {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   {canEdit && (
                     <div className="flex gap-2 pt-1">
                       <Button className="flex-1" onClick={() => openEdit(detailClient)}>
@@ -557,10 +587,10 @@ export default function Clients() {
               <Input label="Contact Person"     value={form.contact_person} onChange={f("contact_person")} required />
               <Input label="Email"              type="email" value={form.email}  onChange={f("email")} />
               <Input label="Phone"              value={form.phone}          onChange={f("phone")} />
-              <Input label="GST No."            value={form.gst_no}         onChange={f("gst_no")}         placeholder="22AAAAA0000A1Z5" />
+              <Input label="GST No."            value={form.gst_no}         onChange={f("gst_no")} placeholder="22AAAAA0000A1Z5" />
               <Input label="Contract Value (₹)" type="number" value={form.contract_value} onChange={f("contract_value")} />
-              <Select label="Type"   value={form.type}   onChange={f("type")}   options={TYPES} searchable />
-              <Select label="Status" value={form.status} onChange={f("status")} options={["Active", "Inactive"]} searchable />
+              <Select label="Type"   value={form.type}   onChange={f("type")}   options={TYPES.map(t => ({ value: t, label: t }))} />
+              <Select label="Status" value={form.status} onChange={f("status")} options={[{ value: "Active", label: "Active" }, { value: "Inactive", label: "Inactive" }]} />
               <Input label="Address" value={form.address} onChange={f("address")} className="col-span-2" />
             </div>
             <div className="flex gap-3 pt-2">

@@ -4,7 +4,7 @@ import { Mail, Save, Send, Loader2, RefreshCw } from "lucide-react";
 import axios from "axios";
 import { PageTransition, Card, Button, Input, SectionHeader, useToast, Toast } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const NOTIF_LABELS = {
   job_raised:          { label: "New Job Raised",            desc: "When a new job/visit is created" },

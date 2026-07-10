@@ -10,6 +10,7 @@ class ErpQuotation {
     required this.kindAttention,
     required this.email,
     required this.customer,
+    required this.clientId,
     required this.billTo,
     required this.shipTo,
     required this.priority,
@@ -46,6 +47,7 @@ class ErpQuotation {
   final String? kindAttention;
   final String email;
   final ErpParty? customer;
+  final int? clientId;
   final ErpParty? billTo;
   final ErpParty? shipTo;
   final String priority;
@@ -72,8 +74,10 @@ class ErpQuotation {
   final List<ErpQuotationItem> items;
 
   String get id => quotId.toString();
-  String get customerId => customer?.id?.toString() ?? billTo?.id?.toString() ?? '';
+  String get customerId =>
+      customer?.id?.toString() ?? billTo?.id?.toString() ?? '';
   String get customerName => customer?.name ?? billTo?.name ?? '';
+  String get clientIdText => clientId?.toString() ?? '';
   String? get contactNo {
     final t = kindAttention?.trim() ?? '';
     if (t.isNotEmpty) return t;
@@ -95,11 +99,13 @@ class ErpQuotation {
       if (v is num) return v;
       return num.tryParse((v ?? '').toString()) ?? 0;
     }
+
     int? i(Object? v) {
       if (v is int) return v;
       if (v is num) return v.toInt();
       return int.tryParse((v ?? '').toString());
     }
+
     bool b(Object? v) {
       if (v is bool) return v;
       final t = s(v).trim().toLowerCase();
@@ -109,15 +115,17 @@ class ErpQuotation {
     final itemsRaw = json['items'];
     final items = itemsRaw is List
         ? itemsRaw
-            .whereType<Map>()
-            .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-            .map(ErpQuotationItem.fromJson)
-            .toList()
+              .whereType<Map>()
+              .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+              .map(ErpQuotationItem.fromJson)
+              .toList()
         : const <ErpQuotationItem>[];
 
     return ErpQuotation(
       quotId: i(json['quot_id'] ?? json['id']) ?? 0,
-      quotNo: s(json['quot_no'] ?? json['QuotNo'] ?? json['quotation_no']).trim(),
+      quotNo: s(
+        json['quot_no'] ?? json['QuotNo'] ?? json['quotation_no'],
+      ).trim(),
       enquiryNo: s(json['enquiry_no'] ?? json['EnquiryNo']).trim(),
       enquiryId: i(json['enquiry_id'] ?? json['EnquiryId']),
       date: s(json['date'] ?? json['QuotDate']).trim(),
@@ -126,6 +134,7 @@ class ErpQuotation {
       kindAttention: _sn(json['kind_attention'] ?? json['KindAttention']),
       email: s(json['email'] ?? json['Email']).trim(),
       customer: _party(json['customer']),
+      clientId: i(json['client_id']),
       billTo: _party(json['bill_to']),
       shipTo: _party(json['ship_to']),
       priority: s(json['priority'] ?? json['Priority']).trim(),
@@ -142,7 +151,9 @@ class ErpQuotation {
       preparedById: i(json['prepared_by_id'] ?? json['PreparedById']),
       enteredBy: s(json['entered_by'] ?? json['EnteredBy']).trim(),
       enteredById: i(json['entered_by_id'] ?? json['EnteredById']),
-      quotationStatus: s(json['quotation_status'] ?? json['QuotationStatus']).trim(),
+      quotationStatus: s(
+        json['quotation_status'] ?? json['QuotationStatus'],
+      ).trim(),
       enquiryStatus: s(json['enquiry_status'] ?? json['EnquiryStatus']).trim(),
       isAmended: b(json['is_amended'] ?? json['IsAmended']),
       isCancelled: b(json['is_cancelled'] ?? json['IsCancelled']),
@@ -191,6 +202,7 @@ class ErpQuotationItem {
       if (v is num) return v;
       return num.tryParse((v ?? '').toString()) ?? 0;
     }
+
     int? i(Object? v) {
       if (v is int) return v;
       if (v is num) return v.toInt();
@@ -267,6 +279,7 @@ ErpParty? _party(dynamic value) {
     if (v is num) return v.toInt();
     return int.tryParse((v ?? '').toString());
   }
+
   String s(Object? v) => (v ?? '').toString();
   return ErpParty(
     id: i(map['id']),
@@ -282,6 +295,7 @@ ErpGst? _gst(dynamic value) {
     if (v is num) return v;
     return num.tryParse((v ?? '').toString()) ?? 0;
   }
+
   return ErpGst(
     cgstPer: n(map['cgst_per']),
     cgstAmt: n(map['cgst_amt']),

@@ -19,7 +19,7 @@ import axios from "axios";
 import { useApp } from "../context/AppContext";
 import { PageTransition, Badge, Button, useToast, Toast, Card } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const STATUS_STYLES = {
   Pending:  { bg: "bg-amber-50   dark:bg-amber-900/20   border-amber-200  dark:border-amber-800",   text: "text-amber-700  dark:text-amber-300",  dot: "bg-amber-400"   },
