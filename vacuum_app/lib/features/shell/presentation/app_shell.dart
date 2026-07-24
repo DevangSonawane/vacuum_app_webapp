@@ -460,11 +460,15 @@ class _LogoBlock extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: AppColors.blue600,
+                color: Colors.white.withValues(alpha: 0.03),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.construction, color: Colors.white),
+              child: Image.asset(
+                'assets/branding/logo.png',
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(width: 12),
             const Expanded(
