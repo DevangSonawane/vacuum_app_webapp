@@ -304,7 +304,6 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   final _remarks = TextEditingController();
   final _vdtRepresentativeName = TextEditingController();
   final _clientRepresentativeName = TextEditingController();
-  final _poNumberCtrl = TextEditingController();
 
   String? _poNumber;
 
@@ -340,7 +339,6 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     _remarks.dispose();
     _vdtRepresentativeName.dispose();
     _clientRepresentativeName.dispose();
-    _poNumberCtrl.dispose();
     super.dispose();
   }
 
@@ -780,16 +778,16 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   Widget _dropdownJob() {
-    return AppDropdownField<String>(
+    return _SearchableDropdownString(
       label: 'Linked Job **',
       value: _jobId,
       allowNull: true,
       nullLabel: 'Select job...',
+      enabled: !_loading,
       items: [
         for (final j in _jobs)
-          AppDropdownItem(value: j.id, label: '${j.id} — ${j.title}'),
+          (value: j.id, label: '${j.id} — ${j.title}'),
       ],
-      enabled: !_loading,
       onChanged: (v) => setState(() {
         _jobId = v;
         if (v != null) _applyJob(v);
@@ -798,29 +796,29 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   Widget _dropdownTech() {
-    return AppDropdownField<int>(
+    return _SearchableDropdownInt(
       label: 'Technician **',
       value: _techId,
       allowNull: true,
       nullLabel: 'Select technician...',
-      items: [
-        for (final t in _techs) AppDropdownItem(value: t.id, label: t.name),
-      ],
       enabled: !_loading,
+      items: [
+        for (final t in _techs) (value: t.id, label: t.name),
+      ],
       onChanged: (v) => setState(() => _techId = v),
     );
   }
 
   Widget _dropdownClient() {
-    return AppDropdownField<int>(
+    return _SearchableDropdownInt(
       label: 'Client',
       value: _clientId,
       allowNull: true,
       nullLabel: 'Select client...',
-      items: [
-        for (final c in _clients) AppDropdownItem(value: c.id, label: c.name),
-      ],
       enabled: !_loading,
+      items: [
+        for (final c in _clients) (value: c.id, label: c.name),
+      ],
       onChanged: (v) {
         final selected = _findClient(v);
         setState(() {
@@ -845,25 +843,15 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   Widget _dropdownPoNumber() {
-    if (_poNumbers.isEmpty) {
-      return _field(
-        'PO Number',
-        _poNumberCtrl,
-        hint: 'PO-1234',
-        onChanged: (v) => _poNumber = v.trim(),
-      );
-    }
-    return AppDropdownField<String>(
+    return _SearchableDropdownString(
       label: 'PO Number',
       value: _poNumber,
       allowNull: true,
       nullLabel: 'Select PO...',
-      items: [for (final p in _poNumbers) AppDropdownItem(value: p, label: p)],
       enabled: !_loading,
-      onChanged: (v) => setState(() {
-        _poNumber = v;
-        _poNumberCtrl.text = v ?? '';
-      }),
+      items: [for (final p in _poNumbers) (value: p, label: p)],
+      onChanged: (v) => setState(() => _poNumber = v),
+      onTextChanged: (text) => setState(() => _poNumber = text.trim()),
     );
   }
 
@@ -1222,6 +1210,470 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SearchableDropdownInt extends StatefulWidget {
+  const _SearchableDropdownInt({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.enabled,
+    required this.onChanged,
+    this.allowNull = false,
+    this.nullLabel = '— Please select —',
+  });
+
+  final String label;
+  final int? value;
+  final List<({int value, String label})> items;
+  final bool enabled;
+  final bool allowNull;
+  final String nullLabel;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  State<_SearchableDropdownInt> createState() => _SearchableDropdownIntState();
+}
+
+class _SearchableDropdownIntState extends State<_SearchableDropdownInt> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _selectedLabel(widget.value));
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchableDropdownInt oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      final label = _selectedLabel(widget.value);
+      if (_controller.text != label) {
+        _controller.text = label;
+        _controller.selection = TextSelection.collapsed(offset: label.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  String _selectedLabel(int? value) {
+    if (value == null) return '';
+    for (final item in widget.items) {
+      if (item.value == value) return item.label;
+    }
+    return '';
+  }
+
+  void _syncFromText(String text) {
+    final query = text.trim().toLowerCase();
+    if (query.isEmpty) {
+      widget.onChanged(null);
+      return;
+    }
+
+    final matches = widget.items
+        .where((item) => item.label.trim().toLowerCase() == query)
+        .toList(growable: false);
+    if (matches.length == 1) {
+      widget.onChanged(matches.single.value);
+    } else {
+      widget.onChanged(null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.18);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: divider),
+    );
+    final focusedBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(width: 2),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        RawAutocomplete<({int value, String label})>(
+          textEditingController: _controller,
+          focusNode: _focusNode,
+          displayStringForOption: (option) => option.label,
+          optionsBuilder: (TextEditingValue value) {
+            final query = value.text.trim().toLowerCase();
+            if (query.isEmpty) return widget.items;
+            return widget.items.where(
+              (item) => item.label.toLowerCase().contains(query),
+            );
+          },
+          onSelected: (option) {
+            _controller.text = option.label;
+            _controller.selection = TextSelection.collapsed(
+              offset: option.label.length,
+            );
+            widget.onChanged(option.value);
+          },
+          fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+            return TextField(
+              controller: textController,
+              focusNode: focusNode,
+              enabled: widget.enabled,
+              onChanged: _syncFromText,
+              onSubmitted: (_) {
+                onFieldSubmitted();
+                FocusManager.instance.primaryFocus?.unfocus();
+              },
+              onTapOutside: (_) =>
+                  FocusManager.instance.primaryFocus?.unfocus(),
+              decoration: InputDecoration(
+                hintText: widget.allowNull
+                    ? 'Type to search or leave blank'
+                    : 'Type to search',
+                isDense: false,
+                filled: true,
+                fillColor: isDark
+                    ? const Color(0xFF0B1220)
+                    : const Color(0xFFF9FAFB),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                border: baseBorder,
+                enabledBorder: baseBorder,
+                focusedBorder: focusedBorder,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (textController.text.trim().isNotEmpty && widget.enabled)
+                      IconButton(
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          textController.clear();
+                          widget.onChanged(null);
+                          _focusNode.requestFocus();
+                        },
+                        icon: const Icon(Icons.close, size: 18),
+                      ),
+                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+          optionsViewBuilder:
+              (context, onSelected, options) => Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  color: surface,
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    child: SizedBox(
+                      width: 360,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(8),
+                        shrinkWrap: true,
+                        itemCount: options.length + (widget.allowNull ? 1 : 0),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 4),
+                        itemBuilder: (context, index) {
+                          if (widget.allowNull) {
+                            if (index == 0) {
+                              return ListTile(
+                                dense: true,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                title: Text(widget.nullLabel),
+                                onTap: () {
+                                  _controller.clear();
+                                  widget.onChanged(null);
+                                  Navigator.of(context).maybePop();
+                                },
+                              );
+                            }
+                            index -= 1;
+                          }
+                          final option = options.elementAt(index);
+                          return ListTile(
+                            dense: true,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            title: Text(
+                              option.label,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () => onSelected(option),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchableDropdownString extends StatefulWidget {
+  const _SearchableDropdownString({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.enabled,
+    required this.onChanged,
+    this.onTextChanged,
+    this.allowNull = false,
+    this.nullLabel = '— Please select —',
+  });
+
+  final String label;
+  final String? value;
+  final List<({String value, String label})> items;
+  final bool enabled;
+  final bool allowNull;
+  final String nullLabel;
+  final ValueChanged<String?> onChanged;
+  final ValueChanged<String>? onTextChanged;
+
+  @override
+  State<_SearchableDropdownString> createState() =>
+      _SearchableDropdownStringState();
+}
+
+class _SearchableDropdownStringState extends State<_SearchableDropdownString> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _selectedLabel(widget.value));
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchableDropdownString oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      final label = _selectedLabel(widget.value);
+      if (_controller.text != label) {
+        _controller.text = label;
+        _controller.selection = TextSelection.collapsed(offset: label.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  String _selectedLabel(String? value) {
+    final v = value?.trim();
+    if (v == null || v.isEmpty) return '';
+    for (final item in widget.items) {
+      if (item.value == v) return item.label;
+    }
+    return '';
+  }
+
+  void _syncFromText(String text) {
+    widget.onTextChanged?.call(text);
+    if (widget.onTextChanged != null) return;
+
+    final query = text.trim().toLowerCase();
+    if (query.isEmpty) {
+      widget.onChanged(null);
+      return;
+    }
+
+    final matches = widget.items
+        .where((item) => item.label.trim().toLowerCase() == query)
+        .toList(growable: false);
+    if (matches.length == 1) {
+      widget.onChanged(matches.single.value);
+    } else {
+      widget.onChanged(null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.18);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: divider),
+    );
+    final focusedBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(width: 2),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        RawAutocomplete<({String value, String label})>(
+          textEditingController: _controller,
+          focusNode: _focusNode,
+          displayStringForOption: (option) => option.label,
+          optionsBuilder: (TextEditingValue value) {
+            final query = value.text.trim().toLowerCase();
+            if (query.isEmpty) return widget.items;
+            return widget.items.where(
+              (item) => item.label.toLowerCase().contains(query),
+            );
+          },
+          onSelected: (option) {
+            _controller.text = option.label;
+            _controller.selection = TextSelection.collapsed(
+              offset: option.label.length,
+            );
+            widget.onChanged(option.value);
+            widget.onTextChanged?.call(option.value);
+          },
+          fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+            return TextField(
+              controller: textController,
+              focusNode: focusNode,
+              enabled: widget.enabled,
+              onChanged: _syncFromText,
+              onSubmitted: (_) {
+                onFieldSubmitted();
+                FocusManager.instance.primaryFocus?.unfocus();
+              },
+              onTapOutside: (_) =>
+                  FocusManager.instance.primaryFocus?.unfocus(),
+              decoration: InputDecoration(
+                hintText: widget.allowNull
+                    ? 'Type to search or leave blank'
+                    : 'Type to search',
+                isDense: false,
+                filled: true,
+                fillColor: isDark
+                    ? const Color(0xFF0B1220)
+                    : const Color(0xFFF9FAFB),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+                border: baseBorder,
+                enabledBorder: baseBorder,
+                focusedBorder: focusedBorder,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (textController.text.trim().isNotEmpty && widget.enabled)
+                      IconButton(
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          textController.clear();
+                          widget.onChanged(null);
+                          widget.onTextChanged?.call('');
+                          _focusNode.requestFocus();
+                        },
+                        icon: const Icon(Icons.close, size: 18),
+                      ),
+                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+          optionsViewBuilder:
+              (context, onSelected, options) => Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  color: surface,
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    child: SizedBox(
+                      width: 360,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(8),
+                        shrinkWrap: true,
+                        itemCount: options.length + (widget.allowNull ? 1 : 0),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 4),
+                        itemBuilder: (context, index) {
+                          if (widget.allowNull) {
+                            if (index == 0) {
+                              return ListTile(
+                                dense: true,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                title: Text(widget.nullLabel),
+                                onTap: () {
+                                  _controller.clear();
+                                  widget.onChanged(null);
+                                  widget.onTextChanged?.call('');
+                                  Navigator.of(context).maybePop();
+                                },
+                              );
+                            }
+                            index -= 1;
+                          }
+                          final option = options.elementAt(index);
+                          return ListTile(
+                            dense: true,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            title: Text(
+                              option.label,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () => onSelected(option),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+        ),
+      ],
     );
   }
 }
