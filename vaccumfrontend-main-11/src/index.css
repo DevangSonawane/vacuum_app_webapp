@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body { @apply font-sans antialiased; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-blue-300 dark:bg-blue-700 rounded-full; }
+}
+
+/* ── iOS PWA safe-area helpers ──────────────────────────────── */
+/* Adds the status-bar height on top of whatever py/p the element already has */
+@layer utilities {
+  .safe-pt {
+    /* default 0 so nothing breaks in browser / Android */
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Combined: keeps the original 12px (py-3) AND adds the status-bar clearance */
+  .topbar-pt {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  }
+  /* Sidebar logo block: keeps original 1.25rem (p-5) AND clears the notch */
+  .sidebar-logo-pt {
+    padding-top: calc(1.25rem + env(safe-area-inset-top, 0px));
+  }
+}

@@ -50,8 +50,16 @@ class AmcRepository {
     return AmcContract.fromJson(_asMap(_asMap(response.data)['data']));
   }
 
-  Future<void> create(Map<String, dynamic> payload) =>
-      _dio.post('amc', data: payload);
+  Future<AmcContract> create(Map<String, dynamic> payload) async {
+    final response = await _dio.post('amc', data: payload);
+    final root = _asMap(response.data);
+    final data = _asMap(root['data'] ?? root);
+    return AmcContract.fromJson(data);
+  }
+
+  Future<void> sendEmail(String id, String email) =>
+      _dio.post('amc/$id/send-email', data: {'email': email.trim()});
+
   Future<void> update(String id, Map<String, dynamic> payload) =>
       _dio.put('amc/$id', data: payload);
   Future<void> delete(String id) => _dio.delete('amc/$id');

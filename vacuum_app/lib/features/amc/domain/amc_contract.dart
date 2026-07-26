@@ -4,6 +4,7 @@ class AmcContract {
     required this.title,
     required this.clientId,
     required this.clientName,
+    this.clientEmail,
     required this.status,
     required this.startDate,
     required this.endDate,
@@ -32,6 +33,7 @@ class AmcContract {
   final String title;
   final int clientId;
   final String clientName;
+  final String? clientEmail;
   final String status; // Active | Expiring Soon | Expired
   final String? startDate;
   final String? endDate;
@@ -84,6 +86,7 @@ class AmcContract {
       title: s(json['title']),
       clientId: i(json['client_id']),
       clientName: s(json['client_name']),
+      clientEmail: (json['client_email'] as Object?)?.toString(),
       status: s(json['status']),
       startDate: json['start_date']?.toString(),
       endDate: json['end_date']?.toString(),

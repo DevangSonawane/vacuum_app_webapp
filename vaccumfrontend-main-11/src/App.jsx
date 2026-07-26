@@ -43,7 +43,7 @@ const ProtectedLayout = ({ children, sidebarOpen, setSidebarOpen }) => {
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar setSidebarOpen={setSidebarOpen} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto safe-pb">
           <AnimatePresence mode="wait">
             <PageTransition key={location.pathname}>
               {children}

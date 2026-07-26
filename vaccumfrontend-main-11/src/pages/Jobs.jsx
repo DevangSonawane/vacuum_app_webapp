@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion"; // motion used as motion.div — ESLint false positive
 import {
   Plus, Briefcase, ArrowRight, Calendar, User, X,
   CheckCircle, Loader2, Upload, MoreVertical, Eye,
-  Camera, ShieldCheck, Download, Building2, MapPin, Search, UserCog,
+  Camera, ShieldCheck, Download, Building2, MapPin, Search, UserCog, Trash2, AlertTriangle,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -19,19 +19,14 @@ const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];
 const CATEGORIES = ["Service", "AMC Visit", "Breakdown", "Installation & Commissioning", "Inspection"];
 
-const STATUS_FLOW = { Raised: "Assigned", Assigned: "In Progress", "In Progress": "Closed" };
+const STATUS_FLOW    = { Raised: "Assigned", Assigned: "In Progress", "In Progress": "Closed" };
+const ITEMS_PER_PAGE = 15;
 
 const STATUS_DOT = {
   Raised:        "bg-purple-500",
   Assigned:      "bg-blue-500",
   "In Progress": "bg-amber-500",
   Closed:        "bg-emerald-500",
-};
-const STATUS_BG = {
-  Raised:        "bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800",
-  Assigned:      "bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800",
-  "In Progress": "bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800",
-  Closed:        "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800",
 };
 const PRIORITY_COLORS = {
   Low:      "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
@@ -47,6 +42,7 @@ const EMPTY_FORM = {
   amc_id: "",
 };
 
+// eslint-disable-next-line no-unused-vars
 function AutocompleteInput({ items, value, onChange, label, required, placeholder, icon: Icon, subField, className = "" }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -198,6 +194,10 @@ export default function Jobs() {
   const [closing, setClosing]           = useState(false);
   const fileRef = useRef();
 
+  const [deleteJob, setDeleteJob] = useState(null);
+  const [deleting, setDeleting]   = useState(false);
+  const [page, setPage]           = useState(1);
+
   // Export
   const [exportOpen, setExportOpen]       = useState(false);
   const [exporting, setExporting]         = useState(false);
@@ -208,19 +208,21 @@ export default function Jobs() {
   const [exportStatus, setExportStatus]   = useState("");
   const [exportCategory, setExportCategory] = useState("");
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchJobs(); fetchClients(); fetchTechnicians(); fetchAmcContracts(); }, []);
-  useEffect(() => { fetchJobs(); }, [filter]);
+
+  // Reset to page 1 whenever the active tab changes
+  useEffect(() => { setPage(1); }, [filter]);
 
   const fetchJobs = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const params = { limit: 100 };
-      if (filter !== "All") params.status = filter;
+      // Always fetch all jobs so every tab's count is correct; filtering is done client-side
       const url = (currentUser?.role === "technician" && currentUser?.id)
         ? `${API_BASE_URL}/jobs/by-user/${currentUser.id}`
         : `${API_BASE_URL}/jobs`;
-      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, params });
+      const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` }, params: { limit: 500 } });
       if (res.data.success) setJobs(res.data.data || []);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to fetch jobs", "error");
@@ -234,7 +236,7 @@ export default function Jobs() {
       const token = localStorage.getItem("token");
       const res = await axios.get(`${API_BASE_URL}/clients`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.success) setClients(res.data.data || []);
-    } catch {}
+    } catch { /* ignore */ }
   };
 
   const fetchTechnicians = async () => {
@@ -242,7 +244,7 @@ export default function Jobs() {
       const token = localStorage.getItem("token");
       const res = await axios.get(`${API_BASE_URL}/technicians`, { headers: { Authorization: `Bearer ${token}` }, params: { limit: 200 } });
       if (res.data.success) setTechnicians(res.data.data || []);
-    } catch {}
+    } catch { /* ignore */ }
   };
 
   const fetchAmcContracts = async () => {
@@ -250,7 +252,7 @@ export default function Jobs() {
       const token = localStorage.getItem("token");
       const res = await axios.get(`${API_BASE_URL}/amc`, { headers: { Authorization: `Bearer ${token}` }, params: { limit: 200 } });
       if (res.data.success) setAmcContracts(res.data.data || []);
-    } catch {}
+    } catch { /* ignore */ }
   };
 
   const f = (field) => (e) => setForm(p => ({ ...p, [field]: e.target.value }));
@@ -381,9 +383,34 @@ export default function Jobs() {
     }
   };
 
-  const canRaise    = !["technician", "labour"].includes(currentUser?.role);
-  const activeCount = jobs.filter(j => j.status !== "Closed").length;
-  const filtered    = filter === "All" ? jobs : jobs.filter(j => j.status === filter);
+  const canRaise = !["technician", "labour"].includes(currentUser?.role);
+  const isAdmin  = currentUser?.role?.toLowerCase() === "admin";
+
+  const handleDelete = (job) => {
+    setMenuOpen(null);
+    setDeleteJob(job);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteJob) return;
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_BASE_URL}/jobs/${deleteJob.id}`, { headers: { Authorization: `Bearer ${token}` } });
+      showToast("Job deleted");
+      setDeleteJob(null);
+      fetchJobs();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to delete job", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const activeCount    = jobs.filter(j => j.status !== "Closed").length;
+  const filtered       = filter === "All" ? jobs : jobs.filter(j => j.status === filter);
+  const totalPages     = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedJobs  = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const statusCounts = {};
   STATUSES.forEach(s => { statusCounts[s] = jobs.filter(j => j.status === s).length; });
@@ -400,142 +427,87 @@ export default function Jobs() {
           </div>}
         />
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
-          {["All", ...STATUSES].map(s => (
-            <button key={s} onClick={() => setFilter(s)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-                filter === s ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-              }`}
-            >
-              {s}
-              {s !== "All" && <span className="ml-1.5 bg-white/20 px-1.5 py-0.5 rounded text-[10px]">{statusCounts[s]}</span>}
-            </button>
-          ))}
+        {/* Status tabs */}
+        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-5 overflow-x-auto">
+          {["All", ...STATUSES].map(s => {
+            const count = s === "All" ? jobs.length : statusCounts[s];
+            return (
+              <button key={s} onClick={() => setFilter(s)}
+                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors ${
+                  filter === s
+                    ? "text-blue-600 dark:text-blue-400"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
+              >
+                {s !== "All" && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_DOT[s]}`} />}
+                {s}
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium tabular-nums min-w-[18px] text-center ${
+                  filter === s
+                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                }`}>{loading ? "·" : count}</span>
+                {filter === s && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-sm" />}
+              </button>
+            );
+          })}
         </div>
 
         {/* Content */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-                {[...Array(2)].map((__, j) => (
-                  <div key={j} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 animate-pulse space-y-2">
-                    <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
-                    <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-                    <div className="h-3 w-28 bg-gray-100 dark:bg-gray-800 rounded" />
+          <div className="space-y-2">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 animate-pulse flex items-center gap-3">
+                <div className="w-1 h-14 bg-gray-200 dark:bg-gray-700 rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <div className="h-3 w-14 bg-gray-200 dark:bg-gray-700 rounded" />
+                    <div className="h-3 w-10 bg-gray-200 dark:bg-gray-700 rounded" />
                   </div>
-                ))}
+                  <div className="h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-3 w-1/2 bg-gray-100 dark:bg-gray-800 rounded" />
+                </div>
+                <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded-full flex-shrink-0" />
               </div>
             ))}
           </div>
-        ) : filter === "All" ? (
-          /* Kanban view */
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {STATUSES.map(status => {
-              const col = jobs.filter(j => j.status === status);
-              return (
-                <div key={status} className="min-w-0">
-                  {/* Column header */}
-                  <div className={`flex items-center justify-between mb-3 px-3 py-2 rounded-xl border ${STATUS_BG[status]}`}>
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[status]}`} />
-                      <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{status}</span>
-                    </div>
-                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-900/40 px-2 py-0.5 rounded-full">{col.length}</span>
-                  </div>
-
-                  {/* Cards */}
-                  <div className="space-y-3">
-                    {col.map((job, i) => (
-                      <motion.div key={job.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                        <Card hover className="p-4 cursor-pointer" onClick={() => navigate(`/jobs/${job.id}`)}>
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div className="min-w-0">
-                              <p className="font-mono text-[11px] text-blue-500 dark:text-blue-400 font-bold">{job.id}</p>
-                              <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5 truncate">{job.title}</p>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${PRIORITY_COLORS[job.priority] || PRIORITY_COLORS.Medium}`}>{job.priority}</span>
-                              {canRaise && (
-                                <div className="relative">
-                                  <button onClick={() => setMenuOpen(menuOpen === job.id ? null : job.id)} className="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                    <MoreVertical size={14} />
-                                  </button>
-                                  <AnimatePresence>
-                                    {menuOpen === job.id && (
-                                      <ActionMenu onClose={() => setMenuOpen(null)} items={[
-                                        { label: "View Details", icon: Eye, onClick: () => { setMenuOpen(null); navigate(`/jobs/${job.id}`); } },
-                                        ...(STATUS_FLOW[job.status] ? [{
-                                          label: job.status === "In Progress" ? "Close Job" : `Move to ${STATUS_FLOW[job.status]}`,
-                                          icon: job.status === "In Progress" ? Camera : ArrowRight,
-                                          onClick: () => advanceStatus(job),
-                                        }] : []),
-                                      ]} />
-                                    )}
-                                  </AnimatePresence>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
-                            {job.client_name && <div className="flex items-center gap-1.5"><User size={11} className="flex-shrink-0" /><span className="truncate">{job.client_name}</span></div>}
-                            {job.technician_name && <div className="flex items-center gap-1.5"><User size={11} className="text-blue-400 flex-shrink-0" /><span className="truncate">{job.technician_name}</span></div>}
-                            {job.scheduled_date && <div className="flex items-center gap-1.5"><Calendar size={11} className="flex-shrink-0" />{job.scheduled_date?.slice(0, 10)}</div>}
-                          </div>
-
-                          {(job.amc_id || job.amount) && (
-                            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700">
-                              {job.amc_id && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full">
-                                  <ShieldCheck size={10} /> AMC
-                                </span>
-                              )}
-                              {job.amount > 0 && <span className="text-xs font-bold text-gray-800 dark:text-gray-200">₹{Number(job.amount).toLocaleString()}</span>}
-                            </div>
-                          )}
-                        </Card>
-                      </motion.div>
-                    ))}
-                    {col.length === 0 && (
-                      <div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
-                        <Briefcase size={20} className="mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                        <p className="text-xs text-gray-400">No jobs</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         ) : filtered.length === 0 ? (
-          <EmptyState icon={Briefcase} title="No jobs found" description="No jobs in this status." />
+          <EmptyState icon={Briefcase} title="No jobs found" description={filter === "All" ? "Raise a new job to get started." : `No jobs with status "${filter}".`} />
         ) : (
-          /* List view for filtered status */
-          <div className="space-y-3">
-            {filtered.map((job, i) => (
-              <motion.div key={job.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+          <div className="space-y-2">
+            {paginatedJobs.map((job, i) => (
+              <motion.div key={job.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }}>
                 <Card hover className="p-4 cursor-pointer" onClick={() => navigate(`/jobs/${job.id}`)}>
-                  <div className="flex items-center gap-4">
-                    <div className={`w-1.5 self-stretch rounded-full ${STATUS_DOT[job.status]}`} />
+                  <div className="flex items-center gap-3">
+                    {/* Status bar */}
+                    <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${STATUS_DOT[job.status]}`} />
+
+                    {/* Main content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p className="font-mono text-xs text-blue-500 font-bold">{job.id}</p>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${PRIORITY_COLORS[job.priority] || ""}`}>{job.priority}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <span className="font-mono text-xs text-blue-500 dark:text-blue-400 font-bold">{job.id}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${PRIORITY_COLORS[job.priority] || PRIORITY_COLORS.Medium}`}>{job.priority}</span>
+                            {job.category && (
+                              <span className="hidden sm:inline text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">{job.category}</span>
+                            )}
                           </div>
                           <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{job.title}</p>
                         </div>
+
+                        {/* Right side */}
                         <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                           <Badge label={job.status} />
-                          {job.amount > 0 && <span className="text-sm font-bold text-gray-800 dark:text-white">₹{Number(job.amount).toLocaleString()}</span>}
+                          {job.amount > 0 && (
+                            <span className="text-sm font-bold text-gray-900 dark:text-white hidden sm:block">₹{Number(job.amount).toLocaleString()}</span>
+                          )}
                           {canRaise && (
                             <div className="relative">
-                              <button onClick={() => setMenuOpen(menuOpen === job.id ? null : job.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <MoreVertical size={16} />
+                              <button
+                                onClick={() => setMenuOpen(menuOpen === job.id ? null : job.id)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                              >
+                                <MoreVertical size={15} />
                               </button>
                               <AnimatePresence>
                                 {menuOpen === job.id && (
@@ -546,6 +518,10 @@ export default function Jobs() {
                                       icon: job.status === "In Progress" ? Camera : ArrowRight,
                                       onClick: () => advanceStatus(job),
                                     }] : []),
+                                    ...(isAdmin && ["Raised", "Assigned"].includes(job.status) ? [{
+                                      label: "Delete", icon: Trash2, danger: true,
+                                      onClick: () => handleDelete(job),
+                                    }] : []),
                                   ]} />
                                 )}
                               </AnimatePresence>
@@ -553,17 +529,80 @@ export default function Jobs() {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        {job.client_name && <span className="flex items-center gap-1"><User size={11} />{job.client_name}</span>}
-                        {job.technician_name && <span className="flex items-center gap-1"><User size={11} className="text-blue-400" />{job.technician_name}</span>}
-                        {job.scheduled_date && <span className="flex items-center gap-1"><Calendar size={11} />{job.scheduled_date?.slice(0, 10)}</span>}
-                        {job.amc_id && <span className="flex items-center gap-1 text-purple-500"><ShieldCheck size={11} />{job.amc_title || "AMC"}</span>}
+
+                      {/* Meta row */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {job.client_name && <span className="flex items-center gap-1.5"><User size={11} className="flex-shrink-0" />{job.client_name}</span>}
+                        {job.technician_name && <span className="flex items-center gap-1.5"><User size={11} className="text-blue-400 flex-shrink-0" />{job.technician_name}</span>}
+                        {job.scheduled_date && <span className="flex items-center gap-1.5"><Calendar size={11} className="flex-shrink-0" />{job.scheduled_date.slice(0, 10)}</span>}
+                        {job.amc_id && (
+                          <span className="flex items-center gap-1.5 text-purple-500 font-medium">
+                            <ShieldCheck size={11} className="flex-shrink-0" />{job.amc_title || "AMC"}
+                          </span>
+                        )}
+                        {job.amount > 0 && (
+                          <span className="sm:hidden font-bold text-gray-900 dark:text-white">₹{Number(job.amount).toLocaleString()}</span>
+                        )}
                       </div>
                     </div>
                   </div>
                 </Card>
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && filtered.length > ITEMS_PER_PAGE && (
+          <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">{(page - 1) * ITEMS_PER_PAGE + 1}</span>
+              {" – "}
+              <span className="font-semibold text-gray-900 dark:text-white">{Math.min(page * ITEMS_PER_PAGE, filtered.length)}</span>
+              {" of "}
+              <span className="font-semibold text-gray-900 dark:text-white">{filtered.length}</span>
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                ← Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(pg => pg === 1 || pg === totalPages || Math.abs(pg - page) <= 1)
+                .reduce((acc, pg, idx, arr) => {
+                  if (idx > 0 && pg - arr[idx - 1] > 1) acc.push("…");
+                  acc.push(pg);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === "…" ? (
+                    <span key={`ellipsis-${idx}`} className="w-8 text-center text-gray-400 text-sm">…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setPage(item)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                        page === item
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         )}
 
@@ -700,6 +739,40 @@ export default function Jobs() {
                 {exporting ? <><Loader2 size={15} className="animate-spin" /> Exporting…</> : <><Download size={15} /> Download Excel</>}
               </Button>
               <Button variant="secondary" onClick={() => setExportOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal isOpen={!!deleteJob} onClose={() => !deleting && setDeleteJob(null)} title="Delete Job" size="sm">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3">
+              <AlertTriangle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-700 dark:text-red-300">This action cannot be undone</p>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">The job will be permanently deleted.</p>
+              </div>
+            </div>
+            {deleteJob && (
+              <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl px-4 py-3">
+                <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                  <Trash2 size={16} className="text-red-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-blue-500">{deleteJob.id}</p>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{deleteJob.title}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3 pt-1">
+              <Button variant="secondary" className="flex-1" onClick={() => setDeleteJob(null)} disabled={deleting}>Cancel</Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-red-600"
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? <><Loader2 size={15} className="animate-spin" /> Deleting…</> : <><Trash2 size={15} /> Delete Job</>}
+              </Button>
             </div>
           </div>
         </Modal>

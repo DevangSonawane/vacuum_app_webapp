@@ -150,6 +150,8 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                         onTap: (id) => context.go('/jobs/$id'),
                         onAdvance: (job) =>
                             _advanceOrClose(context, ref, job, canRaise),
+                        onDelete: (job) =>
+                            _confirmDeleteJob(context, ref, job, canRaise),
                       )
                     else
                       _FilteredListView(
@@ -158,6 +160,8 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                         onTap: (id) => context.go('/jobs/$id'),
                         onAdvance: (job) =>
                             _advanceOrClose(context, ref, job, canRaise),
+                        onDelete: (job) =>
+                            _confirmDeleteJob(context, ref, job, canRaise),
                       ),
                   ],
                 );
@@ -189,6 +193,47 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     AppToast.show(
       context,
       message: ok ? 'Moved to $next' : 'Failed to advance',
+      type: ok ? AppToastType.success : AppToastType.error,
+    );
+  }
+
+  Future<void> _confirmDeleteJob(
+    BuildContext context,
+    WidgetRef ref,
+    Job job,
+    bool canRaise,
+  ) async {
+    if (!canRaise) {
+      AppToast.show(
+        context,
+        message: 'You do not have permission to delete jobs.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+    if (job.status != 'Assigned') {
+      AppToast.show(
+        context,
+        message: 'Only assigned jobs can be deleted.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Delete Job',
+      body: 'Delete ${job.title}? This cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmVariant: AppButtonVariant.danger,
+    );
+    if (!confirmed || !context.mounted) return;
+
+    final ok = await ref.read(jobsProvider.notifier).deleteJob(job.id);
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: ok ? 'Job deleted' : 'Failed to delete job',
       type: ok ? AppToastType.success : AppToastType.error,
     );
   }
@@ -364,12 +409,14 @@ class _KanbanAllView extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onDelete,
   });
 
   final List<Job> jobs;
   final bool canRaise;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
+  final ValueChanged<Job> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -382,6 +429,7 @@ class _KanbanAllView extends StatelessWidget {
             canRaise: canRaise,
             onTap: onTap,
             onAdvance: onAdvance,
+            onDelete: onDelete,
           ),
           const SizedBox(height: 16),
         ],
@@ -397,6 +445,7 @@ class _StatusSection extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onDelete,
   });
 
   final String status;
@@ -404,6 +453,7 @@ class _StatusSection extends StatelessWidget {
   final bool canRaise;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
+  final ValueChanged<Job> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -432,6 +482,7 @@ class _StatusSection extends StatelessWidget {
                   canRaise: canRaise,
                   onTap: () => onTap(job.id),
                   onAdvance: () => onAdvance(job),
+                  onLongPress: () => onDelete(job),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -448,12 +499,14 @@ class _FilteredListView extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onDelete,
   });
 
   final List<Job> jobs;
   final bool canRaise;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
+  final ValueChanged<Job> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -465,6 +518,7 @@ class _FilteredListView extends StatelessWidget {
             canRaise: canRaise,
             onTap: () => onTap(job.id),
             onAdvance: () => onAdvance(job),
+            onLongPress: () => onDelete(job),
           ),
           const SizedBox(height: 12),
         ],
@@ -479,18 +533,21 @@ class _JobCardVertical extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onLongPress,
   });
 
   final Job job;
   final bool canRaise;
   final VoidCallback onTap;
   final VoidCallback onAdvance;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final border = _statusBorderColor[job.status] ?? AppColors.gray200;
     return AppCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: border, width: 4)),
@@ -561,18 +618,21 @@ class _JobCardHorizontal extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onLongPress,
   });
 
   final Job job;
   final bool canRaise;
   final VoidCallback onTap;
   final VoidCallback onAdvance;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final border = _statusBorderColor[job.status] ?? AppColors.gray200;
     return AppCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: border, width: 4)),
@@ -1033,7 +1093,9 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     return _SearchableDropdownString(
       label: label,
       value: (value?.trim().isEmpty ?? true) ? null : value,
-      items: items.map((a) => (value: a.id, label: _amcLabel(a))).toList(growable: false),
+      items: items
+          .map((a) => (value: a.id, label: _amcLabel(a)))
+          .toList(growable: false),
       enabled: !_loading,
       allowNull: true,
       nullLabel: '— Not linked to an AMC —',
@@ -1073,11 +1135,7 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
       ),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: fg,
-        ),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: fg),
       ),
     );
 
@@ -1086,21 +1144,23 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
       runSpacing: 8,
       children: [
         if ((a.poNumber ?? '').trim().isNotEmpty)
-          chip('PO: ${a.poNumber}', bg: const Color(0xFFF5F3FF), fg: const Color(0xFF6D28D9)),
+          chip(
+            'PO: ${a.poNumber}',
+            bg: const Color(0xFFF5F3FF),
+            fg: const Color(0xFF6D28D9),
+          ),
         chip(a.status, bg: statusBg, fg: statusFg),
         if ((a.endDate ?? '').trim().isNotEmpty)
-          chip(
-            'Expires: ${_shortDate(a.endDate!)}',
-            fg: AppColors.gray500,
-          ),
+          chip('Expires: ${_shortDate(a.endDate!)}', fg: AppColors.gray500),
       ],
     );
   }
 
   static String _amcLabel(AmcContract a) {
     final po = (a.poNumber ?? '').trim().isEmpty ? '' : ' | PO: ${a.poNumber}';
-    final client =
-        a.clientName.trim().isEmpty ? '' : ' — ${a.clientName.trim()}';
+    final client = a.clientName.trim().isEmpty
+        ? ''
+        : ' — ${a.clientName.trim()}';
     return '${a.id}$po — ${a.title}$client';
   }
 
@@ -1313,95 +1373,98 @@ class _SearchableDropdownIntState extends State<_SearchableDropdownInt> {
             );
             widget.onChanged(option.id);
           },
-          fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
-            return ValueListenableBuilder<TextEditingValue>(
-              valueListenable: textController,
-              builder: (context, value, _) {
-                return TextField(
-                  controller: textController,
-                  focusNode: focusNode,
-                  enabled: widget.enabled,
-                  onSubmitted: (_) {
-                    onFieldSubmitted();
-                    FocusManager.instance.primaryFocus?.unfocus();
+          fieldViewBuilder:
+              (context, textController, focusNode, onFieldSubmitted) {
+                return ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: textController,
+                  builder: (context, value, _) {
+                    return TextField(
+                      controller: textController,
+                      focusNode: focusNode,
+                      enabled: widget.enabled,
+                      onSubmitted: (_) {
+                        onFieldSubmitted();
+                        FocusManager.instance.primaryFocus?.unfocus();
+                      },
+                      onTapOutside: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                      decoration: InputDecoration(
+                        hintText: widget.allowNull
+                            ? 'Type to search or leave blank'
+                            : 'Type to search',
+                        isDense: false,
+                        filled: true,
+                        fillColor: isDark
+                            ? const Color(0xFF0B1220)
+                            : const Color(0xFFF9FAFB),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        border: baseBorder,
+                        enabledBorder: baseBorder,
+                        focusedBorder: focusedBorder,
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (value.text.trim().isNotEmpty && widget.enabled)
+                              IconButton(
+                                tooltip: 'Clear',
+                                onPressed: () {
+                                  textController.clear();
+                                  widget.onChanged(null);
+                                  _focusNode.requestFocus();
+                                },
+                                icon: const Icon(Icons.close, size: 18),
+                              ),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                        ),
+                      ),
+                    );
                   },
-                  onTapOutside: (_) =>
-                      FocusManager.instance.primaryFocus?.unfocus(),
-                  decoration: InputDecoration(
-                    hintText: widget.allowNull
-                        ? 'Type to search or leave blank'
-                        : 'Type to search',
-                    isDense: false,
-                    filled: true,
-                    fillColor: isDark
-                        ? const Color(0xFF0B1220)
-                        : const Color(0xFFF9FAFB),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                    border: baseBorder,
-                    enabledBorder: baseBorder,
-                    focusedBorder: focusedBorder,
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (value.text.trim().isNotEmpty && widget.enabled)
-                          IconButton(
-                            tooltip: 'Clear',
-                            onPressed: () {
-                              textController.clear();
-                              widget.onChanged(null);
-                              _focusNode.requestFocus();
-                            },
-                            icon: const Icon(Icons.close, size: 18),
-                          ),
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                        const SizedBox(width: 8),
-                      ],
-                    ),
-                  ),
                 );
               },
-            );
-          },
-          optionsViewBuilder:
-              (context, onSelected, options) => Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  color: surface,
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 280),
-                    child: SizedBox(
-                      width: 360,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(8),
-                        shrinkWrap: true,
-                        itemCount: options.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 4),
-                        itemBuilder: (context, index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            dense: true,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            title: Text(
-                              option.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => onSelected(option),
-                          );
-                        },
-                      ),
-                    ),
+          optionsViewBuilder: (context, onSelected, options) => Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              color: surface,
+              elevation: 6,
+              borderRadius: BorderRadius.circular(16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: SizedBox(
+                  width: 360,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(8),
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 4),
+                    itemBuilder: (context, index) {
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: Text(
+                          option.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => onSelected(option),
+                      );
+                    },
                   ),
                 ),
               ),
+            ),
+          ),
         ),
       ],
     );
@@ -1539,111 +1602,113 @@ class _SearchableDropdownStringState extends State<_SearchableDropdownString> {
           },
           fieldViewBuilder:
               (context, textController, focusNode, onFieldSubmitted) {
-            return ValueListenableBuilder<TextEditingValue>(
-              valueListenable: textController,
-              builder: (context, value, _) {
-                return TextField(
-                  controller: textController,
-                  focusNode: focusNode,
-                  enabled: widget.enabled,
-                  onSubmitted: (_) {
-                    onFieldSubmitted();
-                    FocusManager.instance.primaryFocus?.unfocus();
+                return ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: textController,
+                  builder: (context, value, _) {
+                    return TextField(
+                      controller: textController,
+                      focusNode: focusNode,
+                      enabled: widget.enabled,
+                      onSubmitted: (_) {
+                        onFieldSubmitted();
+                        FocusManager.instance.primaryFocus?.unfocus();
+                      },
+                      onTapOutside: (_) =>
+                          FocusManager.instance.primaryFocus?.unfocus(),
+                      decoration: InputDecoration(
+                        hintText: widget.allowNull
+                            ? 'Type to search or leave blank'
+                            : 'Type to search',
+                        isDense: false,
+                        filled: true,
+                        fillColor: isDark
+                            ? const Color(0xFF0B1220)
+                            : const Color(0xFFF9FAFB),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        border: baseBorder,
+                        enabledBorder: baseBorder,
+                        focusedBorder: focusedBorder,
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (value.text.trim().isNotEmpty && widget.enabled)
+                              IconButton(
+                                tooltip: 'Clear',
+                                onPressed: () {
+                                  textController.clear();
+                                  widget.onChanged(null);
+                                  _focusNode.requestFocus();
+                                },
+                                icon: const Icon(Icons.close, size: 18),
+                              ),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                        ),
+                      ),
+                    );
                   },
-                  onTapOutside: (_) =>
-                      FocusManager.instance.primaryFocus?.unfocus(),
-                  decoration: InputDecoration(
-                    hintText: widget.allowNull
-                        ? 'Type to search or leave blank'
-                        : 'Type to search',
-                    isDense: false,
-                    filled: true,
-                    fillColor: isDark
-                        ? const Color(0xFF0B1220)
-                        : const Color(0xFFF9FAFB),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                    border: baseBorder,
-                    enabledBorder: baseBorder,
-                    focusedBorder: focusedBorder,
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (value.text.trim().isNotEmpty && widget.enabled)
-                          IconButton(
-                            tooltip: 'Clear',
-                            onPressed: () {
-                              textController.clear();
-                              widget.onChanged(null);
-                              _focusNode.requestFocus();
-                            },
-                            icon: const Icon(Icons.close, size: 18),
-                          ),
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                        const SizedBox(width: 8),
-                      ],
-                    ),
-                  ),
                 );
               },
-            );
-          },
-          optionsViewBuilder:
-              (context, onSelected, options) => Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  color: surface,
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 280),
-                    child: SizedBox(
-                      width: 360,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(8),
-                        shrinkWrap: true,
-                        itemCount: options.length + (widget.allowNull ? 1 : 0),
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 4),
-                        itemBuilder: (context, index) {
-                          if (widget.allowNull) {
-                            if (index == 0) {
-                              return ListTile(
-                                dense: true,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                title: Text(widget.nullLabel),
-                                onTap: () {
-                                  _controller.clear();
-                                  widget.onChanged(null);
-                                  Navigator.of(context).maybePop();
-                                },
-                              );
-                            }
-                            index -= 1;
-                          }
-                          final option = options.elementAt(index);
+          optionsViewBuilder: (context, onSelected, options) => Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              color: surface,
+              elevation: 6,
+              borderRadius: BorderRadius.circular(16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: SizedBox(
+                  width: 360,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(8),
+                    shrinkWrap: true,
+                    itemCount: options.length + (widget.allowNull ? 1 : 0),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 4),
+                    itemBuilder: (context, index) {
+                      if (widget.allowNull) {
+                        if (index == 0) {
                           return ListTile(
                             dense: true,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            title: Text(
-                              option.label,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => onSelected(option),
+                            title: Text(widget.nullLabel),
+                            onTap: () {
+                              _controller.clear();
+                              widget.onChanged(null);
+                              Navigator.of(context).maybePop();
+                            },
                           );
-                        },
-                      ),
-                    ),
+                        }
+                        index -= 1;
+                      }
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: Text(
+                          option.label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => onSelected(option),
+                      );
+                    },
                   ),
                 ),
               ),
+            ),
+          ),
         ),
       ],
     );

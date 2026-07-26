@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, UserCog, Briefcase, ClipboardList,
   FileText, DollarSign, Mail, ShieldCheck, Clock, LogOut,
-  ChevronRight, Menu, X, Search, Bell, HardHat,
+  ChevronRight, Menu, X, Search, Bell,
   User, Settings, Moon, Sun, CheckCheck, Trash2, Wifi, WifiOff,
   CalendarCheck
 } from "lucide-react";
+import logo from "../assets/logo.png";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../store/authSlice";
@@ -96,11 +97,9 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
         className="fixed left-0 top-0 h-full w-64 bg-[#0f172a] z-50 flex flex-col lg:static lg:translate-x-0 lg:z-auto"
       >
         {/* Logo */}
-        <div className="p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="px-5 pb-5 sidebar-logo-pt border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <HardHat size={18} className="text-white" />
-            </div>
+            <img src={logo} alt="VDTI" className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
             <div>
               <p className="text-white font-bold text-sm leading-tight uppercase tracking-wider">VDTI</p>
               <p className="text-blue-400 text-[10px] uppercase tracking-widest font-semibold">Service Hub</p>
@@ -196,7 +195,7 @@ export function TopBar({ setSidebarOpen }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
+    <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 px-4 pb-3 topbar-pt flex items-center gap-3">
       {/* Mobile hamburger */}
       <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white flex-shrink-0">
         <Menu size={22} />

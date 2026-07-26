@@ -89,10 +89,15 @@ class AmcNotifier extends AsyncNotifier<AmcState> {
     });
   }
 
+  Future<AmcContract> createWithResult(Map<String, dynamic> payload) async {
+    final created = await _repo.create(payload);
+    await refresh();
+    return created;
+  }
+
   Future<bool> create(Map<String, dynamic> payload) async {
     try {
-      await _repo.create(payload);
-      await refresh();
+      await createWithResult(payload);
       return true;
     } catch (_) {
       return false;

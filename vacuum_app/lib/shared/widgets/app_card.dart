@@ -7,12 +7,14 @@ class AppCard extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
+    this.onLongPress,
     this.hover = false,
     this.padding = const EdgeInsets.all(16),
   });
 
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final bool hover;
   final EdgeInsets padding;
 
@@ -57,6 +59,7 @@ class _AppCardState extends State<AppCard> {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: widget.onTap,
+            onLongPress: widget.onLongPress,
             child: Padding(padding: widget.padding, child: widget.child),
           ),
         ),

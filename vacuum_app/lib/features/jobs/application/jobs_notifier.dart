@@ -124,6 +124,16 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
     }
   }
 
+  Future<bool> deleteJob(String id) async {
+    try {
+      await _repo.delete(id);
+      await refresh();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<Job?> fetchDetail(String id) async {
     try {
       return await _repo.fetchById(id);

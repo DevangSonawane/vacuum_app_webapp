@@ -5,7 +5,7 @@ import {
   Plus, ShieldCheck, Calendar, RefreshCw, AlertTriangle,
   X, Building2, Clock,
   Loader2, Pencil, Trash2, Package, MapPin, Search, CheckCircle,
-  MoreVertical, Eye,
+  MoreVertical, Eye, Mail,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -24,12 +24,21 @@ function autoServiceDates(startDate, endDate, visitCount) {
   const end   = new Date(endDate);
   const totalMonths =
     (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  const interval = Math.max(1, Math.round(totalMonths / visits));
   const result = {};
-  for (let i = 1; i <= Math.min(visits, 6); i++) {
+  if (visits === 1) {
+    // Single visit → place at midpoint of the contract period
     const d = new Date(start);
-    d.setMonth(d.getMonth() + interval * i);
-    result[`service_date_${i}`] = d.toISOString().slice(0, 10);
+    d.setMonth(d.getMonth() + Math.round(totalMonths / 2));
+    if (d > end) d.setTime(end.getTime());
+    result[`service_date_1`] = d.toISOString().slice(0, 10);
+  } else {
+    const interval = Math.max(1, Math.round(totalMonths / visits));
+    for (let i = 1; i <= Math.min(visits, 6); i++) {
+      const d = new Date(start);
+      d.setMonth(d.getMonth() + interval * i);
+      if (d > end) d.setTime(end.getTime()); // clamp to end date
+      result[`service_date_${i}`] = d.toISOString().slice(0, 10);
+    }
   }
   return result;
 }
@@ -296,6 +305,9 @@ export default function AMC() {
 
   const [deleteId, setDeleteId] = useState(null);
 
+  const [emailModal, setEmailModal]   = useState({ open: false, amcId: null, clientEmail: "" });
+  const [sendingEmail, setSendingEmail] = useState(false);
+
   // Debounce search — wait 400ms after the user stops typing before fetching
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
@@ -443,8 +455,14 @@ export default function AMC() {
         payload.end_date   = form.end_date;
         if (form.last_service_date) payload.last_service_date = form.last_service_date;
         if (form.next_service_date) payload.next_service_date = form.next_service_date;
-        await axios.post(`${API_BASE_URL}/amc`, payload, { headers: { Authorization: `Bearer ${token}` } });
-        showToast("AMC contract created! Confirmation email sent to client.");
+        const createRes = await axios.post(`${API_BASE_URL}/amc`, payload, { headers: { Authorization: `Bearer ${token}` } });
+        showToast("AMC contract created!");
+        const created = createRes.data?.data;
+        setModalOpen(false);
+        fetchContracts();
+        // Open send-email modal immediately after creation
+        setEmailModal({ open: true, amcId: created?.id, clientEmail: created?.client_email || "" });
+        return; // skip the generic setModalOpen/fetchContracts below
       }
       setModalOpen(false);
       fetchContracts();
@@ -465,6 +483,25 @@ export default function AMC() {
     } catch (err) {
       showToast(err.response?.data?.message || "Delete failed", "error");
       setDeleteId(null);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailModal.amcId || !emailModal.clientEmail.trim()) return;
+    setSendingEmail(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${API_BASE_URL}/amc/${emailModal.amcId}/send-email`,
+        { email: emailModal.clientEmail.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showToast("Email sent to client!");
+      setEmailModal({ open: false, amcId: null, clientEmail: "" });
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to send email", "error");
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -552,6 +589,7 @@ export default function AMC() {
                                   <ActionMenu onClose={() => setMenuOpen(null)} items={[
                                     { label: "View", icon: Eye, onClick: () => { setMenuOpen(null); navigate(`/amc/${amc.id}`); } },
                                     { label: "Edit", icon: Pencil, onClick: () => openEdit(amc) },
+                                    { label: "Send Email", icon: Mail, onClick: () => { setMenuOpen(null); setEmailModal({ open: true, amcId: amc.id, clientEmail: amc.client_email || "" }); } },
                                     { label: "Delete", icon: Trash2, danger: true, onClick: () => { setMenuOpen(null); setDeleteId(amc.id); } },
                                   ]} />
                                 )}
@@ -731,6 +769,53 @@ export default function AMC() {
           <div className="flex gap-3">
             <Button variant="danger" onClick={handleDelete} className="flex-1">Delete</Button>
             <Button variant="secondary" onClick={() => setDeleteId(null)}>Cancel</Button>
+          </div>
+        </Modal>
+
+        {/* Send Email Modal */}
+        <Modal
+          isOpen={emailModal.open}
+          onClose={() => !sendingEmail && setEmailModal({ open: false, amcId: null, clientEmail: "" })}
+          title="Send Contract Email"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl px-4 py-3">
+              <Mail size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">Send AMC confirmation to client</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                  Contract <span className="font-mono">{emailModal.amcId}</span>
+                </p>
+              </div>
+            </div>
+
+            <Input
+              label="Client Email"
+              type="email"
+              placeholder="client@example.com"
+              value={emailModal.clientEmail}
+              onChange={e => setEmailModal(p => ({ ...p, clientEmail: e.target.value }))}
+            />
+
+            <div className="flex gap-3 pt-1">
+              <Button
+                className="flex-1"
+                onClick={handleSendEmail}
+                disabled={sendingEmail || !emailModal.clientEmail.trim()}
+              >
+                {sendingEmail
+                  ? <><Loader2 size={15} className="animate-spin" /> Sending…</>
+                  : <><Mail size={15} /> Send Email</>}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setEmailModal({ open: false, amcId: null, clientEmail: "" })}
+                disabled={sendingEmail}
+              >
+                Skip
+              </Button>
+            </div>
           </div>
         </Modal>
 

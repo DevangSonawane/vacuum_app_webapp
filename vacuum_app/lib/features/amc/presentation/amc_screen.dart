@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, dead_code
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -12,6 +14,7 @@ import '../../../core/utils/error_message.dart';
 import '../../../core/utils/revenue.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_input.dart';
 import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
@@ -23,6 +26,7 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../../clients/domain/client.dart';
 import '../../clients/data/clients_repository.dart';
+import '../data/amc_repository.dart';
 import '../application/amc_notifier.dart';
 import '../domain/amc_contract.dart';
 
@@ -151,6 +155,7 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
                             contract: c,
                             canEdit: canEdit,
                             onEdit: () => _openFormSheet(context, ref, c),
+                            onEmail: () => _openEmailDialog(context, c),
                             onDelete: () => _confirmDelete(context, ref, c),
                           ),
                           const SizedBox(height: 12),
@@ -180,18 +185,35 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
         dio: ref.read(dioProvider),
         existing: existing,
         onSubmit: (payload, isEdit, id) async {
-          final ok = isEdit && id != null
-              ? await ref.read(amcProvider.notifier).updateContract(id, payload)
-              : await ref.read(amcProvider.notifier).create(payload);
-          if (!context.mounted) return;
-          Navigator.of(ctx).pop();
-          AppToast.show(
-            context,
-            message: ok
-                ? (isEdit ? 'Contract updated!' : 'Contract created!')
-                : 'Operation failed',
-            type: ok ? AppToastType.success : AppToastType.error,
-          );
+          try {
+            final successMessage = isEdit
+                ? 'Contract updated!'
+                : 'Contract created!';
+            if (isEdit && id != null) {
+              final ok = await ref
+                  .read(amcProvider.notifier)
+                  .updateContract(id, payload);
+              if (!ok) {
+                throw StateError('Operation failed');
+              }
+            } else {
+              await ref.read(amcProvider.notifier).createWithResult(payload);
+            }
+            if (!context.mounted) return;
+            Navigator.of(ctx).pop();
+            AppToast.show(
+              context,
+              message: successMessage,
+              type: AppToastType.success,
+            );
+          } catch (err) {
+            if (!context.mounted) return;
+            AppToast.show(
+              context,
+              message: friendlyErrorMessage(err),
+              type: AppToastType.error,
+            );
+          }
         },
       ),
     );
@@ -218,36 +240,546 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
       type: ok ? AppToastType.error : AppToastType.error,
     );
   }
+
+  Future<void> _openEmailDialog(BuildContext context, AmcContract contract) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _AmcSendEmailDialog(
+        contractId: contract.id,
+        initialEmail: (contract.clientEmail ?? '').trim(),
+        dio: ref.read(dioProvider),
+      ),
+    );
+  }
 }
 
-class AmcCreateScreen extends ConsumerWidget {
+class AmcCreateScreen extends ConsumerStatefulWidget {
   const AmcCreateScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    void close() {
-      final nav = Navigator.of(context);
-      if (nav.canPop()) {
-        nav.pop();
-      } else {
-        context.go('/amc');
-      }
-    }
+  ConsumerState<AmcCreateScreen> createState() => _AmcCreateScreenState();
+}
 
+class _AmcCreateScreenState extends ConsumerState<AmcCreateScreen> {
+  Future<void> _closePage() async {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop();
+    } else {
+      context.go('/amc');
+    }
+  }
+
+  Future<void> _showSendEmailDialog({
+    required String contractId,
+    required String initialEmail,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _AmcSendEmailDialog(
+        contractId: contractId,
+        initialEmail: initialEmail,
+        dio: ref.read(dioProvider),
+      ),
+    );
+    return;
+
+    final emailController = TextEditingController(text: initialEmail);
+    var sending = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final dialogNavigator = Navigator.of(dialogContext);
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> sendEmail() async {
+              final email = emailController.text.trim();
+              if (sending || email.isEmpty) return;
+              setDialogState(() => sending = true);
+              try {
+                await ref
+                    .read(amcRepositoryProvider)
+                    .sendEmail(contractId, email);
+                if (!mounted) return;
+                AppToast.show(
+                  context,
+                  message: 'Email sent to client!',
+                  type: AppToastType.success,
+                );
+                await Future<void>.delayed(const Duration(seconds: 1));
+                if (!mounted) return;
+                if (dialogNavigator.canPop()) {
+                  dialogNavigator.pop();
+                }
+              } catch (err) {
+                if (!mounted) return;
+                AppToast.show(
+                  context,
+                  message: friendlyErrorMessage(err),
+                  type: AppToastType.error,
+                );
+                if (mounted) {
+                  setDialogState(() => sending = false);
+                }
+              }
+            }
+
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final media = MediaQuery.of(context);
+            final width = media.size.width;
+            final compact = width < 420;
+            final dialogWidth = math.min(720.0, width - 32);
+
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 24,
+              ),
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: SizedBox(
+                width: dialogWidth,
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    24,
+                    24,
+                    20 + media.viewInsets.bottom,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Send Contract Email',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Close',
+                            onPressed: sending
+                                ? null
+                                : () => Navigator.of(dialogContext).pop(),
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        height: 1,
+                        width: double.infinity,
+                        color: isDark
+                            ? const Color(0xFF374151)
+                            : const Color(0xFFE5E7EB),
+                      ),
+                      const SizedBox(height: 22),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDBEAFE),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.mail_outline_rounded,
+                              color: Color(0xFF2563EB),
+                              size: 24,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Send AMC confirmation to client',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: const Color(0xFF1D4ED8),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Contract $contractId',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: const Color(0xFF2563EB),
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      AppInput(
+                        label: 'Client Email',
+                        controller: emailController,
+                        type: AppInputType.email,
+                        placeholder: 'client@example.com',
+                        enabled: !sending,
+                      ),
+                      const SizedBox(height: 24),
+                      if (compact)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            AppButton(
+                              label: sending ? 'Sending…' : 'Send Email',
+                              leading: const Icon(Icons.mail_outline_rounded),
+                              loading: sending,
+                              expanded: true,
+                              onPressed: sending ? null : sendEmail,
+                            ),
+                            const SizedBox(height: 12),
+                            AppButton(
+                              label: 'Skip',
+                              variant: AppButtonVariant.secondary,
+                              expanded: true,
+                              onPressed: sending
+                                  ? null
+                                  : () => Navigator.of(dialogContext).pop(),
+                            ),
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: AppButton(
+                                label: sending ? 'Sending…' : 'Send Email',
+                                leading: const Icon(Icons.mail_outline_rounded),
+                                loading: sending,
+                                expanded: true,
+                                onPressed: sending ? null : sendEmail,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            SizedBox(
+                              width: 120,
+                              child: AppButton(
+                                label: 'Skip',
+                                variant: AppButtonVariant.secondary,
+                                expanded: true,
+                                onPressed: sending
+                                    ? null
+                                    : () => Navigator.of(dialogContext).pop(),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    emailController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return _AmcFormSheet(
       asSheet: false,
       dio: ref.read(dioProvider),
       existing: null,
       onSubmit: (payload, isEdit, id) async {
-        final ok = await ref.read(amcProvider.notifier).create(payload);
-        if (!context.mounted) return;
-        if (ok) close();
-        AppToast.show(
-          context,
-          message: ok ? 'Contract created!' : 'Operation failed',
-          type: ok ? AppToastType.success : AppToastType.error,
-        );
+        try {
+          final created = await ref
+              .read(amcProvider.notifier)
+              .createWithResult(payload);
+          if (!mounted) return;
+
+          AppToast.show(
+            context,
+            message: 'AMC contract created!',
+            type: AppToastType.success,
+          );
+          await _showSendEmailDialog(
+            contractId: created.id,
+            initialEmail: (created.clientEmail ?? '').trim(),
+          );
+          if (!mounted) return;
+          await _closePage();
+        } catch (err) {
+          if (!mounted) return;
+          AppToast.show(
+            context,
+            message: friendlyErrorMessage(err),
+            type: AppToastType.error,
+          );
+        }
       },
+    );
+  }
+}
+
+class _AmcSendEmailDialog extends StatefulWidget {
+  const _AmcSendEmailDialog({
+    required this.contractId,
+    required this.initialEmail,
+    required this.dio,
+  });
+
+  final String contractId;
+  final String initialEmail;
+  final Dio dio;
+
+  @override
+  State<_AmcSendEmailDialog> createState() => _AmcSendEmailDialogState();
+}
+
+class _AmcSendEmailDialogState extends State<_AmcSendEmailDialog> {
+  late final TextEditingController _emailController = TextEditingController(
+    text: widget.initialEmail,
+  );
+  Timer? _autoCloseTimer;
+  bool _sending = false;
+  bool _sent = false;
+
+  @override
+  void dispose() {
+    _autoCloseTimer?.cancel();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendEmail() async {
+    final email = _emailController.text.trim();
+    if (_sending || _sent || email.isEmpty) return;
+
+    setState(() => _sending = true);
+    try {
+      await AmcRepository(dio: widget.dio).sendEmail(widget.contractId, email);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Email sent to client!',
+        type: AppToastType.success,
+      );
+      setState(() {
+        _sending = false;
+        _sent = true;
+      });
+      _autoCloseTimer?.cancel();
+      _autoCloseTimer = Timer(const Duration(seconds: 1), () {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+      });
+    } catch (err) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: friendlyErrorMessage(err),
+        type: AppToastType.error,
+      );
+      setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final media = MediaQuery.of(context);
+    final width = media.size.width;
+    final compact = width < 420;
+    final dialogWidth = math.min(720.0, width - 32);
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: SizedBox(
+        width: dialogWidth,
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            20 + media.viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Send Contract Email',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: _sending
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Container(
+                height: 1,
+                width: double.infinity,
+                color: isDark
+                    ? const Color(0xFF374151)
+                    : const Color(0xFFE5E7EB),
+              ),
+              const SizedBox(height: 22),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDBEAFE),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.mail_outline_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Send AMC confirmation to client',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: const Color(0xFF1D4ED8),
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Contract ${widget.contractId}',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: const Color(0xFF2563EB)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (_sent)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Color(0xFF16A34A)),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Email sent successfully. Closing…',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                AppInput(
+                  label: 'Client Email',
+                  controller: _emailController,
+                  type: AppInputType.email,
+                  placeholder: 'client@example.com',
+                  enabled: !_sending,
+                ),
+                const SizedBox(height: 24),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppButton(
+                        label: _sending ? 'Sending…' : 'Send Email',
+                        leading: const Icon(Icons.mail_outline_rounded),
+                        loading: _sending,
+                        expanded: true,
+                        onPressed: _sending ? null : _sendEmail,
+                      ),
+                      const SizedBox(height: 12),
+                      AppButton(
+                        label: 'Skip',
+                        variant: AppButtonVariant.secondary,
+                        expanded: true,
+                        onPressed: _sending
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: AppButton(
+                          label: _sending ? 'Sending…' : 'Send Email',
+                          leading: const Icon(Icons.mail_outline_rounded),
+                          loading: _sending,
+                          expanded: true,
+                          onPressed: _sending ? null : _sendEmail,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 120,
+                        child: AppButton(
+                          label: 'Skip',
+                          variant: AppButtonVariant.secondary,
+                          expanded: true,
+                          onPressed: _sending
+                              ? null
+                              : () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -312,12 +844,14 @@ class _AmcCard extends StatelessWidget {
     required this.contract,
     required this.canEdit,
     required this.onEdit,
+    required this.onEmail,
     required this.onDelete,
   });
 
   final AmcContract contract;
   final bool canEdit;
   final VoidCallback onEdit;
+  final VoidCallback onEmail;
   final VoidCallback onDelete;
 
   @override
@@ -478,7 +1012,18 @@ class _AmcCard extends StatelessWidget {
                     onPressed: onEdit,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AppButton(
+                    label: 'Email',
+                    variant: AppButtonVariant.secondary,
+                    size: AppButtonSize.sm,
+                    expanded: true,
+                    leading: const Icon(Icons.mail_outline_rounded),
+                    onPressed: onEmail,
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: AppButton(
                     label: 'Delete',
