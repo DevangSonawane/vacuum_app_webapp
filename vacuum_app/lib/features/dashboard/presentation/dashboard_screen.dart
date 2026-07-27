@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../core/utils/revenue.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -22,7 +23,8 @@ class DashboardScreen extends ConsumerWidget {
     final dashboard = ref.watch(dashboardProvider);
     return dashboard.when(
       loading: () => const _DashboardSkeleton(),
-      error: (error, _) => _DashboardError(message: error.toString()),
+      error: (error, _) =>
+          _DashboardError(message: friendlyErrorMessage(error)),
       data: (data) => _DashboardBody(data: data),
     );
   }

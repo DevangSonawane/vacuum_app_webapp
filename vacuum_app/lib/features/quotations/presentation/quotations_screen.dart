@@ -45,6 +45,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
   String _status = 'All';
   String _priority = 'All';
   String _category = 'All';
+  String _series = 'All';
   String _fromDate = '';
   String _toDate = '';
   int _limit = 10;
@@ -82,6 +83,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
           status: _status,
           priority: _priority,
           category: _category,
+          series: _series,
           preparedBy: _preparedBy.text.trim(),
           enteredBy: _enteredBy.text.trim(),
           fromDate: _fromDate,
@@ -99,6 +101,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
       _status = 'All';
       _priority = 'All';
       _category = 'All';
+      _series = 'All';
       _fromDate = '';
       _toDate = '';
       _limit = 10;
@@ -116,6 +119,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
     String status = _status;
     String priority = _priority;
     String category = _category;
+    String series = _series;
     String fromDate = _fromDate;
     String toDate = _toDate;
     int limit = _limit;
@@ -212,6 +216,26 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                         labelText: 'Entered By',
                         hintText: 'Name contains...',
                       ),
+                    ),
+                    const SizedBox(height: 14),
+                    AppDropdownField<String>(
+                      label: 'Series',
+                      value: series,
+                      items: const [
+                        AppDropdownItem(value: 'All', label: 'All Series'),
+                        AppDropdownItem(value: 'Spares', label: 'Spares'),
+                        AppDropdownItem(
+                          value: 'Accessories',
+                          label: 'Accessories',
+                        ),
+                        AppDropdownItem(
+                          value: 'AMC Quotation',
+                          label: 'AMC Quotation',
+                        ),
+                        AppDropdownItem(value: 'Service', label: 'Service'),
+                      ],
+                      onChanged: (v) =>
+                          setModalState(() => series = v ?? 'All'),
                     ),
                     const SizedBox(height: 14),
                     AppDropdownField<String>(
@@ -312,12 +336,13 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                             variant: AppButtonVariant.primary,
                             onPressed: () {
                               setState(() {
-                                _status = status;
-                                _priority = priority;
-                                _category = category;
-                                _fromDate = fromDate;
-                                _toDate = toDate;
-                                _limit = limit;
+                              _status = status;
+                              _priority = priority;
+                              _category = category;
+                              _series = series;
+                              _fromDate = fromDate;
+                              _toDate = toDate;
+                              _limit = limit;
                               });
                               Navigator.of(sheetContext).pop();
                               _applyFilters(page: 1);
@@ -418,7 +443,7 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Use Filters for status, priority, dates, and staff names.',
+                  'Use Filters for status, priority, dates, staff names, and series.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).hintColor,
                   ),

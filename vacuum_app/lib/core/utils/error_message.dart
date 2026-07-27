@@ -6,6 +6,7 @@ String friendlyErrorMessage(
 }) {
   if (error is DioException) {
     final status = error.response?.statusCode;
+    final bodyMessage = _messageFromBody(error);
 
     if (_isConnectionIssue(error)) {
       return 'Unable to reach the server. Please check your internet connection and try again.';
@@ -16,6 +17,12 @@ String friendlyErrorMessage(
     }
 
     if (status == 403) {
+      if (_looksLikeSessionExpiry(bodyMessage)) {
+        return 'Your session has expired. Please log in again.';
+      }
+      if (bodyMessage != null && bodyMessage.isNotEmpty) {
+        return bodyMessage;
+      }
       return 'You do not have permission to do this. Please contact your admin.';
     }
 
@@ -24,8 +31,7 @@ String friendlyErrorMessage(
     }
 
     if (status == 422 || status == 400) {
-      final message = _messageFromBody(error);
-      if (message != null) return message;
+      if (bodyMessage != null) return bodyMessage;
       return 'Some details are invalid. Please check the form and try again.';
     }
 
@@ -33,8 +39,7 @@ String friendlyErrorMessage(
       return 'The server is having trouble right now. Please try again later.';
     }
 
-    final message = _messageFromBody(error);
-    if (message != null) return message;
+    if (bodyMessage != null) return bodyMessage;
   }
 
   final text = error.toString().trim();
@@ -67,4 +72,16 @@ bool _isConnectionIssue(DioException e) {
     DioExceptionType.unknown => true,
     _ => false,
   };
+}
+
+bool _looksLikeSessionExpiry(String? message) {
+  final text = (message ?? '').toLowerCase();
+  if (text.isEmpty) return false;
+  return text.contains('session') ||
+      text.contains('expired') ||
+      text.contains('token') ||
+      text.contains('login') ||
+      text.contains('log in') ||
+      text.contains('unauthor') ||
+      text.contains('auth');
 }

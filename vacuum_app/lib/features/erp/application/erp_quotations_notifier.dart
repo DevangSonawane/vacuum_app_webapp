@@ -20,6 +20,7 @@ class ErpQuotationsState {
     this.status = 'All',
     this.priority = 'All',
     this.category = 'All',
+    this.series = 'All',
     this.preparedBy = '',
     this.enteredBy = '',
     this.fromDate = '',
@@ -34,6 +35,7 @@ class ErpQuotationsState {
   final String status;
   final String priority;
   final String category;
+  final String series;
   final String preparedBy;
   final String enteredBy;
   final String fromDate;
@@ -50,6 +52,7 @@ class ErpQuotationsState {
     String? status,
     String? priority,
     String? category,
+    String? series,
     String? preparedBy,
     String? enteredBy,
     String? fromDate,
@@ -64,6 +67,7 @@ class ErpQuotationsState {
       status: status ?? this.status,
       priority: priority ?? this.priority,
       category: category ?? this.category,
+      series: series ?? this.series,
       preparedBy: preparedBy ?? this.preparedBy,
       enteredBy: enteredBy ?? this.enteredBy,
       fromDate: fromDate ?? this.fromDate,
@@ -97,6 +101,7 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
     String? status,
     String? priority,
     String? category,
+    String? series,
     String? preparedBy,
     String? enteredBy,
     String? fromDate,
@@ -111,6 +116,7 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
           status: status ?? prev.status,
           priority: priority ?? prev.priority,
           category: category ?? prev.category,
+          series: series ?? prev.series,
           preparedBy: preparedBy ?? prev.preparedBy,
           enteredBy: enteredBy ?? prev.enteredBy,
           fromDate: fromDate ?? prev.fromDate,
@@ -127,6 +133,7 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
           status: status ?? 'All',
           priority: 'All',
           category: 'All',
+          series: 'All',
           preparedBy: preparedBy ?? '',
           enteredBy: enteredBy ?? '',
           fromDate: fromDate ?? '',
@@ -142,6 +149,7 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
         status: next.status == 'All' ? '' : next.status,
         priority: next.priority == 'All' ? '' : next.priority,
         category: next.category == 'All' ? '' : next.category,
+        series: next.series,
         preparedBy: next.preparedBy,
         enteredBy: next.enteredBy,
         fromDate: next.fromDate,
@@ -168,6 +176,7 @@ class ErpQuotationsNotifier extends AsyncNotifier<ErpQuotationsState> {
         status: current.status == 'All' ? '' : current.status,
         priority: current.priority == 'All' ? '' : current.priority,
         category: current.category == 'All' ? '' : current.category,
+        series: current.series,
         preparedBy: current.preparedBy,
         enteredBy: current.enteredBy,
         fromDate: current.fromDate,

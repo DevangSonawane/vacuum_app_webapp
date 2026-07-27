@@ -13,6 +13,7 @@ class ErpQuotationsRepository {
     String status = '',
     String priority = '',
     String category = '',
+    String series = '',
     String fromDate = '',
     String toDate = '',
     String search = '',
@@ -21,7 +22,7 @@ class ErpQuotationsRepository {
     String clientId = '',
   }) async {
     final res = await _dio.get(
-      'erp/local/quotations',
+      'erp/quotations',
       queryParameters: {
         'page': page,
         'limit': limit,
@@ -31,6 +32,8 @@ class ErpQuotationsRepository {
           'priority': priority.trim(),
         if (category.trim().isNotEmpty && category != 'All')
           'category': category.trim(),
+        if (series.trim().isNotEmpty && series != 'All')
+          'series': series.trim(),
         if (fromDate.trim().isNotEmpty) 'from_date': fromDate.trim(),
         if (toDate.trim().isNotEmpty) 'to_date': toDate.trim(),
         if (search.trim().isNotEmpty) 'search': search.trim(),
@@ -60,7 +63,7 @@ class ErpQuotationsRepository {
   }
 
   Future<ErpQuotation> fetchById(String id) async {
-    final res = await _dio.get('erp/local/quotations/$id');
+    final res = await _dio.get('erp/quotations/$id');
     final root = _asMap(res.data);
     return ErpQuotation.fromJson(_asMap(root['data']));
   }

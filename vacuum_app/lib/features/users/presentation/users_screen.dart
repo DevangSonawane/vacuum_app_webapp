@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/ui/ui_providers.dart';
+import '../../../core/utils/error_message.dart';
 import '../../../core/utils/initials.dart';
 import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -72,7 +73,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
       error: (error, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'Failed to load users',
-        description: error.toString(),
+        description: friendlyErrorMessage(error),
       ),
       data: (data) => SingleChildScrollView(
         padding: const EdgeInsets.all(16),

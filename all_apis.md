@@ -1614,124 +1614,124 @@ Read-only proxy to the external ERP Quotation API (http://203.192.195.67/erp/Quo
 
 GET
 /api/erp/quotations
-Get all quotations from ERP
+Get all quotations from ERP (grouped, with filters)
 
 
-Fetches quotation records from the external ERP system (QuotationAPI.ashx). Supports optional filtering and pagination via query parameters which are forwarded directly to the ERP.
+Fetches quotation records from the ERP (QuotationAPI.ashx), groups the flat line-item rows into proper quotation objects, applies filters, then paginates the result.
+
+Note: The ERP returns one row per product line. This API groups them so each quotation has an `items[]` array inside it.
+
+Performance: `from_date`/`to_date` are forwarded to the ERP itself as `fromDate`/`toDate` and genuinely filter server-side. Always pass a date range where possible, since the unfiltered call pulls the ERP's entire quotation history. All other filters (`search`, `category`, `series`, etc.) run client-side on whatever the date range returns, since the ERP ignores those params.
+
+Quotation Status (derived field)
+There is no single status field in the ERP. It is derived from flags:
+
+quotation_status | Condition
+Cancelled | `QCancel = "Y"`
+Approved | `Auth1 = Y` and `Auth2 = Y` and not cancelled
+Open | Everything else
+
+Use `status=Rejected` as an alias for `status=Cancelled`.
 
 Parameters
 Try it out
 Name	Description
-page
-integer
-(query)
-Page number for pagination
-Default value : 1
-
-
-limit
-integer
-(query)
-Number of records per page
-Default value : 50
-
-
-customer_id
+status
 string
 (query)
-Filter quotations by ERP customer ID
-Example : CUST-001
+Filter by derived quotation status. Rejected is an alias for Cancelled.
 
+Available values : Open, Approved, Cancelled, Rejected
+
+
+Example : Approved
+
+
+Approved
 
 from_date
 string($date)
 (query)
-Filter quotations from this date (YYYY-MM-DD)
-Example : 2024-01-01
+Show quotations on or after this date (QuotDate ≥ from_date)
 
+Example : 2026-01-01
+
+2026-01-01
 
 to_date
 string($date)
 (query)
-Filter quotations up to this date (YYYY-MM-DD)
-Example : 2024-12-31
+Show quotations on or before this date (QuotDate ≤ to_date)
 
+Example : 2026-06-30
 
-status
+2026-06-30
+
+priority
 string
 (query)
-Filter by quotation status
-Available values : Draft, Confirmed, Cancelled
+Filter by enquiry priority
+
+Available values : High, Medium, Low
+
+Example : High
 
 
-search
+High
+
+category
 string
 (query)
-Free-text search (customer name, quotation number, etc.)
+Partial match on quotation category (from ERP CategoryName field). In practice this field is often blank on the ERP side - use series instead.
 
-Responses
-Code	Description	Links
-200	
-List of quotations fetched successfully from ERP
-Media type
+Example : AMC Service
 
-Controls Accept header.
-Example Value
-Schema
-{
-  "success": true,
-  "source": "erp",
-  "count": 2,
-  "data": [
-    {
-      "id": "QT-2024-00123",
-      "customer_id": "CUST-001",
-      "customer_name": "Acme Corp",
-      "date": "2024-05-01",
-      "status": "Confirmed",
-      "total_amount": 45000
-    },
-    {
-      "id": "QT-2024-00124",
-      "customer_id": "CUST-002",
-      "customer_name": "Beta Ltd",
-      "date": "2024-05-03",
-      "status": "Draft",
-      "total_amount": 12500
-    }
-  ]
-}
-No links
-401	
-Unauthorised – JWT token missing or invalid
-No links
-500	
-Internal server error
-No links
-502	
-ERP returned an HTTP error
-Media type
+AMC Service
 
-Example Value
-Schema
-{
-  "success": false,
-  "error_code": "ERP_TIMEOUT",
-  "message": "The ERP server did not respond in time. Please try again."
-}
-No links
-504	
-ERP did not respond within 15 seconds
-Media type
+series
+string
+(query)
+Partial match on the quotation's series (from ERP SeriesName field). Real observed values: Spares, Accessories, AMC Quotation, Service. Case-insensitive - amc matches "AMC Quotation".
 
-Example Value
-Schema
-{
-  "success": false,
-  "error_code": "ERP_TIMEOUT",
-  "message": "The ERP server did not respond in time. Please try again."
-}
-No links
+Example : Spares
+
+Spares
+
+prepared_by
+string
+(query)
+Partial name match on the person who prepared the quotation
+
+Example : Priyanka
+
+Priyanka
+
+entered_by
+string
+(query)
+Partial name match on the person who entered/raised the quotation
+
+Example : Swara
+
+Swara
+
+page
+integer
+(query)
+Page number (pagination is on grouped quotations, not raw rows)
+Default value : 1
+
+
+1
+
+limit
+integer
+(query)
+Number of quotations per page (max 100)
+Default value : 20
+
+
+20
 
 GET
 /api/erp/quotations/{id}
