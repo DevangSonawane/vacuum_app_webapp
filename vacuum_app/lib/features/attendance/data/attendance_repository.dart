@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../domain/attendance_employee.dart';
 import '../domain/attendance_entry.dart';
+import '../domain/attendance_leave_record.dart';
 import '../domain/attendance_record.dart';
 
 class AttendanceRepository {
@@ -118,6 +119,41 @@ class AttendanceRepository {
       final nested = record['data'];
       final payload = nested is Map ? _asMap(nested) : record;
       return AttendanceRecord.fromJson(payload);
+    } on DioException catch (err) {
+      if (err.response?.statusCode == 404) return null;
+      return null;
+    }
+  }
+
+  Future<AttendanceLeaveResponse?> fetchLeaveRecords({
+    required String email,
+    String? from,
+    String? to,
+    String employeeType = 'employee',
+  }) async {
+    try {
+      final queryParameters = <String, dynamic>{
+        'email': email,
+        'employee_type': employeeType,
+      };
+      if (from != null && from.trim().isNotEmpty) {
+        queryParameters['from'] = from;
+      }
+      if (to != null && to.trim().isNotEmpty) {
+        queryParameters['to'] = to;
+      }
+
+      final res = await _dio.get(
+        'attendance/leave',
+        queryParameters: queryParameters,
+      );
+      final root = _asMap(res.data);
+      final payload = _asMap(root['leave'] ?? root['data'] ?? root);
+      final merged = <String, dynamic>{
+        ...root,
+        if (payload.isNotEmpty) 'leave': payload,
+      };
+      return AttendanceLeaveResponse.fromJson(merged);
     } on DioException catch (err) {
       if (err.response?.statusCode == 404) return null;
       return null;
