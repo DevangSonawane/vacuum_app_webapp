@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion"; // used in quotation card animations
+import { motion } from "framer-motion";
 import { DollarSign, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { PageTransition, Card, Button, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
@@ -29,7 +29,7 @@ export default function Quotations() {
   const [totalCount, setTotalCount]  = useState(0);
   const [filters, setFilters] = useState({
     page: 1, limit: 10,
-    status: "", priority: "", category: "",
+    status: "", priority: "", series: "",
     from_date: "", to_date: "", search: "",
   });
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -46,7 +46,7 @@ export default function Quotations() {
       const params = { page: filters.page, limit: filters.limit };
       if (filters.status)    params.status    = filters.status;
       if (filters.priority)  params.priority  = filters.priority;
-      if (filters.category)  params.category  = filters.category;
+      if (filters.series)    params.series    = filters.series;
       if (filters.from_date) params.from_date = filters.from_date;
       if (filters.to_date)   params.to_date   = filters.to_date;
       if (debouncedSearch)   params.search    = debouncedSearch;
@@ -67,13 +67,13 @@ export default function Quotations() {
     } finally {
       setLoading(false);
     }
-  }, [filters.page, filters.limit, filters.status, filters.priority, filters.category, filters.from_date, filters.to_date, debouncedSearch, showToast]);
+  }, [filters.page, filters.limit, filters.status, filters.priority, filters.series, filters.from_date, filters.to_date, debouncedSearch, showToast]);
 
   useEffect(() => { fetchQuotations(); }, [fetchQuotations]);
 
   const totalPages   = Math.max(1, Math.ceil(totalCount / filters.limit));
   const resetFilters = () =>
-    setFilters({ page: 1, limit: 10, status: "", priority: "", category: "", from_date: "", to_date: "", search: "" });
+    setFilters({ page: 1, limit: 10, status: "", priority: "", series: "", from_date: "", to_date: "", search: "" });
 
   if (currentUser?.role?.toLowerCase() !== "admin") {
     return (
@@ -127,13 +127,14 @@ export default function Quotations() {
             />
           </div>
           <div className="w-full md:w-44">
-            <Select label="Category" value={filters.category}
-              onChange={e => setFilters(p => ({ ...p, category: e.target.value, page: 1 }))}
+            <Select label="Series" value={filters.series}
+              onChange={e => setFilters(p => ({ ...p, series: e.target.value, page: 1 }))}
               options={[
-                { value: "", label: "All Category" },
-                { value: "AMC Service", label: "AMC Service" },
-                { value: "Spare", label: "Spare" },
+                { value: "", label: "All Series" },
+                { value: "Spares", label: "Spares" },
                 { value: "Accessories", label: "Accessories" },
+                { value: "AMC Quotation", label: "AMC Quotation" },
+                { value: "Service", label: "Service" },
               ]}
             />
           </div>
@@ -204,9 +205,9 @@ export default function Quotations() {
                           {q.priority}
                         </span>
                       )}
-                      {q.category && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                          {q.category}
+                      {q.series && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                          {q.series}
                         </span>
                       )}
                     </div>

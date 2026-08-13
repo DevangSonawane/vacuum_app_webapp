@@ -207,7 +207,7 @@ export default function QuotationDetail() {
     const c = COLOR_MAP[info.color] || COLOR_MAP.red;
     return (
       <PageTransition>
-        <div className="p-4 md:p-6 max-w-5xl mx-auto">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 dark:hover:text-white mb-8 transition-colors"
@@ -271,9 +271,9 @@ export default function QuotationDetail() {
               {data.priority} Priority
             </span>
           )}
-          {data.category && (
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-              {data.category}
+          {data.series && (
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+              {data.series}
             </span>
           )}
           {data.is_amended && (
@@ -299,6 +299,7 @@ export default function QuotationDetail() {
         <SectionCard title="Quotation Details">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <InfoField label="Quotation No." value={data.quot_no} />
+            <InfoField label="Series" value={data.series_name} />
             <InfoField label="Date" value={data.date} />
             <InfoField label="Enquiry No." value={data.enquiry_no} />
             <InfoField label="Enquiry Date" value={data.enquiry_date} />

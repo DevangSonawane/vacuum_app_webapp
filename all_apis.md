@@ -1318,7 +1318,7 @@ Available values : Low, Medium, High, Critical
 category
 string
 (query)
-Available values : Maintenance, Repair, Installation, Inspection
+Available values : Service, AMC Visit, Breakdown, Installation & Commissioning, Inspection, Workshop
 
 client_id
 integer

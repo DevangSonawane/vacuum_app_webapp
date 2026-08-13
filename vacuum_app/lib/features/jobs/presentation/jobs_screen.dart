@@ -35,6 +35,7 @@ const _categories = [
   'Breakdown',
   'Installation & Commissioning',
   'Inspection',
+  'Workshop',
 ];
 
 const _statusBorderColor = <String, Color>{
