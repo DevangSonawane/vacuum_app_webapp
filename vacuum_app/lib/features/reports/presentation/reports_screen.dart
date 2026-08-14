@@ -62,31 +62,126 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeader(
-              title: 'Inspection & Service Reports',
+              title: 'AMC Service Reports',
               subtitle: state.whenOrNull(
                 data: (d) => '${d.items.length} reports',
               ),
               action: canEdit
-              ? AppButton(
+                  ? AppButton(
                       label: 'New Report',
                       onPressed: () => context.push('/reports/new'),
                     )
-              : null,
+                  : null,
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _searchController,
-              onChanged: _onSearch,
-              decoration: const InputDecoration(
-                hintText: 'Search reports...',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long_outlined,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Track inspection, review and approval',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Find reports, open the detail view, and approve pending items.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _StatPill(
+                        label: 'Pending',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((r) => r.status == 'Pending')
+                                  .length,
+                            ) ??
+                            0,
+                        color: const Color(0xFFF59E0B),
+                      ),
+                      _StatPill(
+                        label: 'Approved',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((r) => r.status == 'Approved')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.emerald500,
+                      ),
+                      _StatPill(
+                        label: 'Rejected',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((r) => r.status == 'Rejected')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.red500,
+                      ),
+                      _StatPill(
+                        label: 'All',
+                        value:
+                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
+                        color: AppColors.blue600,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: _onSearch,
+                    decoration: const InputDecoration(
+                      hintText: 'Search reports...',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
             state.when(
               loading: () => const _ReportsSkeleton(),
-            error: (e, _) => EmptyState(
+              error: (e, _) => EmptyState(
                 icon: Icons.error_outline,
                 title: 'Failed to load',
                 description: friendlyErrorMessage(e),
@@ -99,11 +194,31 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _FilterTabs(
-                      value: data.statusFilter,
-                      counts: counts,
-                      onChanged: (s) =>
-                          ref.read(reportsProvider.notifier).setFilter(s),
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Filter by status',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Move between pending, approved and rejected reports.',
+                            style: TextStyle(
+                              color: Theme.of(context).hintColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _FilterTabs(
+                            value: data.statusFilter,
+                            counts: counts,
+                            onChanged: (s) =>
+                                ref.read(reportsProvider.notifier).setFilter(s),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     if (data.items.isEmpty)
@@ -124,12 +239,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           return GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: cols,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              mainAxisExtent: tileHeight,
-                            ),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: cols,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  mainAxisExtent: tileHeight,
+                                ),
                             itemCount: data.items.length,
                             itemBuilder: (context, i) {
                               final r = data.items[i];
@@ -340,7 +456,10 @@ class _ReportCard extends StatelessWidget {
                 report.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -358,7 +477,7 @@ class _ReportCard extends StatelessWidget {
               ],
               const SizedBox(height: 6),
               Wrap(
-                spacing: 16,
+                spacing: 12,
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
@@ -367,6 +486,11 @@ class _ReportCard extends StatelessWidget {
                       icon: Icons.image_outlined,
                       text:
                           '${report.imageCount > 0 ? report.imageCount : report.images.length} photos',
+                    ),
+                  if ((report.clientName).trim().isNotEmpty)
+                    _Meta(
+                      icon: Icons.business_outlined,
+                      text: report.clientName.trim(),
                     ),
                   if ((report.clientEmail ?? '').trim().isNotEmpty)
                     _Meta(
@@ -448,6 +572,60 @@ class _ReportCard extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            '$value',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),

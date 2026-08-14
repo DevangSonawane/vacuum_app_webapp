@@ -86,33 +86,113 @@ class _DashboardBody extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          AppCard(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(
+                    Icons.dashboard_outlined,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Operations overview',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Track live work orders, client growth, technician capacity and approved revenue in one place.',
+                        style: TextStyle(
+                          color: Theme.of(context).hintColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _StatPill(
+                            label: 'Open Jobs',
+                            value: stats.activeJobs,
+                            color: AppColors.blue600,
+                          ),
+                          _StatPill(
+                            label: 'Clients',
+                            value: stats.totalClients,
+                            color: AppColors.emerald500,
+                          ),
+                          _StatPill(
+                            label: 'Technicians',
+                            value: stats.activeTechnicians,
+                            color: AppColors.purple500,
+                          ),
+                          _StatPill(
+                            label: 'Approved Revenue',
+                            value: fmtRevenue(stats.revenueApproved),
+                            color: AppColors.amber500,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: cols,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: width < 520 ? 1.6 : 1.9,
+            childAspectRatio: width < 520 ? 1.55 : 1.9,
             children: [
               StatCard(
                 title: 'Active Jobs',
                 value: stats.activeJobs.toString(),
                 changePercent: stats.momActiveJobs,
+                icon: Icons.work_outline,
+                accentColor: AppColors.blue600,
               ),
               StatCard(
                 title: 'Total Clients',
                 value: stats.totalClients.toString(),
                 changePercent: stats.momClients,
+                icon: Icons.groups_outlined,
+                accentColor: AppColors.emerald500,
               ),
               StatCard(
                 title: 'Technicians',
                 value: stats.activeTechnicians.toString(),
                 subtitle: '${stats.totalTechnicians} total',
+                icon: Icons.engineering_outlined,
+                accentColor: AppColors.purple500,
               ),
               StatCard(
-                title: 'Revenue',
+                title: 'Revenue (Approved)',
                 value: fmtRevenue(stats.revenueApproved),
                 changePercent: stats.momRevenue,
+                icon: Icons.payments_outlined,
+                accentColor: AppColors.amber500,
               ),
             ],
           ),
@@ -619,7 +699,7 @@ class _RecentJobsCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Recent Visit Scheduled',
+                  'Recent Activity',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -692,13 +772,72 @@ class _RecentJobsCard extends StatelessWidget {
                         ),
                         DataCell(StatusBadge(label: job.status)),
                         DataCell(StatusBadge(label: job.priority)),
-                        DataCell(Text('₹${job.amount.toStringAsFixed(0)}')),
+                        DataCell(
+                          Text(
+                            fmtRevenue(job.amount),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       ],
                       onSelectChanged: (_) => onJobTap(job.id),
                     ),
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final Object value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            '$value',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );

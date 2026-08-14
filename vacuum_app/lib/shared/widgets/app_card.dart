@@ -42,22 +42,22 @@ class _AppCardState extends State<AppCard> {
         ),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isDark ? const Color(0xFF374151) : const Color(0xFFF3F4F6),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: _isHovering ? 10 : 8,
-              offset: Offset(0, _isHovering ? 6 : 2),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: _isHovering ? 14 : 10,
+              offset: Offset(0, _isHovering ? 8 : 3),
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             onTap: widget.onTap,
             onLongPress: widget.onLongPress,
             child: Padding(padding: widget.padding, child: widget.child),

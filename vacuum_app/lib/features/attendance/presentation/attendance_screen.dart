@@ -87,6 +87,78 @@ class AttendanceScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              AppCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.access_time_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Attendance overview',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Review daily attendance, open the employee roster, or mark entries from one place.',
+                            style: TextStyle(
+                              color: Theme.of(context).hintColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _SummaryPill(
+                    label: 'Present',
+                    value: present,
+                    color: AppColors.emerald500,
+                  ),
+                  _SummaryPill(
+                    label: 'Late',
+                    value: late,
+                    color: AppColors.amber500,
+                  ),
+                  _SummaryPill(
+                    label: 'Absent',
+                    value: absent,
+                    color: AppColors.red500,
+                  ),
+                  _SummaryPill(
+                    label: 'Total',
+                    value: total,
+                    color: AppColors.blue600,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -258,6 +330,38 @@ class AttendanceScreen extends ConsumerWidget {
       showDragHandle: true,
       useSafeArea: true,
       builder: (_) => _MarkAttendanceSheet(date: date),
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  const _SummaryPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }

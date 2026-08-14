@@ -9,7 +9,6 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
-import '../../../shared/widgets/status_badge.dart';
 import '../application/clients_notifier.dart';
 import '../domain/client.dart';
 
@@ -61,7 +60,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                   Expanded(
                     child: SectionHeader(
                       title: 'Client Details',
-                      subtitle: id == null ? 'Invalid client id' : 'Client #$id',
+                      subtitle: id == null
+                          ? 'Invalid client id'
+                          : 'Client #$id',
                     ),
                   ),
                 ],
@@ -87,11 +88,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppCard(
+                        padding: EdgeInsets.zero,
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                             gradient: const LinearGradient(
                               colors: [AppColors.blue600, Color(0xFF1D4ED8)],
                               begin: Alignment.topLeft,
@@ -101,27 +103,65 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                client.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                client.contactPerson,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  StatusBadge(label: client.status),
-                                  const SizedBox(width: 10),
-                                  StatusBadge(label: client.type),
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.18,
+                                      ),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: const Icon(
+                                      Icons.apartment_outlined,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          client.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          client.contactPerson,
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.85,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: [
+                                  _HeroPill(
+                                    label: 'Status',
+                                    value: client.status,
+                                  ),
+                                  _HeroPill(label: 'Type', value: client.type),
+                                  _HeroPill(
+                                    label: 'Value',
+                                    value: fmtRevenue(client.contractValue),
+                                  ),
                                 ],
                               ),
                             ],
@@ -155,11 +195,23 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                       AppCard(
                         child: Column(
                           children: [
-                            _DetailRow(icon: Icons.mail_outline, text: client.email),
-                            _DetailRow(icon: Icons.phone_outlined, text: client.phone),
-                            _DetailRow(icon: Icons.location_on_outlined, text: client.address),
+                            _DetailRow(
+                              icon: Icons.mail_outline,
+                              text: client.email,
+                            ),
+                            _DetailRow(
+                              icon: Icons.phone_outlined,
+                              text: client.phone,
+                            ),
+                            _DetailRow(
+                              icon: Icons.location_on_outlined,
+                              text: client.address,
+                            ),
                             if (client.gstNo.isNotEmpty)
-                              _DetailRow(icon: Icons.receipt_long_outlined, text: client.gstNo),
+                              _DetailRow(
+                                icon: Icons.receipt_long_outlined,
+                                text: client.gstNo,
+                              ),
                           ],
                         ),
                       ),
@@ -210,6 +262,33 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
     final t = (raw ?? '').trim();
     if (t.isEmpty || t.length < 10) return '—';
     return t.substring(0, 10);
+  }
+}
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 

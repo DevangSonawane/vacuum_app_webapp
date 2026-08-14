@@ -108,6 +108,14 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
 
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final bottom = MediaQuery.viewPaddingOf(context).bottom;
+        final enabledTriggers = <bool>[
+          _jobRaised,
+          _jobAssigned,
+          _jobCompleted,
+          _reportApproved,
+          _amcRenewal,
+          _quotationSent,
+        ].where((v) => v).length;
 
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottom),
@@ -117,6 +125,75 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
               const SectionHeader(
                 title: 'Email Notification Settings',
                 subtitle: 'Configure SMTP and notification triggers',
+              ),
+              const SizedBox(height: 16),
+              AppCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.mail_outline,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Configure outgoing mail',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'SMTP settings, trigger toggles, and a live preview stay together on one screen.',
+                            style: TextStyle(
+                              color: Theme.of(context).hintColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _SummaryPill(
+                    label: 'Triggers',
+                    value: enabledTriggers,
+                    color: AppColors.blue600,
+                  ),
+                  _SummaryPill(
+                    label: 'SMTP Port',
+                    value: int.tryParse(_smtpPort.text.trim()) ?? 0,
+                    color: AppColors.emerald500,
+                  ),
+                  _TextPill(
+                    label: 'From',
+                    value: _fromName.text.trim().isEmpty
+                        ? 'VDTI Service Hub'
+                        : _fromName.text.trim(),
+                    color: AppColors.purple500,
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               AppCard(
@@ -289,11 +366,17 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                               horizontal: 16,
                               vertical: 14,
                             ),
-                            color: AppColors.blue600,
-                            child: const Column(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   'VDTI Service Hub Notification',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -301,11 +384,11 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                                     fontSize: 16,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
                                   'Vacuum Drying Technology India LLP',
                                   style: TextStyle(
-                                    color: AppColors.blue200,
+                                    color: Colors.white.withValues(alpha: 0.8),
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                   ),
@@ -501,6 +584,70 @@ class _TriggerTile extends StatelessWidget {
           ),
           Switch(value: value, onChanged: onChanged),
         ],
+      ),
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  const _SummaryPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _TextPill extends StatelessWidget {
+  const _TextPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

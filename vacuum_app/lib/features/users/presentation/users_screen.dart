@@ -91,6 +91,78 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
             ),
             const SizedBox(height: 16),
             AppCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.groups_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manage system access',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Create users, edit roles, and deactivate access with the same dense admin table as the web app.',
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _StatPill(
+                  label: 'Total',
+                  value: data.total,
+                  color: AppColors.blue600,
+                ),
+                _StatPill(
+                  label: 'Active',
+                  value: data.users.where((u) => u.isActive).length,
+                  color: AppColors.emerald500,
+                ),
+                _StatPill(
+                  label: 'Inactive',
+                  value: data.users.where((u) => !u.isActive).length,
+                  color: AppColors.red500,
+                ),
+                _StatPill(
+                  label: 'Page',
+                  value: data.page,
+                  color: AppColors.purple500,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            AppCard(
               padding: EdgeInsets.zero,
               child: _UsersPremiumTable(
                 data: data,
@@ -173,6 +245,38 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   }
 }
 
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
 const _roles = ['admin', 'manager', 'engineer', 'technician', 'labour'];
 
 class _UsersPremiumTable extends StatelessWidget {
@@ -199,10 +303,12 @@ class _UsersPremiumTable extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final headerBg = isDark ? const Color(0xFF0B1220) : AppColors.gray50;
-    final borderColor =
-        Theme.of(context).dividerColor.withValues(alpha: isDark ? 0.22 : 0.16);
-    final rowHover =
-        (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04);
+    final borderColor = Theme.of(
+      context,
+    ).dividerColor.withValues(alpha: isDark ? 0.22 : 0.16);
+    final rowHover = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.04,
+    );
     final rowAlt = isDark ? const Color(0xFF0F172A) : const Color(0xFFF9FAFB);
 
     final showing = 'Showing ${data.users.length} of ${data.total} users';
@@ -216,14 +322,16 @@ class _UsersPremiumTable extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-              child: TextField(
+                child: TextField(
                   controller: controller,
                   decoration: InputDecoration(
                     hintText: 'Search users…',
                     prefixIcon: const Icon(Icons.search),
                     isDense: true,
                     filled: true,
-                    fillColor: isDark ? const Color(0xFF0B1220) : AppColors.gray50,
+                    fillColor: isDark
+                        ? const Color(0xFF0B1220)
+                        : AppColors.gray50,
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: borderColor),
@@ -238,7 +346,10 @@ class _UsersPremiumTable extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: borderColor),
@@ -364,9 +475,8 @@ class _UsersPremiumTable extends StatelessWidget {
                 columnSpacing: 22,
                 headingRowColor: WidgetStatePropertyAll(headerBg),
                 dataRowColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.hovered)
-                      ? rowHover
-                      : null,
+                  (states) =>
+                      states.contains(WidgetState.hovered) ? rowHover : null,
                 ),
                 headingTextStyle: TextStyle(
                   color: Theme.of(context).hintColor,
@@ -464,11 +574,7 @@ class _UsersPremiumTable extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.shield_outlined,
-                  size: 16,
-                  color: roleColors.$2,
-                ),
+                Icon(Icons.shield_outlined, size: 16, color: roleColors.$2),
                 const SizedBox(width: 6),
                 Text(
                   _titleCase(user.role),

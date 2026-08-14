@@ -115,13 +115,109 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                   : null,
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _searchController,
-              onChanged: _onSearch,
-              decoration: const InputDecoration(
-                hintText: 'Search technicians...',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.engineering_outlined,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Manage technicians, documents, ratings and status',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Search technicians, open a profile, or jump into edit mode quickly.',
+                              style: TextStyle(
+                                color: Theme.of(context).hintColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _StatPill(
+                        label: 'Active',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((t) => t.status == 'Active')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.emerald500,
+                      ),
+                      _StatPill(
+                        label: 'On Leave',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((t) => t.status == 'On Leave')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.amber500,
+                      ),
+                      _StatPill(
+                        label: 'Inactive',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((t) => t.status == 'Inactive')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.red500,
+                      ),
+                      _StatPill(
+                        label: 'All',
+                        value:
+                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
+                        color: AppColors.blue600,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: _onSearch,
+                    decoration: const InputDecoration(
+                      hintText: 'Search technicians...',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -242,9 +338,7 @@ class TechnicianEditScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final parsedId = int.tryParse(id);
     if (parsedId == null) {
-      return const Scaffold(
-        body: Center(child: Text('Invalid technician id')),
-      );
+      return const Scaffold(body: Center(child: Text('Invalid technician id')));
     }
 
     return FutureBuilder<Technician?>(
@@ -266,7 +360,8 @@ class TechnicianEditScreen extends ConsumerWidget {
         return _TechnicianFormSheet(
           asSheet: false,
           existing: tech,
-          fetchById: () => ref.read(techniciansProvider.notifier).fetchById(parsedId),
+          fetchById: () =>
+              ref.read(techniciansProvider.notifier).fetchById(parsedId),
         );
       },
     );
@@ -316,8 +411,8 @@ class _TechnicianCard extends StatelessWidget {
                     Text(
                       tech.name,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -342,6 +437,11 @@ class _TechnicianCard extends StatelessWidget {
           if (tech.email.isNotEmpty)
             _ContactRow(icon: Icons.mail_outline, text: tech.email),
           _ContactRow(icon: Icons.phone_outlined, text: tech.phone),
+          const SizedBox(height: 8),
+          _ContactRow(
+            icon: Icons.star_outline,
+            text: 'Rating ${tech.rating.toStringAsFixed(1)}',
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -400,6 +500,60 @@ class _TechnicianCard extends StatelessWidget {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            '$value',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );
@@ -615,7 +769,8 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
       if (!mounted) return;
       AppToast.show(
         context,
-        message: 'Document is too large. Please choose a file smaller than 20 MB.',
+        message:
+            'Document is too large. Please choose a file smaller than 20 MB.',
         type: AppToastType.error,
       );
       return;
@@ -666,18 +821,20 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
       throw Exception('Please attach a file for each technician document.');
     }
 
-    return ref.read(techniciansRepositoryProvider).uploadTechnicianDocument(
-      filePath: file.path!,
-      filename: file.name,
-      documentType: doc.documentType,
-      documentName: doc.documentName.text.trim().isEmpty
-          ? file.name
-          : doc.documentName.text.trim(),
-      expiryDate: doc.expiryDate.text.trim().isEmpty
-          ? null
-          : doc.expiryDate.text.trim(),
-      notes: doc.notes.text.trim().isEmpty ? null : doc.notes.text.trim(),
-    );
+    return ref
+        .read(techniciansRepositoryProvider)
+        .uploadTechnicianDocument(
+          filePath: file.path!,
+          filename: file.name,
+          documentType: doc.documentType,
+          documentName: doc.documentName.text.trim().isEmpty
+              ? file.name
+              : doc.documentName.text.trim(),
+          expiryDate: doc.expiryDate.text.trim().isEmpty
+              ? null
+              : doc.expiryDate.text.trim(),
+          notes: doc.notes.text.trim().isEmpty ? null : doc.notes.text.trim(),
+        );
   }
 
   Map<String, dynamic> _normalizeUploadedDocument(
@@ -685,25 +842,26 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
     _TechnicianDocumentDraft draft,
   ) {
     final documentName = draft.documentName.text.trim().isEmpty
-        ? (uploaded['original_name'] ?? uploaded['file_name'] ?? '')
-            .toString()
+        ? (uploaded['original_name'] ?? uploaded['file_name'] ?? '').toString()
         : draft.documentName.text.trim();
     final fileName = (uploaded['file_name'] ?? uploaded['original_name'] ?? '')
         .toString();
     return <String, dynamic>{
       if ((uploaded['document_type'] ?? draft.documentType ?? '')
-              .toString()
-              .trim()
-              .isNotEmpty)
-        'document_type':
-            (uploaded['document_type'] ?? draft.documentType).toString(),
+          .toString()
+          .trim()
+          .isNotEmpty)
+        'document_type': (uploaded['document_type'] ?? draft.documentType)
+            .toString(),
       'document_name': documentName,
       'file_name': fileName.isNotEmpty ? fileName : documentName,
       if ((uploaded['file_url'] ?? '').toString().isNotEmpty)
         'file_url': uploaded['file_url'].toString(),
       if ((uploaded['mime_type'] ?? '').toString().isNotEmpty)
         'mime_type': uploaded['mime_type'].toString(),
-      if ((uploaded['expiry_date'] ?? draft.expiryDate.text).toString().isNotEmpty)
+      if ((uploaded['expiry_date'] ?? draft.expiryDate.text)
+          .toString()
+          .isNotEmpty)
         'expiry_date': (uploaded['expiry_date'] ?? draft.expiryDate.text)
             .toString(),
       if ((uploaded['notes'] ?? draft.notes.text).toString().isNotEmpty)
@@ -931,8 +1089,9 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                                 'Status',
                                 _status,
                                 _statuses,
-                                (v) =>
-                                    setState(() => _status = v ?? _statuses.first),
+                                (v) => setState(
+                                  () => _status = v ?? _statuses.first,
+                                ),
                               ),
                             ),
                           ],
@@ -982,9 +1141,8 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                         const SizedBox(height: 8),
                         Text(
                           'If provided, this technician can log in via /api/technicians/login.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).hintColor,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Theme.of(context).hintColor),
                         ),
                       ],
                     ),
@@ -1014,9 +1172,8 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                         const SizedBox(height: 8),
                         Text(
                           'Upload files first, then the app will attach their URLs to the technician create request.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).hintColor,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Theme.of(context).hintColor),
                         ),
                         const SizedBox(height: 12),
                         if (_documents.isEmpty)
@@ -1024,15 +1181,16 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).brightness ==
+                              color:
+                                  Theme.of(context).brightness ==
                                       Brightness.dark
                                   ? const Color(0xFF0B1220)
                                   : AppColors.gray50,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: Theme.of(context).dividerColor.withValues(
-                                      alpha: 0.12,
-                                    ),
+                                color: Theme.of(
+                                  context,
+                                ).dividerColor.withValues(alpha: 0.12),
                               ),
                             ),
                             child: Column(
@@ -1040,15 +1198,12 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                               children: [
                                 Text(
                                   'No documents added yet',
-                                  style:
-                                      Theme.of(context).textTheme.titleSmall,
+                                  style: Theme.of(context).textTheme.titleSmall,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Add Aadhaar, photo, insurance, or policy documents if you want them linked at creation time.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
+                                  style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: Theme.of(context).hintColor,
                                       ),
@@ -1100,7 +1255,9 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: AppButton(
-                          label: _isEdit ? 'Update Technician' : 'Add Technician',
+                          label: _isEdit
+                              ? 'Update Technician'
+                              : 'Add Technician',
                           expanded: true,
                           loading: _loading,
                           onPressed: _loading ? null : _submit,
@@ -1220,9 +1377,9 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
 
 class _TechnicianDocumentDraft {
   _TechnicianDocumentDraft()
-      : documentName = TextEditingController(),
-        expiryDate = TextEditingController(),
-        notes = TextEditingController();
+    : documentName = TextEditingController(),
+      expiryDate = TextEditingController(),
+      notes = TextEditingController();
 
   String? documentType;
   PlatformFile? file;

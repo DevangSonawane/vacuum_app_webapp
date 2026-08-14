@@ -30,7 +30,8 @@ class TechnicianDetailScreen extends ConsumerStatefulWidget {
       _TechnicianDetailScreenState();
 }
 
-class _TechnicianDetailScreenState extends ConsumerState<TechnicianDetailScreen> {
+class _TechnicianDetailScreenState
+    extends ConsumerState<TechnicianDetailScreen> {
   AsyncValue<Technician?> _technician = const AsyncLoading();
 
   @override
@@ -64,17 +65,6 @@ class _TechnicianDetailScreenState extends ConsumerState<TechnicianDetailScreen>
     final parsedId = int.tryParse(widget.id);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.id, style: const TextStyle(fontFamily: 'monospace')),
-        actions: [
-          if (canEdit && parsedId != null)
-            IconButton(
-              tooltip: 'Edit',
-              onPressed: () => context.push('/technicians/${widget.id}/edit'),
-              icon: const Icon(Icons.edit_outlined),
-            ),
-        ],
-      ),
       body: _technician.when(
         loading: () => const _TechnicianDetailSkeleton(),
         error: (e, _) => EmptyState(
@@ -99,6 +89,39 @@ class _TechnicianDetailScreenState extends ConsumerState<TechnicianDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      AppButton(
+                        label: 'Back',
+                        variant: AppButtonVariant.secondary,
+                        size: AppButtonSize.sm,
+                        leading: const Icon(Icons.arrow_back),
+                        onPressed: () => context.go('/technicians'),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          tech.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      if (canEdit && parsedId != null) ...[
+                        const SizedBox(width: 12),
+                        AppButton(
+                          label: 'Edit',
+                          variant: AppButtonVariant.outline,
+                          size: AppButtonSize.sm,
+                          leading: const Icon(Icons.edit_outlined),
+                          onPressed: () =>
+                              context.push('/technicians/${widget.id}/edit'),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   _HeaderCard(tech: tech),
                   const SizedBox(height: 16),
                   _InfoGrid(tech: tech),
@@ -150,8 +173,9 @@ class _TechnicianDetailScreenState extends ConsumerState<TechnicianDetailScreen>
                                           Text(
                                             'Closed: ${job.closedDate}',
                                             style: TextStyle(
-                                              color: Theme.of(context)
-                                                  .hintColor,
+                                              color: Theme.of(
+                                                context,
+                                              ).hintColor,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -251,8 +275,9 @@ class _TechnicianDetailScreenState extends ConsumerState<TechnicianDetailScreen>
                                       label: 'Open File',
                                       variant: AppButtonVariant.secondary,
                                       size: AppButtonSize.sm,
-                                      leading:
-                                          const Icon(Icons.open_in_new_outlined),
+                                      leading: const Icon(
+                                        Icons.open_in_new_outlined,
+                                      ),
                                       onPressed: () async {
                                         final uri = Uri.tryParse(doc.fileUrl);
                                         if (uri == null) return;
@@ -360,43 +385,103 @@ class _HeaderCard extends StatelessWidget {
         : initialsFromName(tech.name);
 
     return AppCard(
-      child: Row(
-        children: [
-          AppAvatar(initials: initials, size: AppAvatarSize.lg),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+      padding: EdgeInsets.zero,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  tech.name,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+                AppAvatar(initials: initials, size: AppAvatarSize.lg),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tech.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tech.specialization.isEmpty
+                            ? 'Technician'
+                            : tech.specialization,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          StatusBadge(label: tech.status),
+                          if (tech.email.isNotEmpty)
+                            _MetaChip(
+                              icon: Icons.mail_outline,
+                              label: tech.email,
+                              dark: true,
+                            ),
+                          if (tech.phone.isNotEmpty)
+                            _MetaChip(
+                              icon: Icons.phone_outlined,
+                              label: tech.phone,
+                              dark: true,
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tech.specialization,
-                  style: const TextStyle(
-                    color: AppColors.blue600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    StatusBadge(label: tech.status),
-                    if (tech.email.isNotEmpty)
-                      _MetaChip(icon: Icons.mail_outline, label: tech.email),
-                    _MetaChip(icon: Icons.phone_outlined, label: tech.phone),
-                  ],
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _SummaryChip(
+                  icon: Icons.star_outline,
+                  label: 'Rating',
+                  value: tech.rating.toStringAsFixed(1),
+                ),
+                _SummaryChip(
+                  icon: Icons.work_outline,
+                  label: 'Jobs',
+                  value: tech.jobsCompleted.toString(),
+                ),
+                _SummaryChip(
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Joined',
+                  value: tech.joinDate ?? '—',
+                ),
+                if (tech.userId != 0)
+                  _SummaryChip(
+                    icon: Icons.badge_outlined,
+                    label: 'User',
+                    value: tech.userId.toString(),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -449,7 +534,7 @@ class _InfoGrid extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                   fontSize: 16,
                 ),
               ),
@@ -462,35 +547,91 @@ class _InfoGrid extends StatelessWidget {
 }
 
 class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.icon, required this.label});
+  const _MetaChip({required this.icon, required this.label, this.dark = false});
 
   final IconData icon;
   final String label;
+  final bool dark;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
+        color: dark
+            ? Colors.white.withValues(alpha: 0.08)
+            : Theme.of(context).brightness == Brightness.dark
             ? const Color(0xFF111827)
             : AppColors.gray50,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          color: dark
+              ? Colors.white.withValues(alpha: 0.12)
+              : Theme.of(context).dividerColor.withValues(alpha: 0.12),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.gray400),
+          Icon(
+            icon,
+            size: 14,
+            color: dark ? Colors.white70 : AppColors.gray400,
+          ),
           const SizedBox(width: 6),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 180),
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12),
+              style: TextStyle(fontSize: 12, color: dark ? Colors.white : null),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white70),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -512,13 +653,26 @@ class _SectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
         ),
         if (subtitle != null)
-          Text(
-            subtitle!,
-            style: TextStyle(color: Theme.of(context).hintColor),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              subtitle!,
+              style: TextStyle(
+                color: Theme.of(context).hintColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
       ],
     );
@@ -566,9 +720,8 @@ class _TechnicianDetailSkeleton extends StatelessWidget {
               childAspectRatio: 1.4,
             ),
             itemCount: 4,
-            itemBuilder: (context, index) => const AppCard(
-              child: ShimmerBox(height: 50, borderRadius: 12),
-            ),
+            itemBuilder: (context, index) =>
+                const AppCard(child: ShimmerBox(height: 50, borderRadius: 12)),
           ),
           const SizedBox(height: 16),
           const ShimmerBox(height: 18, width: 140, borderRadius: 8),

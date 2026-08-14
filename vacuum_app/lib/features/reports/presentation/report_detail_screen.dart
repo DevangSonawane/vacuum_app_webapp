@@ -58,9 +58,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.id, style: const TextStyle(fontFamily: 'monospace')),
-        leading: BackButton(
-          onPressed: () => context.go('/reports'),
-        ),
+        leading: BackButton(onPressed: () => context.go('/reports')),
         actions: [
           IconButton(
             tooltip: 'Download PDF',
@@ -83,9 +81,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   color: Theme.of(context).scaffoldBackgroundColor,
                   border: Border(
                     top: BorderSide(
-                      color: Theme.of(context)
-                          .dividerColor
-                          .withValues(alpha: 0.12),
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.12),
                     ),
                   ),
                 ),
@@ -146,43 +144,94 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF334155), Color(0xFF0F172A)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(18)),
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF334155), Color(0xFF0F172A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        report.id,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.blue200,
-                          fontSize: 12,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(
+                                Icons.description_outlined,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    report.id,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.blue200,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    report.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        report.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
+                        const SizedBox(height: 14),
+                        StatusBadge(label: report.status),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _HeroMeta(
+                              icon: Icons.work_outline,
+                              text: report.jobTitle,
+                            ),
+                            _HeroMeta(
+                              icon: Icons.groups_outlined,
+                              text: report.clientName,
+                            ),
+                            _HeroMeta(
+                              icon: Icons.engineering_outlined,
+                              text: report.technicianName,
+                            ),
+                            _HeroMeta(
+                              icon: Icons.calendar_today_outlined,
+                              text: _shortDate(report.reportDate),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      StatusBadge(label: report.status),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -278,7 +327,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).brightness ==
+                              color:
+                                  Theme.of(context).brightness ==
                                       Brightness.dark
                                   ? const Color(0xFF111827)
                                   : AppColors.gray50,
@@ -365,14 +415,36 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           for (final obs in report.issueObservations)
                             DataRow(
                               cells: [
+                                DataCell(Text(obs.sr == 0 ? '—' : '${obs.sr}')),
                                 DataCell(
-                                  Text(obs.sr == 0 ? '—' : '${obs.sr}'),
+                                  Text(obs.issue.isEmpty ? '—' : obs.issue),
                                 ),
-                                DataCell(Text(obs.issue.isEmpty ? '—' : obs.issue)),
-                                DataCell(Text(obs.observation.isEmpty ? '—' : obs.observation)),
-                                DataCell(Text(obs.impactOnPump.isEmpty ? '—' : obs.impactOnPump)),
-                                DataCell(Text(obs.severity.isEmpty ? '—' : obs.severity)),
-                                DataCell(Text(obs.recommendedSpares.isEmpty ? '—' : obs.recommendedSpares)),
+                                DataCell(
+                                  Text(
+                                    obs.observation.isEmpty
+                                        ? '—'
+                                        : obs.observation,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    obs.impactOnPump.isEmpty
+                                        ? '—'
+                                        : obs.impactOnPump,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    obs.severity.isEmpty ? '—' : obs.severity,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    obs.recommendedSpares.isEmpty
+                                        ? '—'
+                                        : obs.recommendedSpares,
+                                  ),
+                                ),
                               ],
                             ),
                         ],
@@ -427,9 +499,19 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           for (final s in report.mandatorySpares)
                             DataRow(
                               cells: [
-                                DataCell(Text(s.spareName.isEmpty ? '—' : s.spareName)),
-                                DataCell(Text(s.pumpModel.isEmpty ? '—' : s.pumpModel)),
-                                DataCell(Text(s.totalToOrder.isEmpty ? '—' : s.totalToOrder)),
+                                DataCell(
+                                  Text(s.spareName.isEmpty ? '—' : s.spareName),
+                                ),
+                                DataCell(
+                                  Text(s.pumpModel.isEmpty ? '—' : s.pumpModel),
+                                ),
+                                DataCell(
+                                  Text(
+                                    s.totalToOrder.isEmpty
+                                        ? '—'
+                                        : s.totalToOrder,
+                                  ),
+                                ),
                               ],
                             ),
                         ],
@@ -439,7 +521,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   const SizedBox(height: 16),
                 ],
                 if ((report.vdtRepresentativeName ?? '').trim().isNotEmpty ||
-                    (report.clientRepresentativeName ?? '').trim().isNotEmpty) ...[
+                    (report.clientRepresentativeName ?? '')
+                        .trim()
+                        .isNotEmpty) ...[
                   Text(
                     'Signatures',
                     style: Theme.of(context).textTheme.titleMedium,
@@ -461,8 +545,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                         child: AppCard(
                           child: _signatureCard(
                             title: 'Client Representative',
-                            name:
-                                (report.clientRepresentativeName ?? '').trim(),
+                            name: (report.clientRepresentativeName ?? '')
+                                .trim(),
                             date: report.reportDate,
                           ),
                         ),
@@ -526,12 +610,13 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: MediaQuery.sizeOf(context).width >= 700
+                          ? 3
+                          : 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
                     itemCount: report.images.length,
                     itemBuilder: (context, i) => ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -577,12 +662,15 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     try {
       final r = _report.valueOrNull;
       final id = r?.id ?? widget.id;
-      final ok =
-          await ref.read(reportsProvider.notifier).updateStatus(id, status);
+      final ok = await ref
+          .read(reportsProvider.notifier)
+          .updateStatus(id, status);
       if (!mounted) return;
       AppToast.show(
         context,
-        message: ok ? (status == 'Approved' ? 'Approved' : 'Rejected') : 'Operation failed',
+        message: ok
+            ? (status == 'Approved' ? 'Approved' : 'Rejected')
+            : 'Operation failed',
         type: ok ? AppToastType.success : AppToastType.error,
       );
       await _load();
@@ -678,6 +766,40 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
         ),
       ],
+    );
+  }
+}
+
+class _HeroMeta extends StatelessWidget {
+  const _HeroMeta({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white70),
+          const SizedBox(width: 8),
+          Text(
+            text.isEmpty ? '—' : text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

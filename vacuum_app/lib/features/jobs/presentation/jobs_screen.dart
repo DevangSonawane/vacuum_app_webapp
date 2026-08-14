@@ -105,6 +105,53 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                   : null,
             ),
             const SizedBox(height: 12),
+            state.whenOrNull(
+                  data: (d) => AppCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.work_outline,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Track work orders like the web app',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Raised, assigned, in progress, and closed jobs stay visible in one dense list.',
+                                style: TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ) ??
+                const SizedBox.shrink(),
+            const SizedBox(height: 12),
             TextField(
               controller: _searchController,
               onChanged: _onSearch,
@@ -127,15 +174,89 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                   for (final s in _statuses)
                     s: data.items.where((j) => j.status == s).length,
                 };
+                final activeCount = data.items
+                    .where((j) => j.status != 'Closed')
+                    .length;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _FilterTabs(
-                      value: data.statusFilter,
-                      counts: counts,
-                      onChanged: (s) =>
-                          ref.read(jobsProvider.notifier).setFilter(s),
+                    AppCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Filter Jobs',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$activeCount active of ${data.items.length} total',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(context).hintColor,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.tune_rounded,
+                                size: 18,
+                                color: Theme.of(context).hintColor,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
+                              _StatPill(
+                                label: 'Raised',
+                                value: counts['Raised'] ?? 0,
+                                color: AppColors.purple500,
+                              ),
+                              _StatPill(
+                                label: 'Assigned',
+                                value: counts['Assigned'] ?? 0,
+                                color: AppColors.blue500,
+                              ),
+                              _StatPill(
+                                label: 'In Progress',
+                                value: counts['In Progress'] ?? 0,
+                                color: AppColors.amber500,
+                              ),
+                              _StatPill(
+                                label: 'Closed',
+                                value: counts['Closed'] ?? 0,
+                                color: AppColors.emerald500,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _FilterTabs(
+                            value: data.statusFilter,
+                            counts: counts,
+                            onChanged: (s) =>
+                                ref.read(jobsProvider.notifier).setFilter(s),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     if (data.items.isEmpty)
@@ -558,40 +679,46 @@ class _JobCardVertical extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  job.id,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.blue600,
-                    fontSize: 12,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job.id,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.blue600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        job.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                StatusBadge(label: job.priority),
-                if (canRaise && job.status != 'Closed') ...[
-                  const SizedBox(width: 6),
-                  IconButton(
-                    tooltip: 'Advance status',
-                    onPressed: onAdvance,
-                    icon: const Icon(
-                      Icons.arrow_forward,
-                      size: 18,
-                      color: AppColors.blue600,
-                    ),
-                  ),
-                ],
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    StatusBadge(label: job.status),
+                    const SizedBox(height: 6),
+                    StatusBadge(label: job.priority),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              job.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             _MetaRow(
               icon: Icons.groups_outlined,
               text: job.clientName.isNotEmpty ? job.clientName : '—',
@@ -606,6 +733,29 @@ class _JobCardVertical extends StatelessWidget {
               icon: Icons.calendar_today_outlined,
               text: _shortDate(job.scheduledDate) ?? '—',
             ),
+            if (job.amount > 0) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Text(
+                    '₹${job.amount.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const Spacer(),
+                  if (canRaise && job.status != 'Closed')
+                    IconButton(
+                      tooltip: 'Advance status',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: onAdvance,
+                      icon: const Icon(
+                        Icons.arrow_forward,
+                        size: 18,
+                        color: AppColors.blue600,
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -659,7 +809,10 @@ class _JobCardHorizontal extends StatelessWidget {
                     job.title,
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -670,6 +823,35 @@ class _JobCardHorizontal extends StatelessWidget {
                       color: Theme.of(context).hintColor,
                       fontSize: 12,
                     ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      StatusBadge(label: job.priority),
+                      if (job.category.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            job.category,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).hintColor,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -684,20 +866,21 @@ class _JobCardHorizontal extends StatelessWidget {
                   '₹${job.amount.toStringAsFixed(0)}',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
+                if (canRaise && job.status != 'Closed') ...[
+                  const SizedBox(height: 4),
+                  IconButton(
+                    tooltip: 'Advance status',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onAdvance,
+                    icon: const Icon(
+                      Icons.arrow_forward,
+                      size: 18,
+                      color: AppColors.blue600,
+                    ),
+                  ),
+                ],
               ],
             ),
-            if (canRaise && job.status != 'Closed') ...[
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Advance status',
-                onPressed: onAdvance,
-                icon: const Icon(
-                  Icons.arrow_forward,
-                  size: 18,
-                  color: AppColors.blue600,
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -727,6 +910,38 @@ class _MetaRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

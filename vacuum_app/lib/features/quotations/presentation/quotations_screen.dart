@@ -336,13 +336,13 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                             variant: AppButtonVariant.primary,
                             onPressed: () {
                               setState(() {
-                              _status = status;
-                              _priority = priority;
-                              _category = category;
-                              _series = series;
-                              _fromDate = fromDate;
-                              _toDate = toDate;
-                              _limit = limit;
+                                _status = status;
+                                _priority = priority;
+                                _category = category;
+                                _series = series;
+                                _fromDate = fromDate;
+                                _toDate = toDate;
+                                _limit = limit;
                               });
                               Navigator.of(sheetContext).pop();
                               _applyFilters(page: 1);
@@ -392,17 +392,109 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
           SectionHeader(
             title: 'Quotations',
             subtitle:
-                erp.whenOrNull(
-                  data: (d) => '${d.count} total quotations',
-                ) ??
+                erp.whenOrNull(data: (d) => '${d.count} total quotations') ??
                 'Quotations',
           ),
           const SizedBox(height: 16),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.request_quote_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Review quotations and approval state',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Search, filter and open a quotation detail sheet just like the web app.',
+                            style: TextStyle(
+                              color: Theme.of(context).hintColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _StatPill(
+                      label: 'Open',
+                      value:
+                          erp.whenOrNull(
+                            data: (d) =>
+                                d.items.where((q) => q.status == 'Open').length,
+                          ) ??
+                          0,
+                      color: AppColors.blue600,
+                    ),
+                    _StatPill(
+                      label: 'Approved',
+                      value:
+                          erp.whenOrNull(
+                            data: (d) => d.items
+                                .where((q) => q.status == 'Approved')
+                                .length,
+                          ) ??
+                          0,
+                      color: AppColors.emerald500,
+                    ),
+                    _StatPill(
+                      label: 'Cancelled',
+                      value:
+                          erp.whenOrNull(
+                            data: (d) => d.items
+                                .where((q) => q.status == 'Cancelled')
+                                .length,
+                          ) ??
+                          0,
+                      color: AppColors.red500,
+                    ),
+                    _StatPill(
+                      label: 'All',
+                      value: erp.whenOrNull(data: (d) => d.count) ?? 0,
+                      color: AppColors.amber500,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  'Quotations',
+                  'Quotation Filters',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
@@ -513,6 +605,60 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
                 ],
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            '$value',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),
@@ -909,7 +1055,10 @@ class _QuotationCard extends StatelessWidget {
                       quotation.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -931,6 +1080,7 @@ class _QuotationCard extends StatelessWidget {
           Divider(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
           ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -957,6 +1107,13 @@ class _QuotationCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
+              if ((quotation.createdDate ?? '').trim().isNotEmpty)
+                _Pill(
+                  label: _QuotationCard._formatDate(quotation.createdDate!),
+                  bg: const Color(0xFFDBEAFE),
+                  fg: AppColors.blue600,
+                ),
               if (canEdit && quotation.status == 'Pending')
                 Row(
                   children: [
@@ -978,6 +1135,43 @@ class _QuotationCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  static String _formatDate(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '—';
+    try {
+      final base = t.length >= 10 ? t.substring(0, 10) : t;
+      final dt = DateTime.parse(base);
+      String two(int n) => n.toString().padLeft(2, '0');
+      return '${two(dt.day)}/${two(dt.month)}/${dt.year}';
+    } catch (_) {
+      return t;
+    }
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.bg, required this.fg});
+
+  final String label;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: fg),
       ),
     );
   }

@@ -149,7 +149,7 @@ class _CloseJobSheetState extends State<CloseJobSheet> {
                 ),
                 const SizedBox(width: 12),
                 AppButton(
-                  label: '',
+                  label: 'Camera',
                   variant: AppButtonVariant.secondary,
                   leading: const Icon(Icons.camera_alt_outlined),
                   onPressed: _loading ? null : _camera,

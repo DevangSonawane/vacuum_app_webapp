@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,98 +81,129 @@ class _TopBar extends ConsumerWidget {
     final width = MediaQuery.sizeOf(context).width;
     final showSearch = !_hideSearchForLocation(location);
 
-    return Material(
-      color: Theme.of(context).appBarTheme.backgroundColor,
-      child: SafeArea(
-        bottom: false,
-        child: SizedBox(
-          height: 56,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
+    final bg = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xCC030712)
+        : const Color(0xCCFFFFFF);
+    final border = Theme.of(context).dividerColor.withValues(alpha: 0.08);
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Material(
+          color: bg,
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: 56,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: border)),
                 ),
-              ),
-            ),
-            child: Row(
-              children: [
-                if (showHamburger)
-                  Builder(
-                    builder: (context) => IconButton(
-                      tooltip: 'Menu',
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                      icon: const Icon(Icons.menu),
-                    ),
-                  ),
-                if (width >= 420) ...[
-                  const SizedBox(width: 4),
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: Text(
-                      title,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 12),
-                if (showSearch)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: const _SearchField(),
-                    ),
-                  ),
-                if (!showSearch) const Spacer(),
-                const _NotificationBell(),
-                const SizedBox(width: 4),
-                Container(
-                  width: 1,
-                  height: 24,
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
-                ),
-                const SizedBox(width: 4),
-                if (user != null)
-                  InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () =>
-                        AccountMenu.open(context, user: user, isAdmin: isAdmin),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 4,
+                child: Row(
+                  children: [
+                    if (showHamburger)
+                      Builder(
+                        builder: (context) => IconButton(
+                          tooltip: 'Menu',
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                          icon: const Icon(Icons.menu),
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          AppAvatar(
-                            initials: initialsFromName(user.fullName),
-                            size: AppAvatarSize.sm,
-                          ),
-                          const SizedBox(width: 8),
-                          if (width >= 620)
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 140),
-                              child: Text(
-                                user.firstName,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                    if (width >= 420) ...[
+                      const SizedBox(width: 4),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              title,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'VDTI Service Hub',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).hintColor,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                        ],
+                          ],
+                        ),
                       ),
+                    ],
+                    const SizedBox(width: 12),
+                    if (showSearch)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: const _SearchField(),
+                        ),
+                      ),
+                    if (!showSearch) const Spacer(),
+                    const _NotificationBell(),
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.2),
                     ),
-                  )
-                else
-                  AppButton(
-                    label: 'Sign out',
-                    variant: AppButtonVariant.danger,
-                    onPressed: () => ref.read(authProvider.notifier).logout(),
-                  ),
-              ],
+                    const SizedBox(width: 4),
+                    if (user != null)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => AccountMenu.open(
+                          context,
+                          user: user,
+                          isAdmin: isAdmin,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            children: [
+                              AppAvatar(
+                                initials: initialsFromName(user.fullName),
+                                size: AppAvatarSize.sm,
+                              ),
+                              const SizedBox(width: 8),
+                              if (width >= 620)
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 140,
+                                  ),
+                                  child: Text(
+                                    user.firstName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      AppButton(
+                        label: 'Sign out',
+                        variant: AppButtonVariant.danger,
+                        onPressed: () =>
+                            ref.read(authProvider.notifier).logout(),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -307,6 +339,21 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
         hintText: _hintForLocation(location),
         prefixIcon: const Icon(Icons.search),
         isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        filled: true,
+        fillColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF111827)
+            : AppColors.gray50,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.blue600),
+        ),
       ),
       onChanged: (value) {
         ref.read(searchQueryProvider.notifier).state = value;
@@ -524,10 +571,19 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: active ? AppColors.blue600 : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: AppColors.blue600.withValues(alpha: 0.28),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [

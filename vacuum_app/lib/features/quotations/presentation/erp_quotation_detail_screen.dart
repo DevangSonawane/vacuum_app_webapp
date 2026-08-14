@@ -93,9 +93,9 @@ class _ErpQuotationDetailScreenState
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          quotation.customerName.isEmpty
-                              ? 'Quotation'
-                              : quotation.customerName,
+                          quotation.subject.isEmpty
+                              ? 'Quotation Detail'
+                              : quotation.subject,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge
@@ -108,9 +108,9 @@ class _ErpQuotationDetailScreenState
                   AppCard(
                     child: Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(18),
                         gradient: const LinearGradient(
                           colors: [AppColors.blue600, Color(0xFF1D4ED8)],
                           begin: Alignment.topLeft,
@@ -120,33 +120,96 @@ class _ErpQuotationDetailScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            quotation.quotNo.isEmpty
-                                ? quotation.id
-                                : quotation.quotNo,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  Icons.request_quote_outlined,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      quotation.quotNo.isEmpty
+                                          ? quotation.id
+                                          : quotation.quotNo,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      quotation.customerName.isEmpty
+                                          ? 'Customer not linked'
+                                          : quotation.customerName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.88,
+                                        ),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    _inr0.format(quotation.totalAmount),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Total amount',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.78,
+                                      ),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
                             children: [
                               StatusBadge(
                                 label: quotation.status.isEmpty
                                     ? 'Approved'
                                     : quotation.status,
                               ),
-                              const Spacer(),
-                              Text(
-                                _inr0.format(quotation.totalAmount),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
+                              if (quotation.priority.isNotEmpty)
+                                _HeroChip(label: quotation.priority),
+                              if (quotation.enquiryNo.isNotEmpty)
+                                _HeroChip(
+                                  label: 'Enquiry ${quotation.enquiryNo}',
                                 ),
-                              ),
                             ],
                           ),
                         ],
@@ -154,6 +217,13 @@ class _ErpQuotationDetailScreenState
                     ),
                   ),
                   const SizedBox(height: 16),
+                  Text(
+                    'Quotation Details',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   AppCard(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -194,11 +264,46 @@ class _ErpQuotationDetailScreenState
                             'Financial Year',
                             quotation.validUntil ?? '—',
                           ),
+                          if (quotation.authorization != null) ...[
+                            const SizedBox(height: 14),
+                            Divider(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.14),
+                            ),
+                            const SizedBox(height: 12),
+                            _kv(
+                              context,
+                              'Auth 1',
+                              _authValue(
+                                quotation.authorization!.auth1Status,
+                                quotation.authorization!.auth1By,
+                                quotation.authorization!.auth1Date,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _kv(
+                              context,
+                              'Auth 2',
+                              _authValue(
+                                quotation.authorization!.auth2Status,
+                                quotation.authorization!.auth2By,
+                                quotation.authorization!.auth2Date,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
+                  Text(
+                    'Customer',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   InkWell(
                     borderRadius: BorderRadius.circular(16),
                     onTap: () {
@@ -270,7 +375,8 @@ class _ErpQuotationDetailScreenState
                                     ? '—'
                                     : item.description,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -325,6 +431,41 @@ class _ErpQuotationDetailScreenState
           child: Text(v, style: const TextStyle(fontWeight: FontWeight.w700)),
         ),
       ],
+    );
+  }
+
+  String _authValue(String status, String by, String date) {
+    final parts = <String>[
+      if (status.trim().isNotEmpty) status.trim(),
+      if (by.trim().isNotEmpty) by.trim(),
+      if (date.trim().isNotEmpty) date.trim(),
+    ];
+    return parts.isEmpty ? '—' : parts.join(' • ');
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }

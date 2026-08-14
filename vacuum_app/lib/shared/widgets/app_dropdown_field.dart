@@ -29,17 +29,19 @@ class AppDropdownField<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
-    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.18);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark
+        ? const Color(0xFF1B2A44)
+        : const Color(0xFFE5E7EB);
 
     final baseBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: divider),
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: borderColor),
     );
 
     final focusedBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(width: 2),
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
     );
 
     Widget menuRow(String text) => Row(
@@ -64,10 +66,12 @@ class AppDropdownField<T> extends StatelessWidget {
           decoration: InputDecoration(
             isDense: false,
             filled: true,
-            fillColor: isDark ? const Color(0xFF0B1220) : const Color(0xFFF9FAFB),
+            fillColor: isDark
+                ? const Color(0xFF0B1220)
+                : const Color(0xFFF9FAFB),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 12,
-              vertical: 14,
+              vertical: 13,
             ),
             border: baseBorder,
             enabledBorder: baseBorder,
@@ -75,15 +79,10 @@ class AppDropdownField<T> extends StatelessWidget {
           ),
           items: [
             if (allowNull)
-              DropdownMenuItem<T?>(
-                value: null,
-                child: menuRow(nullLabel),
-              ),
+              DropdownMenuItem<T?>(value: null, child: menuRow(nullLabel)),
             ...items.map(
-              (o) => DropdownMenuItem<T?>(
-                value: o.value,
-                child: menuRow(o.label),
-              ),
+              (o) =>
+                  DropdownMenuItem<T?>(value: o.value, child: menuRow(o.label)),
             ),
           ],
           onChanged: enabled ? onChanged : null,

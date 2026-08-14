@@ -49,6 +49,12 @@ class _AppInputState extends State<AppInput> {
         : const Color(0xFF374151);
     final size = MediaQuery.sizeOf(context);
     final compact = size.width < 420 || size.height < 760;
+    final fillColor = isDark
+        ? const Color(0xFF0B1220)
+        : const Color(0xFFF9FAFB);
+    final borderColor = isDark
+        ? const Color(0xFF1B2A44)
+        : const Color(0xFFE5E7EB);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,12 +96,34 @@ class _AppInputState extends State<AppInput> {
             prefixIcon: widget.prefix,
             suffixIcon: suffix,
             isDense: true,
+            filled: true,
+            fillColor: fillColor,
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 44,
+              minHeight: 44,
+            ),
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 44,
+              minHeight: 44,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: borderColor),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(12)),
+              borderSide: BorderSide(color: Color(0xFF2563EB), width: 2),
+            ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: 12,
               vertical: compact ? 10 : 12,
             ),
           ),
-          style: const TextStyle(fontSize: 14),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
         if (widget.helperText != null) ...[
           SizedBox(height: compact ? 4 : 6),

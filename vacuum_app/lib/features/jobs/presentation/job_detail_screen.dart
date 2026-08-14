@@ -52,9 +52,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     final canRaise = !['technician', 'labour'].contains(role);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.id, style: const TextStyle(fontFamily: 'monospace')),
-      ),
       body: _job.when(
         loading: () => const _JobDetailSkeleton(),
         error: (e, _) => EmptyState(
@@ -76,6 +73,51 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => context.pop(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.arrow_back),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            job.id,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.blue600,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            job.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 _HeaderCard(job: job),
                 const SizedBox(height: 16),
                 _InfoGrid(job: job),
@@ -110,12 +152,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: MediaQuery.sizeOf(context).width >= 600
+                          ? 3
+                          : 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
                     itemCount: job.images.length,
                     itemBuilder: (context, i) => ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -176,60 +219,88 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                   ),
                 const SizedBox(height: 20),
                 if (job.status == 'Closed')
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD1FAE5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFA7F3D0)),
-                    ),
-                    child: const Row(
+                  AppCard(
+                    child: Row(
                       children: [
-                        Icon(Icons.check_circle, color: AppColors.emerald500),
-                        SizedBox(width: 10),
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD1FAE5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.check_circle,
+                            color: AppColors.emerald500,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            'This job is closed.',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF065F46),
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'This job is closed',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              Text(
+                                job.closedDate != null
+                                    ? 'Closed on ${_shortDate(job.closedDate)}'
+                                    : 'No closed date recorded',
+                                style: TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   )
                 else if (canRaise && next != null)
-                  AppButton(
-                    label: job.status == 'In Progress'
-                        ? 'Close Job with Verification'
-                        : 'Advance to $next',
-                    expanded: true,
-                    onPressed: () async {
-                      if (job.status == 'In Progress') {
-                        await _openCloseSheet(context, ref, job: job);
-                        return;
-                      }
-                      final ok = await ref
-                          .read(jobsProvider.notifier)
-                          .advanceStatus(job.id, next);
-                      if (!context.mounted) return;
-                      if (!ok) {
-                        AppToast.show(
-                          context,
-                          message: 'Failed to advance',
-                          type: AppToastType.error,
-                        );
-                        return;
-                      }
-                      await _load();
-                      if (!context.mounted) return;
-                      AppToast.show(
-                        context,
-                        message: 'Moved to $next',
-                        type: AppToastType.success,
-                      );
-                    },
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Actions',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 10),
+                        AppButton(
+                          label: job.status == 'In Progress'
+                              ? 'Close Job with Verification'
+                              : 'Advance to $next',
+                          expanded: true,
+                          onPressed: () async {
+                            if (job.status == 'In Progress') {
+                              await _openCloseSheet(context, ref, job: job);
+                              return;
+                            }
+                            final ok = await ref
+                                .read(jobsProvider.notifier)
+                                .advanceStatus(job.id, next);
+                            if (!context.mounted) return;
+                            if (!ok) {
+                              AppToast.show(
+                                context,
+                                message: 'Failed to advance',
+                                type: AppToastType.error,
+                              );
+                              return;
+                            }
+                            await _load();
+                            if (!context.mounted) return;
+                            AppToast.show(
+                              context,
+                              message: 'Moved to $next',
+                              type: AppToastType.success,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -303,50 +374,107 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            job.id,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.w900,
-              color: AppColors.blue600,
-              fontSize: 12,
-            ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          const SizedBox(height: 6),
-          Text(
-            job.title,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              StatusBadge(label: job.status),
-              StatusBadge(label: job.priority),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 3,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.work_outline, color: Colors.white),
                 ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  job.category,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job.id,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        job.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        job.clientName.isNotEmpty ? job.clientName : '—',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.84),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '₹${job.amount.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Amount',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.76),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                StatusBadge(label: job.status),
+                _HeroChip(label: job.priority),
+                if (job.category.isNotEmpty) _HeroChip(label: job.category),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -445,7 +573,7 @@ class _InfoGrid extends StatelessWidget {
                     items[i].value,
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
@@ -469,12 +597,12 @@ class _Stepper extends StatelessWidget {
         for (int i = 0; i < _pipeline.length; i++) ...[
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: i <= currentIndex
                     ? const Color(0xFFDBEAFE)
                     : Theme.of(context).dividerColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
                 child: Text(
@@ -510,6 +638,32 @@ String _shortDate(String? value) {
   final v = (value ?? '').trim();
   if (v.isEmpty) return '—';
   return v.length >= 10 ? v.substring(0, 10) : v;
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
 }
 
 class _JobDetailSkeleton extends StatelessWidget {

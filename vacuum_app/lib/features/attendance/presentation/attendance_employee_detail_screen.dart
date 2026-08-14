@@ -481,8 +481,33 @@ class _AttendanceEmployeeDetailScreenState
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        StatusBadge(label: statusText),
+                        if ((_attendance!.requestedStatusDescription ?? '')
+                            .trim()
+                            .isNotEmpty)
+                          _HeroChip(
+                            label: _displayStatus(
+                              _attendance!.requestedStatusDescription,
+                            ),
+                          ),
+                        _HeroChip(
+                          label: _attendance!.employeeType == null
+                              ? 'employee'
+                              : _attendance!.employeeType!,
+                        ),
+                      ],
+                    ),
+                  ),
                   Container(
                     width: double.infinity,
+                    margin: const EdgeInsets.only(top: 12),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18,
                       vertical: 10,
@@ -850,6 +875,32 @@ class _AttendanceEmployeeDetailScreenState
             accentSoft: accentSoft,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

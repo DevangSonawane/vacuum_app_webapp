@@ -98,7 +98,7 @@ class AppButton extends StatelessWidget {
         return (AppColors.blue600, Colors.white, null);
       case AppButtonVariant.secondary:
         return (
-          isDark ? const Color(0xFF111827) : AppColors.gray100,
+          isDark ? const Color(0xFF111827) : const Color(0xFFF3F4F6),
           isDark ? Colors.white : AppColors.gray700,
           null,
         );
@@ -111,7 +111,7 @@ class AppButton extends StatelessWidget {
           null,
         );
       case AppButtonVariant.outline:
-        return (Colors.transparent, AppColors.blue600, AppColors.blue600);
+        return (Colors.transparent, AppColors.blue600, AppColors.blue200);
     }
   }
 }

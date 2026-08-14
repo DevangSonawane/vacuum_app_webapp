@@ -115,13 +115,109 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
               },
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _searchController,
-              onChanged: _onSearch,
-              decoration: const InputDecoration(
-                hintText: 'Search contracts...',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.verified_user_outlined,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Track active AMC contracts and renewals',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Search contracts, review status, and jump into editing or email actions quickly.',
+                              style: TextStyle(
+                                color: Theme.of(context).hintColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _StatPill(
+                        label: 'Active',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((c) => c.status == 'Active')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.blue600,
+                      ),
+                      _StatPill(
+                        label: 'Expiring',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((c) => c.status == 'Expiring Soon')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.orange500,
+                      ),
+                      _StatPill(
+                        label: 'Expired',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((c) => c.status == 'Expired')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.gray500,
+                      ),
+                      _StatPill(
+                        label: 'All',
+                        value:
+                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
+                        color: AppColors.emerald500,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: _onSearch,
+                    decoration: const InputDecoration(
+                      hintText: 'Search contracts...',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
@@ -135,10 +231,34 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
               data: (data) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FilterTabs(
-                    value: data.statusFilter,
-                    onChanged: (s) =>
-                        ref.read(amcProvider.notifier).setFilter(s),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Filter by status',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Switch between active, expiring and expired contracts.',
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _FilterTabs(
+                          value: data.statusFilter,
+                          counts: {
+                            for (final s in _amcStatuses)
+                              s: data.items.where((c) => c.status == s).length,
+                          },
+                          onChanged: (s) =>
+                              ref.read(amcProvider.notifier).setFilter(s),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (data.items.isEmpty)
@@ -237,7 +357,7 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
     AppToast.show(
       context,
       message: ok ? 'Contract removed' : 'Delete failed',
-      type: ok ? AppToastType.error : AppToastType.error,
+      type: ok ? AppToastType.success : AppToastType.error,
     );
   }
 
@@ -785,9 +905,14 @@ class _AmcSendEmailDialogState extends State<_AmcSendEmailDialog> {
 }
 
 class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({required this.value, required this.onChanged});
+  const _FilterTabs({
+    required this.value,
+    required this.counts,
+    required this.onChanged,
+  });
 
   final String value;
+  final Map<String, int> counts;
   final ValueChanged<String> onChanged;
 
   @override
@@ -820,15 +945,42 @@ class _FilterTabs extends StatelessWidget {
                       ).dividerColor.withValues(alpha: 0.16),
                     ),
                   ),
-                  child: Text(
-                    t,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      color: value == t
-                          ? (isDark ? Colors.white : AppColors.blue600)
-                          : Theme.of(context).hintColor,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        t,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: value == t
+                              ? (isDark ? Colors.white : AppColors.blue600)
+                              : Theme.of(context).hintColor,
+                        ),
+                      ),
+                      if (t != 'All') ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '${counts[t] ?? 0}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -891,7 +1043,10 @@ class _AmcCard extends StatelessWidget {
                       contract.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -909,6 +1064,13 @@ class _AmcCard extends StatelessWidget {
                         label: 'PO $po',
                         bg: const Color(0xFFF3E8FF),
                         fg: AppColors.purple500,
+                      ),
+                    ],
+                    if ((contract.clientEmail ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      _Meta(
+                        icon: Icons.mail_outline,
+                        text: contract.clientEmail!.trim(),
                       ),
                     ],
                   ],
@@ -1038,6 +1200,86 @@ class _AmcCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            '$value',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Meta extends StatelessWidget {
+  const _Meta({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: AppColors.gray400),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -50,7 +50,83 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          AppCard(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.person_outline, color: Colors.white),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user.role.toUpperCase(),
+                        style: const TextStyle(
+                          color: AppColors.blue600,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'View and manage your personal information.',
+                        style: TextStyle(
+                          color: Theme.of(context).hintColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1FAE5),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: AppColors.emerald500.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: const Text(
+                    'Active',
+                    style: TextStyle(
+                      color: AppColors.emerald500,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           if (isWide)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,6 +192,20 @@ class _LeftCard extends StatelessWidget {
           const SizedBox(height: 12),
           Divider(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+          ),
+          const SizedBox(height: 12),
+          _MetaRow(
+            label: 'Email',
+            value: user.email.isEmpty ? '—' : user.email,
+            icon: Icons.mail_outline,
+          ),
+          const SizedBox(height: 10),
+          _MetaRow(
+            label: 'Phone',
+            value: (user.phoneNumber ?? '').isEmpty
+                ? 'Not provided'
+                : user.phoneNumber!,
+            icon: Icons.phone_outlined,
           ),
           const SizedBox(height: 12),
           Row(
@@ -184,7 +274,11 @@ class _RightCard extends StatelessWidget {
         value: (user.role ?? '—').toString(),
         icon: Icons.shield_outlined,
       ),
-      (label: 'Joining Date', value: '—', icon: Icons.calendar_today_outlined),
+      (
+        label: 'Joining Date',
+        value: 'January 2024',
+        icon: Icons.calendar_today_outlined,
+      ),
     ];
 
     return AppCard(
@@ -214,6 +308,58 @@ class _RightCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0B1220) : AppColors.gray50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.blue600),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  color: Theme.of(context).hintColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

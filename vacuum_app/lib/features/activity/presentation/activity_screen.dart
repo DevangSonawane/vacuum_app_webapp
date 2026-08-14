@@ -248,6 +248,73 @@ class _ActivityLogTab extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            AppCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.history_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Activity history',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Track actions, entity changes, and admin events in one stream.',
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _SummaryPill(
+                  label: 'Loaded',
+                  value: data.items.length,
+                  color: AppColors.blue600,
+                ),
+                _SummaryPill(
+                  label: 'Total',
+                  value: data.total,
+                  color: AppColors.emerald500,
+                ),
+                _SummaryPill(
+                  label: 'Page',
+                  value: data.page,
+                  color: AppColors.purple500,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             _ActivityFiltersRow(
               active: data.typeFilter,
               onChanged: (f) =>
@@ -377,6 +444,79 @@ class _NotificationsTab extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            AppCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      data.connected
+                          ? Icons.wifi_rounded
+                          : Icons.wifi_off_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Notifications',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          data.connected
+                              ? 'Live notifications from jobs, reports, and AMC updates.'
+                              : 'Currently offline, but your unread queue is still preserved.',
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _SummaryPill(
+                  label: 'Unread',
+                  value: unreadCount,
+                  color: AppColors.blue600,
+                ),
+                _SummaryPill(
+                  label: 'Total',
+                  value: data.items.length,
+                  color: AppColors.emerald500,
+                ),
+                _TextPill(
+                  label: 'Connection',
+                  value: data.connected ? 'Live' : 'Offline',
+                  color: data.connected
+                      ? AppColors.emerald500
+                      : AppColors.gray400,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 _chip(
@@ -544,7 +684,7 @@ class _NotificationRow extends StatelessWidget {
                           item.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ),
                       if (!item.read) ...[
@@ -571,12 +711,21 @@ class _NotificationRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    tsText,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.gray400,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        tsText,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.gray400,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _TypePill(
+                        label: item.event.replaceAll('_', ' '),
+                        color: meta.color,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -584,6 +733,70 @@ class _NotificationRow extends StatelessWidget {
             const SizedBox(width: 8),
             const Icon(Icons.chevron_right, color: AppColors.gray400),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  const _SummaryPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _TextPill extends StatelessWidget {
+  const _TextPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

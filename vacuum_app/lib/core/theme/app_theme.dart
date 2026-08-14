@@ -26,7 +26,7 @@ class AppTheme {
       ),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xCCFFFFFF),
       foregroundColor: AppColors.gray900,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
@@ -34,11 +34,11 @@ class AppTheme {
     cardTheme: CardThemeData(
       color: Colors.white,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.gray50,
+      fillColor: const Color(0xFFF9FAFB),
       hintStyle: const TextStyle(color: AppColors.gray400),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -77,7 +77,7 @@ class AppTheme {
       ),
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.darkBg,
+      backgroundColor: Color(0xCC030712),
       foregroundColor: Colors.white,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
@@ -85,7 +85,7 @@ class AppTheme {
     cardTheme: CardThemeData(
       color: AppColors.darkCard,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -117,6 +117,14 @@ class AppTheme {
     final display = GoogleFonts.syneTextTheme(base);
 
     return body.copyWith(
+      titleSmall: body.titleSmall?.copyWith(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+      labelMedium: body.labelMedium?.copyWith(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
       titleLarge: display.titleLarge?.copyWith(
         fontSize: 22,
         fontWeight: FontWeight.w700,

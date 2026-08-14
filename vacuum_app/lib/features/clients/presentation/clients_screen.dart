@@ -77,6 +77,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     final canEdit = !['technician', 'labour'].contains(role);
 
     final state = ref.watch(clientsProvider);
+    final currentTypeFilter = state.valueOrNull?.typeFilter ?? '';
 
     return RefreshIndicator(
       onRefresh: () => ref.read(clientsProvider.notifier).refresh(),
@@ -100,13 +101,134 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                   : null,
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _searchController,
-              onChanged: _onSearch,
-              decoration: const InputDecoration(
-                hintText: 'Search clients...',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.groups_outlined,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Track clients, contract value and status',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Search by name or contact person, then filter by type to narrow the list.',
+                              style: TextStyle(
+                                color: Theme.of(context).hintColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _StatPill(
+                        label: 'Active',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((c) => c.status == 'Active')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.emerald500,
+                      ),
+                      _StatPill(
+                        label: 'Inactive',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((c) => c.status == 'Inactive')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.red500,
+                      ),
+                      _StatPill(
+                        label: 'All',
+                        value:
+                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
+                        color: AppColors.blue600,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: _onSearch,
+                    decoration: const InputDecoration(
+                      hintText: 'Search by name or contact person...',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final t in _clientTypes)
+                        _FilterChip(
+                          label: t,
+                          selected: _matchesType(currentTypeFilter, t),
+                          onTap: () {
+                            ref
+                                .read(clientsProvider.notifier)
+                                .filter(
+                                  type: currentTypeFilter == t || t == 'All'
+                                      ? ''
+                                      : t,
+                                );
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: AppButton(
+                      label: 'Reset',
+                      variant: AppButtonVariant.secondary,
+                      size: AppButtonSize.sm,
+                      onPressed: () {
+                        _searchController.clear();
+                        ref
+                            .read(clientsProvider.notifier)
+                            .filter(search: '', type: '');
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
@@ -120,12 +242,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               data: (data) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _TypeFilters(
-                    value: data.typeFilter,
-                    onChanged: (t) =>
-                        ref.read(clientsProvider.notifier).filter(type: t),
-                  ),
-                  const SizedBox(height: 16),
                   if (data.items.isEmpty)
                     const EmptyState(
                       icon: Icons.groups_outlined,
@@ -224,6 +340,60 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   }
 }
 
+bool _matchesType(String current, String type) {
+  if (type == 'All') return current.isEmpty;
+  return current == type;
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = selected
+        ? (isDark ? Colors.white : AppColors.blue600)
+        : Theme.of(context).hintColor;
+    final bg = selected
+        ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
+        : Colors.transparent;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? (isDark ? AppColors.gray700 : const Color(0xFFBFDBFE))
+                : Theme.of(context).dividerColor.withValues(alpha: 0.16),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: fg,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class ClientCreateScreen extends ConsumerWidget {
   const ClientCreateScreen({super.key});
 
@@ -242,60 +412,6 @@ class ClientCreateScreen extends ConsumerWidget {
           type: ok ? AppToastType.success : AppToastType.error,
         );
       },
-    );
-  }
-}
-
-class _TypeFilters extends StatelessWidget {
-  const _TypeFilters({required this.value, required this.onChanged});
-
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final t in _clientTypes)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(999),
-                onTap: () => onChanged(t),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(999),
-                    color: value == t
-                        ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.16),
-                    ),
-                  ),
-                  child: Text(
-                    t,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      color: value == t
-                          ? (isDark ? Colors.white : AppColors.blue600)
-                          : Theme.of(context).hintColor,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 }
@@ -394,7 +510,10 @@ class _ClientCard extends StatelessWidget {
                       client.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -409,17 +528,68 @@ class _ClientCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  StatusBadge(label: client.status),
-                  const SizedBox(height: 6),
-                  _TypeChip(label: client.type, colors: typeColors),
-                ],
-              ),
+              if (canEdit)
+                PopupMenuButton<_ClientCardAction>(
+                  tooltip: 'Actions',
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  onSelected: (value) {
+                    switch (value) {
+                      case _ClientCardAction.edit:
+                        onEdit();
+                        break;
+                      case _ClientCardAction.delete:
+                        onDelete();
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: _ClientCardAction.edit,
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 16),
+                          SizedBox(width: 8),
+                          Text('Edit'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: _ClientCardAction.delete,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: AppColors.red500,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Delete',
+                            style: TextStyle(color: AppColors.red500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              StatusBadge(label: client.status),
+              _TypeChip(label: client.type, colors: typeColors),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (client.contractValue > 0)
+            _InfoRow(
+              icon: Icons.payments_outlined,
+              text: fmtRevenue(client.contractValue),
+            ),
+          if (client.contractValue > 0) const SizedBox(height: 4),
           if (client.email.isNotEmpty)
             _InfoRow(icon: Icons.mail_outline, text: client.email),
           if (client.phone.isNotEmpty)
@@ -450,27 +620,6 @@ class _ClientCard extends StatelessWidget {
                   fontSize: 12,
                 ),
               ),
-              if (canEdit) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Edit',
-                  onPressed: onEdit,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: AppColors.blue600,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Delete',
-                  onPressed: onDelete,
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: 18,
-                    color: AppColors.red500,
-                  ),
-                ),
-              ],
             ],
           ),
         ],
@@ -478,6 +627,8 @@ class _ClientCard extends StatelessWidget {
     );
   }
 }
+
+enum _ClientCardAction { edit, delete }
 
 class _TypeChip extends StatelessWidget {
   const _TypeChip({required this.label, required this.colors});
@@ -498,6 +649,87 @@ class _TypeChip extends StatelessWidget {
         style: TextStyle(
           color: colors.$2,
           fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            '$value',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailPill extends StatelessWidget {
+  const _DetailPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -577,52 +809,70 @@ class _ClientDetailSheet extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.apartment_outlined,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          client.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                          ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          client.contactPerson,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
+                        child: const Icon(
+                          Icons.apartment_outlined,
+                          color: Colors.white,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              client.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              client.contactPerson,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, color: Colors.white),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Colors.white),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _DetailPill(label: 'Status', value: client.status),
+                      _DetailPill(label: 'Type', value: client.type),
+                      _DetailPill(
+                        label: 'Value',
+                        value: fmtRevenue(client.contractValue),
+                      ),
+                    ],
                   ),
                 ],
               ),

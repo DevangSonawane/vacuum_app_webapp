@@ -35,7 +35,9 @@ class ReportCreateScreen extends ConsumerWidget {
     return _ServiceReportWizard(
       dio: ref.read(dioProvider),
       onSubmit: (payload, photos, technicalReports) async {
-        final id = await ref.read(reportsProvider.notifier).createWithUploads(
+        final id = await ref
+            .read(reportsProvider.notifier)
+            .createWithUploads(
               payload: payload,
               photos: photos,
               technicalReports: technicalReports,
@@ -61,17 +63,15 @@ class ReportCreateScreen extends ConsumerWidget {
 }
 
 class _ServiceReportWizard extends StatefulWidget {
-  const _ServiceReportWizard({
-    required this.dio,
-    required this.onSubmit,
-  });
+  const _ServiceReportWizard({required this.dio, required this.onSubmit});
 
   final Dio dio;
   final Future<void> Function(
     Map<String, dynamic> payload,
     List<({String path, String name})> photos,
     List<({String path, String name})> technicalReports,
-  ) onSubmit;
+  )
+  onSubmit;
 
   @override
   State<_ServiceReportWizard> createState() => _ServiceReportWizardState();
@@ -93,7 +93,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     ),
     _ChecklistItem(
       sr: 2,
-      description: 'Check the oil level on the Root Compressors (If available).',
+      description:
+          'Check the oil level on the Root Compressors (If available).',
     ),
     _ChecklistItem(sr: 3, description: 'Check the lubrication circuit.'),
     _ChecklistItem(sr: 4, description: 'Check the discharge valves.'),
@@ -101,7 +102,10 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     _ChecklistItem(sr: 6, description: 'Oil filter cleaning.'),
     _ChecklistItem(sr: 7, description: 'Greasing of the pump.'),
     _ChecklistItem(sr: 8, description: 'Check the oil seal Ring.'),
-    _ChecklistItem(sr: 9, description: 'Check & adjustment of the driving belts.'),
+    _ChecklistItem(
+      sr: 9,
+      description: 'Check & adjustment of the driving belts.',
+    ),
   ];
 
   static const _checklistStatusOptions = <int, List<String>>{
@@ -269,18 +273,22 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
 
   // dropdown data
   List<
-      ({
-        String id,
-        String title,
-        int? clientId,
-        String clientName,
-        String clientEmail,
-        String contactPerson,
-        String location,
-      })> _jobs = const [];
+    ({
+      String id,
+      String title,
+      int? clientId,
+      String clientName,
+      String clientEmail,
+      String contactPerson,
+      String location,
+    })
+  >
+  _jobs = const [];
   List<({int id, String name})> _techs = const [];
-  List<({int id, String name, String email, String contactPerson, String address})>
-      _clients = const [];
+  List<
+    ({int id, String name, String email, String contactPerson, String address})
+  >
+  _clients = const [];
   List<String> _poNumbers = const [];
 
   // form fields
@@ -308,11 +316,11 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   String? _poNumber;
 
   // PDF section state
-  final List<_ChecklistItem> _checklist =
-      _defaultChecklist.map((e) => e.copy()).toList();
+  final List<_ChecklistItem> _checklist = _defaultChecklist
+      .map((e) => e.copy())
+      .toList();
   final List<_IssueRow> _issues = [_IssueRow.empty(sr: 1)];
-  final List<_SpareRow> _spares =
-      _defaultSpares.map((e) => e.copy()).toList();
+  final List<_SpareRow> _spares = _defaultSpares.map((e) => e.copy()).toList();
 
   final List<({String path, String name})> _technicalReports = [];
 
@@ -345,7 +353,10 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   Future<void> _fetchDropdowns() async {
     setState(() => _fetching = true);
     try {
-      final jobsRes = await widget.dio.get('jobs', queryParameters: {'limit': 200});
+      final jobsRes = await widget.dio.get(
+        'jobs',
+        queryParameters: {'limit': 200},
+      );
       final jobsRoot = _asMap(jobsRes.data);
       final jobList = _asList(jobsRoot['data']);
       _jobs = jobList
@@ -386,7 +397,10 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       ];
 
       try {
-        final amcRes = await widget.dio.get('amc', queryParameters: {'limit': 200});
+        final amcRes = await widget.dio.get(
+          'amc',
+          queryParameters: {'limit': 200},
+        );
         final amcRoot = _asMap(amcRes.data);
         final amcList = _asList(amcRoot['data']);
         final set = <String>{};
@@ -459,9 +473,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   ({int id, String name, String email, String contactPerson, String address})?
-  _findClient(
-    int? id,
-  ) {
+  _findClient(int? id) {
     if (id == null) return null;
     for (final c in _clients) {
       if (c.id == id) return c;
@@ -519,39 +531,38 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     setState(() => _technicalReports.addAll(added));
   }
 
-  void _addIssue() => setState(
-        () => _issues.add(_IssueRow.empty(sr: _issues.length + 1)),
-      );
+  void _addIssue() =>
+      setState(() => _issues.add(_IssueRow.empty(sr: _issues.length + 1)));
 
   void _removeIssue(int idx) => setState(() {
-        _issues.removeAt(idx);
-        for (int i = 0; i < _issues.length; i++) {
-          _issues[i] = _issues[i].copyWith(sr: i + 1);
-        }
-      });
+    _issues.removeAt(idx);
+    for (int i = 0; i < _issues.length; i++) {
+      _issues[i] = _issues[i].copyWith(sr: i + 1);
+    }
+  });
 
   void _setIssueType(int idx, String issueType) => setState(() {
-        _issues[idx] = _issues[idx].copyWith(
-          issue: issueType,
-          observation: '',
-          impactOnPump: '',
-          severity: '',
-          recommendedSpares: '',
-        );
-      });
+    _issues[idx] = _issues[idx].copyWith(
+      issue: issueType,
+      observation: '',
+      impactOnPump: '',
+      severity: '',
+      recommendedSpares: '',
+    );
+  });
 
   void _setIssueObservation(int idx, String observation) => setState(() {
-        final issueType = _issues[idx].issue;
-        final rows = _issueData[issueType] ?? const <_IssueDataRow>[];
-        final matched = rows.where((r) => r.observation == observation).toList();
-        final row = matched.isEmpty ? null : matched.first;
-        _issues[idx] = _issues[idx].copyWith(
-          observation: observation,
-          impactOnPump: row?.impactOnPump ?? '',
-          severity: row?.severity ?? '',
-          recommendedSpares: row?.recommendedSpares ?? '',
-        );
-      });
+    final issueType = _issues[idx].issue;
+    final rows = _issueData[issueType] ?? const <_IssueDataRow>[];
+    final matched = rows.where((r) => r.observation == observation).toList();
+    final row = matched.isEmpty ? null : matched.first;
+    _issues[idx] = _issues[idx].copyWith(
+      observation: observation,
+      impactOnPump: row?.impactOnPump ?? '',
+      severity: row?.severity ?? '',
+      recommendedSpares: row?.recommendedSpares ?? '',
+    );
+  });
 
   Future<void> _submit() async {
     if (_loading) return;
@@ -573,15 +584,14 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
         'company_name': _companyName.text.trim(),
         if (_contactPerson.text.trim().isNotEmpty)
           'contact_person': _contactPerson.text.trim(),
-        if (_location.text.trim().isNotEmpty)
-          'location': _location.text.trim(),
+        if (_location.text.trim().isNotEmpty) 'location': _location.text.trim(),
         if (_modelSerialInstallation.text.trim().isNotEmpty)
           'model_serial_installation': _modelSerialInstallation.text.trim(),
         if (_operatingHoursPerDay.text.trim().isNotEmpty)
           'operating_hours_per_day': _operatingHoursPerDay.text.trim(),
         if (_applicationProcessDescription.text.trim().isNotEmpty)
-          'application_process_description':
-              _applicationProcessDescription.text.trim(),
+          'application_process_description': _applicationProcessDescription.text
+              .trim(),
         if (_findings.text.trim().isNotEmpty) 'findings': _findings.text.trim(),
         if (_recommendations.text.trim().isNotEmpty)
           'recommendations': _recommendations.text.trim(),
@@ -606,11 +616,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
         ],
       };
 
-      await widget.onSubmit(
-        payload,
-        const [],
-        _technicalReports,
-      );
+      await widget.onSubmit(payload, const [], _technicalReports);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -634,7 +640,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionHeader(
-                title: 'Service Report',
+                title: 'Create Service Report',
+                subtitle:
+                    'A 5-step wizard for client details, checklist, issues, spares and remarks.',
                 action: IconButton(
                   tooltip: 'Back',
                   onPressed: _loading ? null : () => context.go('/reports'),
@@ -642,7 +650,74 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                 ),
               ),
               const SizedBox(height: 12),
-              _stepPills(),
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.fact_check_outlined,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Step $_step of 5',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _steps[_step - 1].label,
+                                style: TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 8,
+                        value: _step / _steps.length,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
+                        valueColor: const AlwaysStoppedAnimation(
+                          AppColors.blue600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _stepPills(),
+                  ],
+                ),
+              ),
               const SizedBox(height: 16),
               if (_fetching)
                 const AppCard(child: ShimmerBox(height: 220))
@@ -664,8 +739,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                           onPressed: _loading
                               ? null
                               : step == 1
-                                  ? () => context.go('/reports')
-                                  : _prev,
+                              ? () => context.go('/reports')
+                              : _prev,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -677,8 +752,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                           onPressed: _loading
                               ? null
                               : step == 5
-                                  ? _submit
-                                  : _next,
+                              ? _submit
+                              : _next,
                         ),
                       ),
                     ],
@@ -698,8 +773,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     final activeFg = isDark ? Colors.white : AppColors.blue600;
     final doneBg = isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5);
     final doneFg = isDark ? const Color(0xFF34D399) : const Color(0xFF047857);
-    final idleBg =
-        isDark ? const Color(0xFF111827) : Theme.of(context).canvasColor;
+    final idleBg = isDark
+        ? const Color(0xFF111827)
+        : Theme.of(context).canvasColor;
     final idleFg = Theme.of(context).hintColor;
 
     return SizedBox(
@@ -710,13 +786,14 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (int i = 0; i < _steps.length; i++) ...[
-              _StepIcon(
+              _StepChip(
+                label: _steps[i].label,
                 icon: _steps[i].icon,
                 state: _step == _steps[i].id
-                    ? _StepIconState.active
+                    ? _StepChipState.active
                     : (_step > _steps[i].id
-                        ? _StepIconState.done
-                        : _StepIconState.idle),
+                          ? _StepChipState.done
+                          : _StepChipState.idle),
                 activeBg: activeBg,
                 activeFg: activeFg,
                 doneBg: doneBg,
@@ -737,9 +814,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                   decoration: BoxDecoration(
                     color: _step > _steps[i].id
                         ? (isDark ? const Color(0xFF34D399) : doneFg)
-                        : Theme.of(context)
-                            .dividerColor
-                            .withValues(alpha: 0.22),
+                        : Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -785,8 +862,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       nullLabel: 'Select job...',
       enabled: !_loading,
       items: [
-        for (final j in _jobs)
-          (value: j.id, label: '${j.id} — ${j.title}'),
+        for (final j in _jobs) (value: j.id, label: '${j.id} — ${j.title}'),
       ],
       onChanged: (v) => setState(() {
         _jobId = v;
@@ -802,9 +878,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       allowNull: true,
       nullLabel: 'Select technician...',
       enabled: !_loading,
-      items: [
-        for (final t in _techs) (value: t.id, label: t.name),
-      ],
+      items: [for (final t in _techs) (value: t.id, label: t.name)],
       onChanged: (v) => setState(() => _techId = v),
     );
   }
@@ -816,17 +890,18 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       allowNull: true,
       nullLabel: 'Select client...',
       enabled: !_loading,
-      items: [
-        for (final c in _clients) (value: c.id, label: c.name),
-      ],
+      items: [for (final c in _clients) (value: c.id, label: c.name)],
       onChanged: (v) {
         final selected = _findClient(v);
         setState(() {
           _clientId = v;
           _clientName = selected?.name ?? _clientName;
           if (selected != null) {
-            if (selected.email.trim().isNotEmpty) _clientEmail.text = selected.email.trim();
-            if (_companyName.text.trim().isEmpty && selected.name.trim().isNotEmpty) {
+            if (selected.email.trim().isNotEmpty) {
+              _clientEmail.text = selected.email.trim();
+            }
+            if (_companyName.text.trim().isEmpty &&
+                selected.name.trim().isNotEmpty) {
               _companyName.text = selected.name.trim();
             }
             if (_contactPerson.text.trim().isEmpty &&
@@ -880,7 +955,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             children: [
               Expanded(child: _dropdownPoNumber()),
               const SizedBox(width: 12),
-              Expanded(child: _field('Serial No.', _serialNo, hint: 'VCP-2023-7842')),
+              Expanded(
+                child: _field('Serial No.', _serialNo, hint: 'VCP-2023-7842'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -974,7 +1051,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
           for (int idx = 0; idx < _checklist.length; idx++) ...[
             _ChecklistRow(
               item: _checklist[idx],
-              options: _checklistStatusOptions[_checklist[idx].sr] ??
+              options:
+                  _checklistStatusOptions[_checklist[idx].sr] ??
                   const ['', 'OK', 'Done'],
               enabled: !_loading,
               onChanged: (v) => setState(
@@ -1029,30 +1107,25 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
               observationOptions: _issues[idx].issue.trim().isEmpty
                   ? const []
                   : [
-                      for (final r in _issueData[_issues[idx].issue] ?? const [])
+                      for (final r
+                          in _issueData[_issues[idx].issue] ?? const [])
                         r.observation,
                     ],
               impactOptions: _issues[idx].issue.trim().isEmpty
                   ? const []
-                  : _unique(
-                      [
-                        for (final r
-                            in _issueData[_issues[idx].issue] ?? const [])
-                          r.impactOnPump,
-                      ],
-                    ),
+                  : _unique([
+                      for (final r
+                          in _issueData[_issues[idx].issue] ?? const [])
+                        r.impactOnPump,
+                    ]),
               sparesOptions: _issues[idx].issue.trim().isEmpty
                   ? const []
-                  : _unique(
-                      [
-                        for (final r
-                            in _issueData[_issues[idx].issue] ?? const [])
-                          r.recommendedSpares,
-                      ],
-                    ),
-              onRemove: _issues.length <= 1
-                  ? null
-                  : () => _removeIssue(idx),
+                  : _unique([
+                      for (final r
+                          in _issueData[_issues[idx].issue] ?? const [])
+                        r.recommendedSpares,
+                    ]),
+              onRemove: _issues.length <= 1 ? null : () => _removeIssue(idx),
               onTypeChanged: (v) => _setIssueType(idx, v),
               onObservationChanged: (v) => _setIssueObservation(idx, v),
               onImpactChanged: (v) => setState(
@@ -1062,7 +1135,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                 () => _issues[idx] = _issues[idx].copyWith(severity: v),
               ),
               onSparesChanged: (v) => setState(
-                () => _issues[idx] = _issues[idx].copyWith(recommendedSpares: v),
+                () =>
+                    _issues[idx] = _issues[idx].copyWith(recommendedSpares: v),
               ),
             ),
             const SizedBox(height: 12),
@@ -1141,7 +1215,10 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             lines: 3,
           ),
           const SizedBox(height: 16),
-          Text('Technical Reports', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Technical Reports',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           _UploadActionCard(
             title: 'Technical Reports',
@@ -1164,8 +1241,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                     ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      leading:
-                          const Icon(Icons.description_outlined, size: 18),
+                      leading: const Icon(Icons.description_outlined, size: 18),
                       title: Text(
                         _technicalReports[i].name,
                         maxLines: 1,
@@ -1175,9 +1251,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                         tooltip: 'Remove',
                         onPressed: _loading
                             ? null
-                            : () => setState(
-                                  () => _technicalReports.removeAt(i),
-                                ),
+                            : () =>
+                                  setState(() => _technicalReports.removeAt(i)),
                         icon: const Icon(Icons.close, size: 18),
                       ),
                     ),
@@ -1333,108 +1408,109 @@ class _SearchableDropdownIntState extends State<_SearchableDropdownInt> {
             );
             widget.onChanged(option.value);
           },
-          fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
-            return TextField(
-              controller: textController,
-              focusNode: focusNode,
-              enabled: widget.enabled,
-              onChanged: _syncFromText,
-              onSubmitted: (_) {
-                onFieldSubmitted();
-                FocusManager.instance.primaryFocus?.unfocus();
+          fieldViewBuilder:
+              (context, textController, focusNode, onFieldSubmitted) {
+                return TextField(
+                  controller: textController,
+                  focusNode: focusNode,
+                  enabled: widget.enabled,
+                  onChanged: _syncFromText,
+                  onSubmitted: (_) {
+                    onFieldSubmitted();
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  decoration: InputDecoration(
+                    hintText: widget.allowNull
+                        ? 'Type to search or leave blank'
+                        : 'Type to search',
+                    isDense: false,
+                    filled: true,
+                    fillColor: isDark
+                        ? const Color(0xFF0B1220)
+                        : const Color(0xFFF9FAFB),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
+                    border: baseBorder,
+                    enabledBorder: baseBorder,
+                    focusedBorder: focusedBorder,
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (textController.text.trim().isNotEmpty &&
+                            widget.enabled)
+                          IconButton(
+                            tooltip: 'Clear',
+                            onPressed: () {
+                              textController.clear();
+                              widget.onChanged(null);
+                              _focusNode.requestFocus();
+                            },
+                            icon: const Icon(Icons.close, size: 18),
+                          ),
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ),
+                );
               },
-              onTapOutside: (_) =>
-                  FocusManager.instance.primaryFocus?.unfocus(),
-              decoration: InputDecoration(
-                hintText: widget.allowNull
-                    ? 'Type to search or leave blank'
-                    : 'Type to search',
-                isDense: false,
-                filled: true,
-                fillColor: isDark
-                    ? const Color(0xFF0B1220)
-                    : const Color(0xFFF9FAFB),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                border: baseBorder,
-                enabledBorder: baseBorder,
-                focusedBorder: focusedBorder,
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (textController.text.trim().isNotEmpty && widget.enabled)
-                      IconButton(
-                        tooltip: 'Clear',
-                        onPressed: () {
-                          textController.clear();
-                          widget.onChanged(null);
-                          _focusNode.requestFocus();
-                        },
-                        icon: const Icon(Icons.close, size: 18),
-                      ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-              ),
-            );
-          },
-          optionsViewBuilder:
-              (context, onSelected, options) => Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  color: surface,
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 280),
-                    child: SizedBox(
-                      width: 360,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(8),
-                        shrinkWrap: true,
-                        itemCount: options.length + (widget.allowNull ? 1 : 0),
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 4),
-                        itemBuilder: (context, index) {
-                          if (widget.allowNull) {
-                            if (index == 0) {
-                              return ListTile(
-                                dense: true,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                title: Text(widget.nullLabel),
-                                onTap: () {
-                                  _controller.clear();
-                                  widget.onChanged(null);
-                                  Navigator.of(context).maybePop();
-                                },
-                              );
-                            }
-                            index -= 1;
-                          }
-                          final option = options.elementAt(index);
+          optionsViewBuilder: (context, onSelected, options) => Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              color: surface,
+              elevation: 6,
+              borderRadius: BorderRadius.circular(16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: SizedBox(
+                  width: 360,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(8),
+                    shrinkWrap: true,
+                    itemCount: options.length + (widget.allowNull ? 1 : 0),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 4),
+                    itemBuilder: (context, index) {
+                      if (widget.allowNull) {
+                        if (index == 0) {
                           return ListTile(
                             dense: true,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            title: Text(
-                              option.label,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => onSelected(option),
+                            title: Text(widget.nullLabel),
+                            onTap: () {
+                              _controller.clear();
+                              widget.onChanged(null);
+                              Navigator.of(context).maybePop();
+                            },
                           );
-                        },
-                      ),
-                    ),
+                        }
+                        index -= 1;
+                      }
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: Text(
+                          option.label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => onSelected(option),
+                      );
+                    },
                   ),
                 ),
               ),
+            ),
+          ),
         ),
       ],
     );
@@ -1568,110 +1644,111 @@ class _SearchableDropdownStringState extends State<_SearchableDropdownString> {
             widget.onChanged(option.value);
             widget.onTextChanged?.call(option.value);
           },
-          fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
-            return TextField(
-              controller: textController,
-              focusNode: focusNode,
-              enabled: widget.enabled,
-              onChanged: _syncFromText,
-              onSubmitted: (_) {
-                onFieldSubmitted();
-                FocusManager.instance.primaryFocus?.unfocus();
+          fieldViewBuilder:
+              (context, textController, focusNode, onFieldSubmitted) {
+                return TextField(
+                  controller: textController,
+                  focusNode: focusNode,
+                  enabled: widget.enabled,
+                  onChanged: _syncFromText,
+                  onSubmitted: (_) {
+                    onFieldSubmitted();
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
+                  onTapOutside: (_) =>
+                      FocusManager.instance.primaryFocus?.unfocus(),
+                  decoration: InputDecoration(
+                    hintText: widget.allowNull
+                        ? 'Type to search or leave blank'
+                        : 'Type to search',
+                    isDense: false,
+                    filled: true,
+                    fillColor: isDark
+                        ? const Color(0xFF0B1220)
+                        : const Color(0xFFF9FAFB),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
+                    border: baseBorder,
+                    enabledBorder: baseBorder,
+                    focusedBorder: focusedBorder,
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (textController.text.trim().isNotEmpty &&
+                            widget.enabled)
+                          IconButton(
+                            tooltip: 'Clear',
+                            onPressed: () {
+                              textController.clear();
+                              widget.onChanged(null);
+                              widget.onTextChanged?.call('');
+                              _focusNode.requestFocus();
+                            },
+                            icon: const Icon(Icons.close, size: 18),
+                          ),
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ),
+                );
               },
-              onTapOutside: (_) =>
-                  FocusManager.instance.primaryFocus?.unfocus(),
-              decoration: InputDecoration(
-                hintText: widget.allowNull
-                    ? 'Type to search or leave blank'
-                    : 'Type to search',
-                isDense: false,
-                filled: true,
-                fillColor: isDark
-                    ? const Color(0xFF0B1220)
-                    : const Color(0xFFF9FAFB),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                border: baseBorder,
-                enabledBorder: baseBorder,
-                focusedBorder: focusedBorder,
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (textController.text.trim().isNotEmpty && widget.enabled)
-                      IconButton(
-                        tooltip: 'Clear',
-                        onPressed: () {
-                          textController.clear();
-                          widget.onChanged(null);
-                          widget.onTextChanged?.call('');
-                          _focusNode.requestFocus();
-                        },
-                        icon: const Icon(Icons.close, size: 18),
-                      ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-              ),
-            );
-          },
-          optionsViewBuilder:
-              (context, onSelected, options) => Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  color: surface,
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 280),
-                    child: SizedBox(
-                      width: 360,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(8),
-                        shrinkWrap: true,
-                        itemCount: options.length + (widget.allowNull ? 1 : 0),
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 4),
-                        itemBuilder: (context, index) {
-                          if (widget.allowNull) {
-                            if (index == 0) {
-                              return ListTile(
-                                dense: true,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                title: Text(widget.nullLabel),
-                                onTap: () {
-                                  _controller.clear();
-                                  widget.onChanged(null);
-                                  widget.onTextChanged?.call('');
-                                  Navigator.of(context).maybePop();
-                                },
-                              );
-                            }
-                            index -= 1;
-                          }
-                          final option = options.elementAt(index);
+          optionsViewBuilder: (context, onSelected, options) => Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              color: surface,
+              elevation: 6,
+              borderRadius: BorderRadius.circular(16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: SizedBox(
+                  width: 360,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(8),
+                    shrinkWrap: true,
+                    itemCount: options.length + (widget.allowNull ? 1 : 0),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 4),
+                    itemBuilder: (context, index) {
+                      if (widget.allowNull) {
+                        if (index == 0) {
                           return ListTile(
                             dense: true,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            title: Text(
-                              option.label,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: () => onSelected(option),
+                            title: Text(widget.nullLabel),
+                            onTap: () {
+                              _controller.clear();
+                              widget.onChanged(null);
+                              widget.onTextChanged?.call('');
+                              Navigator.of(context).maybePop();
+                            },
                           );
-                        },
-                      ),
-                    ),
+                        }
+                        index -= 1;
+                      }
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        title: Text(
+                          option.label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => onSelected(option),
+                      );
+                    },
                   ),
                 ),
               ),
+            ),
+          ),
         ),
       ],
     );
@@ -1759,18 +1836,18 @@ class _ChecklistItem {
   final String status;
 
   _ChecklistItem copyWith({String? status}) => _ChecklistItem(
-        sr: sr,
-        description: description,
-        status: status ?? this.status,
-      );
+    sr: sr,
+    description: description,
+    status: status ?? this.status,
+  );
 
   _ChecklistItem copy() => copyWith();
 
   Map<String, dynamic> toJson() => {
-        'sr': sr,
-        'description': description,
-        'status': status,
-      };
+    'sr': sr,
+    'description': description,
+    'status': status,
+  };
 }
 
 class _IssueRow {
@@ -1799,24 +1876,23 @@ class _IssueRow {
     String? impactOnPump,
     String? severity,
     String? recommendedSpares,
-  }) =>
-      _IssueRow(
-        sr: sr ?? this.sr,
-        issue: issue ?? this.issue,
-        observation: observation ?? this.observation,
-        impactOnPump: impactOnPump ?? this.impactOnPump,
-        severity: severity ?? this.severity,
-        recommendedSpares: recommendedSpares ?? this.recommendedSpares,
-      );
+  }) => _IssueRow(
+    sr: sr ?? this.sr,
+    issue: issue ?? this.issue,
+    observation: observation ?? this.observation,
+    impactOnPump: impactOnPump ?? this.impactOnPump,
+    severity: severity ?? this.severity,
+    recommendedSpares: recommendedSpares ?? this.recommendedSpares,
+  );
 
   Map<String, dynamic> toJson() => {
-        'sr': sr,
-        'issue': issue,
-        'observation': observation,
-        'impact_on_pump': impactOnPump,
-        'severity': severity,
-        'recommended_spares': recommendedSpares,
-      };
+    'sr': sr,
+    'issue': issue,
+    'observation': observation,
+    'impact_on_pump': impactOnPump,
+    'severity': severity,
+    'recommended_spares': recommendedSpares,
+  };
 }
 
 class _SpareRow {
@@ -1836,20 +1912,19 @@ class _SpareRow {
     String? spareName,
     String? pumpModel,
     String? totalToOrder,
-  }) =>
-      _SpareRow(
-        spareName: spareName ?? this.spareName,
-        pumpModel: pumpModel ?? this.pumpModel,
-        totalToOrder: totalToOrder ?? this.totalToOrder,
-      );
+  }) => _SpareRow(
+    spareName: spareName ?? this.spareName,
+    pumpModel: pumpModel ?? this.pumpModel,
+    totalToOrder: totalToOrder ?? this.totalToOrder,
+  );
 
   _SpareRow copy() => copyWith();
 
   Map<String, dynamic> toJson() => {
-        'spare_name': spareName,
-        'pump_model': pumpModel,
-        'total_to_order': totalToOrder,
-      };
+    'spare_name': spareName,
+    'pump_model': pumpModel,
+    'total_to_order': totalToOrder,
+  };
 }
 
 class _IssueDataRow {
@@ -1930,14 +2005,17 @@ class _ChecklistRow extends StatelessWidget {
                         label: Text(o.isEmpty ? 'None' : o),
                         selected: item.status == o,
                         onSelected: !enabled ? null : (_) => onChanged(o),
-                        labelStyle: const TextStyle(fontWeight: FontWeight.w800),
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                        ),
                         selectedColor: AppColors.blue600,
-                        backgroundColor:
-                            isDark ? const Color(0xFF0B1220) : Colors.white,
+                        backgroundColor: isDark
+                            ? const Color(0xFF0B1220)
+                            : Colors.white,
                         side: BorderSide(
-                          color: Theme.of(context)
-                              .dividerColor
-                              .withValues(alpha: 0.18),
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.18),
                         ),
                         checkmarkColor: Colors.white,
                       ),
@@ -2040,7 +2118,9 @@ class _IssueCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  issue.issue.trim().isEmpty ? 'Issue ${issue.sr}' : issue.issue,
+                  issue.issue.trim().isEmpty
+                      ? 'Issue ${issue.sr}'
+                      : issue.issue,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w900),
@@ -2061,7 +2141,9 @@ class _IssueCard extends StatelessWidget {
             allowNull: true,
             nullLabel: '— Select issue —',
             enabled: enabled,
-            items: [for (final t in issueTypes) AppDropdownItem(value: t, label: t)],
+            items: [
+              for (final t in issueTypes) AppDropdownItem(value: t, label: t),
+            ],
             onChanged: (v) => onTypeChanged(v ?? ''),
           ),
           const SizedBox(height: 10),
@@ -2074,7 +2156,8 @@ class _IssueCard extends StatelessWidget {
                 : '— Select observation —',
             enabled: enabled && issue.issue.trim().isNotEmpty,
             items: [
-              for (final t in observationOptions) AppDropdownItem(value: t, label: t),
+              for (final t in observationOptions)
+                AppDropdownItem(value: t, label: t),
             ],
             onChanged: (v) => onObservationChanged(v ?? ''),
           ),
@@ -2083,13 +2166,21 @@ class _IssueCard extends StatelessWidget {
             label: 'Impact on Pump',
             value: issue.impactOnPump.isEmpty ? null : issue.impactOnPump,
             allowNull: true,
-            nullLabel: issue.issue.trim().isEmpty ? '— Select issue first —' : '— Select impact —',
+            nullLabel: issue.issue.trim().isEmpty
+                ? '— Select issue first —'
+                : '— Select impact —',
             enabled: enabled && issue.issue.trim().isNotEmpty,
-            items: [for (final t in impactOptions) AppDropdownItem(value: t, label: t)],
+            items: [
+              for (final t in impactOptions)
+                AppDropdownItem(value: t, label: t),
+            ],
             onChanged: (v) => onImpactChanged(v ?? ''),
           ),
           const SizedBox(height: 10),
-          Text('Severity', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          Text(
+            'Severity',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 8,
@@ -2109,13 +2200,18 @@ class _IssueCard extends StatelessWidget {
           const SizedBox(height: 10),
           AppDropdownField<String>(
             label: 'Recommended Spares',
-            value: issue.recommendedSpares.isEmpty ? null : issue.recommendedSpares,
+            value: issue.recommendedSpares.isEmpty
+                ? null
+                : issue.recommendedSpares,
             allowNull: true,
             nullLabel: issue.issue.trim().isEmpty
                 ? '— Select issue first —'
                 : '— Select recommended spares —',
             enabled: enabled && issue.issue.trim().isNotEmpty,
-            items: [for (final t in sparesOptions) AppDropdownItem(value: t, label: t)],
+            items: [
+              for (final t in sparesOptions)
+                AppDropdownItem(value: t, label: t),
+            ],
             onChanged: (v) => onSparesChanged(v ?? ''),
           ),
         ],
@@ -2292,10 +2388,9 @@ Map<String, dynamic> _asMap(dynamic v) {
 
 List<dynamic> _asList(dynamic v) => v is List ? v : const [];
 
-enum _StepIconState { idle, active, done }
-
-class _StepIcon extends StatelessWidget {
-  const _StepIcon({
+class _StepChip extends StatelessWidget {
+  const _StepChip({
+    required this.label,
     required this.icon,
     required this.state,
     required this.activeBg,
@@ -2307,8 +2402,9 @@ class _StepIcon extends StatelessWidget {
     this.onTap,
   });
 
+  final String label;
   final IconData icon;
-  final _StepIconState state;
+  final _StepChipState state;
   final Color activeBg;
   final Color activeFg;
   final Color doneBg;
@@ -2319,40 +2415,47 @@ class _StepIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = switch (state) {
-      _StepIconState.active => activeBg,
-      _StepIconState.done => doneBg,
-      _StepIconState.idle => idleBg,
+    final (bg, fg, border) = switch (state) {
+      _StepChipState.active => (activeBg, activeFg, Colors.transparent),
+      _StepChipState.done => (doneBg, doneFg, Colors.transparent),
+      _StepChipState.idle => (
+        idleBg,
+        idleFg,
+        Theme.of(context).dividerColor.withValues(alpha: 0.14),
+      ),
     };
-    final fg = switch (state) {
-      _StepIconState.active => activeFg,
-      _StepIconState.done => doneFg,
-      _StepIconState.idle => idleFg,
-    };
-    final scale = state == _StepIconState.active ? 1.08 : 1.0;
 
+    final child = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: fg),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return child;
     return InkWell(
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
-          ),
-        ),
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
-          scale: scale,
-          child: Icon(icon, size: 18, color: fg),
-        ),
-      ),
+      child: child,
     );
   }
 }
+
+enum _StepChipState { active, done, idle }
