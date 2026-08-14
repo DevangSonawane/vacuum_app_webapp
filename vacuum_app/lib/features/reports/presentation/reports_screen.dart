@@ -10,7 +10,6 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
@@ -61,19 +60,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
-              title: 'AMC Service Reports',
-              subtitle: state.whenOrNull(
-                data: (d) => '${d.items.length} reports',
-              ),
-              action: canEdit
-                  ? AppButton(
-                      label: 'New Report',
-                      onPressed: () => context.push('/reports/new'),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 12),
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,73 +84,39 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Track inspection, review and approval',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                              ),
+                              'AMC Service Reports',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
                               'Find reports, open the detail view, and approve pending items.',
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                color: Theme.of(context).hintColor,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _StatPill(
-                        label: 'Pending',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((r) => r.status == 'Pending')
-                                  .length,
-                            ) ??
-                            0,
-                        color: const Color(0xFFF59E0B),
+                  if (canEdit) ...[
+                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: AppButton(
+                        label: '+ New Report',
+                        size: AppButtonSize.sm,
+                        onPressed: () => context.push('/reports/new'),
                       ),
-                      _StatPill(
-                        label: 'Approved',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((r) => r.status == 'Approved')
-                                  .length,
-                            ) ??
-                            0,
-                        color: AppColors.emerald500,
-                      ),
-                      _StatPill(
-                        label: 'Rejected',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((r) => r.status == 'Rejected')
-                                  .length,
-                            ) ??
-                            0,
-                        color: AppColors.red500,
-                      ),
-                      _StatPill(
-                        label: 'All',
-                        value:
-                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
-                        color: AppColors.blue600,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   TextField(
                     controller: _searchController,
@@ -194,31 +146,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Filter by status',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Move between pending, approved and rejected reports.',
-                            style: TextStyle(
-                              color: Theme.of(context).hintColor,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _FilterTabs(
-                            value: data.statusFilter,
-                            counts: counts,
-                            onChanged: (s) =>
-                                ref.read(reportsProvider.notifier).setFilter(s),
-                          ),
-                        ],
-                      ),
+                    _FilterTabs(
+                      value: data.statusFilter,
+                      counts: counts,
+                      onChanged: (s) =>
+                          ref.read(reportsProvider.notifier).setFilter(s),
                     ),
                     const SizedBox(height: 16),
                     if (data.items.isEmpty)
@@ -235,7 +167,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           final cols = width >= 720 ? 2 : 1;
                           // Use a fixed tile height so cards don't overflow on
                           // smaller devices / with more metadata pills.
-                          final tileHeight = cols == 1 ? 255.0 : 230.0;
+                          final tileHeight = cols == 1 ? 275.0 : 250.0;
                           return GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -579,60 +511,6 @@ class _ReportCard extends StatelessWidget {
   }
 }
 
-class _StatPill extends StatelessWidget {
-  const _StatPill({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final int value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              color: Theme.of(context).hintColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            '$value',
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Meta extends StatelessWidget {
   const _Meta({required this.icon, required this.text});
 
@@ -646,11 +524,14 @@ class _Meta extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: AppColors.gray400),
         const SizedBox(width: 6),
-        Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 140),
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: AppColors.gray500),
+          ),
         ),
       ],
     );
@@ -673,6 +554,7 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 170),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
@@ -686,14 +568,16 @@ class _Pill extends StatelessWidget {
             Icon(icon, size: 14, color: fg),
             const SizedBox(width: 6),
           ],
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: fg,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: fg,
+              ),
             ),
           ),
         ],

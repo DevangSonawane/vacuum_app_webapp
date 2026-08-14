@@ -14,7 +14,6 @@ import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../../clients/application/clients_notifier.dart';
@@ -384,229 +383,225 @@ class _QuotationsScreenState extends ConsumerState<QuotationsScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final cols = width >= 1024 ? 3 : (width >= 720 ? 2 : 1);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
-            title: 'Quotations',
-            subtitle:
-                erp.whenOrNull(data: (d) => '${d.count} total quotations') ??
-                'Quotations',
-          ),
-          const SizedBox(height: 16),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.request_quote_outlined,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Review quotations and approval state',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Search, filter and open a quotation detail sheet just like the web app.',
-                            style: TextStyle(
-                              color: Theme.of(context).hintColor,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _StatPill(
-                      label: 'Open',
-                      value:
-                          erp.whenOrNull(
-                            data: (d) =>
-                                d.items.where((q) => q.status == 'Open').length,
-                          ) ??
-                          0,
-                      color: AppColors.blue600,
-                    ),
-                    _StatPill(
-                      label: 'Approved',
-                      value:
-                          erp.whenOrNull(
-                            data: (d) => d.items
-                                .where((q) => q.status == 'Approved')
-                                .length,
-                          ) ??
-                          0,
-                      color: AppColors.emerald500,
-                    ),
-                    _StatPill(
-                      label: 'Cancelled',
-                      value:
-                          erp.whenOrNull(
-                            data: (d) => d.items
-                                .where((q) => q.status == 'Cancelled')
-                                .length,
-                          ) ??
-                          0,
-                      color: AppColors.red500,
-                    ),
-                    _StatPill(
-                      label: 'All',
-                      value: erp.whenOrNull(data: (d) => d.count) ?? 0,
-                      color: AppColors.amber500,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Quotation Filters',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              AppButton(
-                label: 'Refresh',
-                variant: AppButtonVariant.secondary,
-                size: AppButtonSize.sm,
-                leading: const Icon(Icons.refresh),
-                onPressed: () =>
-                    ref.read(erpQuotationsProvider.notifier).refresh(),
-              ),
-              const SizedBox(width: 10),
-              AppButton(
-                label: 'Filters',
-                variant: AppButtonVariant.outline,
-                size: AppButtonSize.sm,
-                leading: const Icon(Icons.tune),
-                loading: _openingFilters,
-                onPressed: _openFiltersSheet,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: _erpSearch,
-                  onChanged: (_) => _scheduleFilterRefresh(),
-                  decoration: const InputDecoration(
-                    hintText: 'Search by ID or Customer...',
-                    prefixIcon: Icon(Icons.search),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Use Filters for status, priority, dates, staff names, and series.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          erp.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => EmptyState(
-              icon: Icons.error_outline,
-              title: 'Failed to load quotations',
-              description: friendlyErrorMessage(e),
-            ),
-            data: (data) {
-              if (data.items.isEmpty) {
-                return const EmptyState(
-                  icon: Icons.description_outlined,
-                  title: 'No quotations found',
-                  description: 'Try adjusting your filters.',
-                );
-              }
-
-              final start = ((data.page - 1) * data.limit) + 1;
-              final end = (data.page * data.limit) > data.count
-                  ? data.count
-                  : (data.page * data.limit);
-
-              return Column(
+    return RefreshIndicator(
+      onRefresh: () => ref.read(erpQuotationsProvider.notifier).refresh(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          24 + MediaQuery.of(context).padding.bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Showing $start–$end of ${data.count}',
-                      style: TextStyle(
-                        color: Theme.of(context).hintColor,
-                        fontWeight: FontWeight.w700,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.request_quote_outlined,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Review quotations and approval state',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Search, filter and open a quotation detail sheet just like the web app.',
+                              style: TextStyle(
+                                color: Theme.of(context).hintColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: cols,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: cols == 1 ? 1.55 : 1.35,
-                    ),
-                    itemCount: data.items.length,
-                    itemBuilder: (context, i) => _ErpQuotationCard(
-                      quotation: data.items[i],
-                      onTap: () =>
-                          context.push('/quotations/${data.items[i].quotId}'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _ErpPaginationBar(
-                    page: data.page,
-                    totalPages: data.totalPages,
-                    totalCount: data.count,
-                    limit: data.limit,
-                    onPage: (p) => _applyFilters(page: p),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _StatPill(
+                        label: 'Open',
+                        value:
+                            erp.whenOrNull(
+                              data: (d) => d.items
+                                  .where((q) => q.status == 'Open')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.blue600,
+                      ),
+                      _StatPill(
+                        label: 'Approved',
+                        value:
+                            erp.whenOrNull(
+                              data: (d) => d.items
+                                  .where((q) => q.status == 'Approved')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.emerald500,
+                      ),
+                      _StatPill(
+                        label: 'Cancelled',
+                        value:
+                            erp.whenOrNull(
+                              data: (d) => d.items
+                                  .where((q) => q.status == 'Cancelled')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.red500,
+                      ),
+                      _StatPill(
+                        label: 'All',
+                        value: erp.whenOrNull(data: (d) => d.count) ?? 0,
+                        color: AppColors.amber500,
+                      ),
+                    ],
                   ),
                 ],
-              );
-            },
-          ),
-        ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Filters',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                AppButton(
+                  label: 'Filters',
+                  variant: AppButtonVariant.outline,
+                  size: AppButtonSize.sm,
+                  leading: const Icon(Icons.tune),
+                  loading: _openingFilters,
+                  onPressed: _openFiltersSheet,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _erpSearch,
+                    onChanged: (_) => _scheduleFilterRefresh(),
+                    decoration: const InputDecoration(
+                      hintText: 'Search by ID or Customer...',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Use Filters for status, priority, dates, staff names, and series.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            erp.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => EmptyState(
+                icon: Icons.error_outline,
+                title: 'Failed to load quotations',
+                description: friendlyErrorMessage(e),
+              ),
+              data: (data) {
+                if (data.items.isEmpty) {
+                  return const EmptyState(
+                    icon: Icons.description_outlined,
+                    title: 'No quotations found',
+                    description: 'Try adjusting your filters.',
+                  );
+                }
+
+                final start = ((data.page - 1) * data.limit) + 1;
+                final end = (data.page * data.limit) > data.count
+                    ? data.count
+                    : (data.page * data.limit);
+
+                return Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Showing $start–$end of ${data.count}',
+                        style: TextStyle(
+                          color: Theme.of(context).hintColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: cols == 1 ? 1.55 : 1.35,
+                      ),
+                      itemCount: data.items.length,
+                      itemBuilder: (context, i) => _ErpQuotationCard(
+                        quotation: data.items[i],
+                        onTap: () =>
+                            context.push('/quotations/${data.items[i].quotId}'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    BottomSafeArea(
+                      child: _ErpPaginationBar(
+                        page: data.page,
+                        totalPages: data.totalPages,
+                        totalCount: data.count,
+                        limit: data.limit,
+                        onPage: (p) => _applyFilters(page: p),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

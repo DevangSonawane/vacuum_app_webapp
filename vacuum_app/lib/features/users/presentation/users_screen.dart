@@ -14,7 +14,6 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../application/users_notifier.dart';
 import '../application/users_state.dart';
@@ -80,16 +79,6 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
-              title: 'User Management',
-              subtitle: 'Manage system access and user roles',
-              action: AppButton(
-                label: '+ Add New User',
-                variant: AppButtonVariant.outline,
-                onPressed: () => _openUserSheet(context, ref, null),
-              ),
-            ),
-            const SizedBox(height: 16),
             AppCard(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,10 +104,22 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Manage system access',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'User Management',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                            AppButton(
+                              label: '+ Add New',
+                              size: AppButtonSize.sm,
+                              onPressed: () =>
+                                  _openUserSheet(context, ref, null),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -153,11 +154,6 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                   label: 'Inactive',
                   value: data.users.where((u) => !u.isActive).length,
                   color: AppColors.red500,
-                ),
-                _StatPill(
-                  label: 'Page',
-                  value: data.page,
-                  color: AppColors.purple500,
                 ),
               ],
             ),
@@ -344,109 +340,19 @@ class _UsersPremiumTable extends StatelessWidget {
                   onChanged: onSearch,
                 ),
               ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: borderColor),
-                  color: isDark ? const Color(0xFF0B1220) : Colors.white,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.people_outline, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${data.total}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Users',
-                      style: TextStyle(color: Theme.of(context).hintColor),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final effectiveWidth = constraints.maxWidth.isFinite
-                  ? constraints.maxWidth
-                  : MediaQuery.sizeOf(context).width;
-              final compact = effectiveWidth < 460;
-
-              if (compact) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(showing),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AppButton(
-                            label: 'Prev',
-                            size: AppButtonSize.sm,
-                            variant: AppButtonVariant.secondary,
-                            onPressed: onPrev,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: AppButton(
-                            label: 'Next',
-                            size: AppButtonSize.sm,
-                            variant: AppButtonVariant.secondary,
-                            onPressed: onNext,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      pageText,
-                      style: TextStyle(
-                        color: Theme.of(context).hintColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(
-                    child: Text(showing, overflow: TextOverflow.ellipsis),
-                  ),
-                  AppButton(
-                    label: 'Previous',
-                    size: AppButtonSize.sm,
-                    variant: AppButtonVariant.secondary,
-                    onPressed: onPrev,
-                  ),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(pageText, overflow: TextOverflow.ellipsis),
-                  ),
-                  const SizedBox(width: 10),
-                  AppButton(
-                    label: 'Next',
-                    size: AppButtonSize.sm,
-                    variant: AppButtonVariant.secondary,
-                    onPressed: onNext,
-                  ),
-                ],
-              );
-            },
+          child: Text(
+            showing,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Theme.of(context).hintColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         ClipRRect(
@@ -502,6 +408,78 @@ class _UsersPremiumTable extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+          ),
+        ),
+        BottomSafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final effectiveWidth = constraints.maxWidth.isFinite
+                    ? constraints.maxWidth
+                    : MediaQuery.sizeOf(context).width;
+                final compact = effectiveWidth < 460;
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        pageText,
+                        style: TextStyle(
+                          color: Theme.of(context).hintColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppButton(
+                              label: 'Prev',
+                              size: AppButtonSize.sm,
+                              variant: AppButtonVariant.secondary,
+                              onPressed: onPrev,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: AppButton(
+                              label: 'Next',
+                              size: AppButtonSize.sm,
+                              variant: AppButtonVariant.secondary,
+                              onPressed: onNext,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Text(pageText, overflow: TextOverflow.ellipsis),
+                    ),
+                    const SizedBox(width: 10),
+                    AppButton(
+                      label: 'Previous',
+                      size: AppButtonSize.sm,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: onPrev,
+                    ),
+                    const SizedBox(width: 10),
+                    AppButton(
+                      label: 'Next',
+                      size: AppButtonSize.sm,
+                      variant: AppButtonVariant.secondary,
+                      onPressed: onNext,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),

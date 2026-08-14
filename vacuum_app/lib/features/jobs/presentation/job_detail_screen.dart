@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/error_message.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
@@ -77,7 +78,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                   children: [
                     InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      onTap: () => context.pop(),
+                      onTap: () {
+                        final nav = Navigator.of(context);
+                        if (nav.canPop()) {
+                          nav.pop();
+                        } else {
+                          context.go('/jobs');
+                        }
+                      },
                       child: Container(
                         width: 40,
                         height: 40,
@@ -259,47 +267,49 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                     ),
                   )
                 else if (canRaise && next != null)
-                  AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Actions',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 10),
-                        AppButton(
-                          label: job.status == 'In Progress'
-                              ? 'Close Job with Verification'
-                              : 'Advance to $next',
-                          expanded: true,
-                          onPressed: () async {
-                            if (job.status == 'In Progress') {
-                              await _openCloseSheet(context, ref, job: job);
-                              return;
-                            }
-                            final ok = await ref
-                                .read(jobsProvider.notifier)
-                                .advanceStatus(job.id, next);
-                            if (!context.mounted) return;
-                            if (!ok) {
+                  BottomSafeArea(
+                    child: AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Actions',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 10),
+                          AppButton(
+                            label: job.status == 'In Progress'
+                                ? 'Close Job with Verification'
+                                : 'Advance to $next',
+                            expanded: true,
+                            onPressed: () async {
+                              if (job.status == 'In Progress') {
+                                await _openCloseSheet(context, ref, job: job);
+                                return;
+                              }
+                              final ok = await ref
+                                  .read(jobsProvider.notifier)
+                                  .advanceStatus(job.id, next);
+                              if (!context.mounted) return;
+                              if (!ok) {
+                                AppToast.show(
+                                  context,
+                                  message: 'Failed to advance',
+                                  type: AppToastType.error,
+                                );
+                                return;
+                              }
+                              await _load();
+                              if (!context.mounted) return;
                               AppToast.show(
                                 context,
-                                message: 'Failed to advance',
-                                type: AppToastType.error,
+                                message: 'Moved to $next',
+                                type: AppToastType.success,
                               );
-                              return;
-                            }
-                            await _load();
-                            if (!context.mounted) return;
-                            AppToast.show(
-                              context,
-                              message: 'Moved to $next',
-                              type: AppToastType.success,
-                            );
-                          },
-                        ),
-                      ],
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],

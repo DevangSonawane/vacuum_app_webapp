@@ -15,7 +15,6 @@ import '../../../shared/widgets/app_dropdown_field.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/stat_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -51,272 +50,268 @@ class AttendanceScreen extends ConsumerWidget {
         final total = rows.map((e) => e.technicianId).toSet().length;
         final dateKey = _fmtDate(data.date);
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeader(
-                title: 'Attendance Tracking',
-                subtitle: 'Daily check-in / check-out records',
-                action: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Refresh',
-                      onPressed: () =>
-                          ref.read(attendanceProvider.notifier).refresh(),
-                      icon: const Icon(Icons.refresh),
-                    ),
-                    const SizedBox(width: 4),
-                    if (canViewEmployees) ...[
-                      AppButton(
-                        label: 'Employees',
-                        variant: AppButtonVariant.outline,
-                        onPressed: () => context.go('/attendance/people'),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    if (canEdit)
-                      AppButton(
-                        label: 'Mark Attendance',
-                        variant: AppButtonVariant.outline,
-                        onPressed: () => _openMarkSheet(context, dateKey),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppCard(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.access_time_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Attendance overview',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Review daily attendance, open the employee roster, or mark entries from one place.',
-                            style: TextStyle(
-                              color: Theme.of(context).hintColor,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _SummaryPill(
-                    label: 'Present',
-                    value: present,
-                    color: AppColors.emerald500,
-                  ),
-                  _SummaryPill(
-                    label: 'Late',
-                    value: late,
-                    color: AppColors.amber500,
-                  ),
-                  _SummaryPill(
-                    label: 'Absent',
-                    value: absent,
-                    color: AppColors.red500,
-                  ),
-                  _SummaryPill(
-                    label: 'Total',
-                    value: total,
-                    color: AppColors.blue600,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.9,
-                children: [
-                  StatCard(title: 'Present', value: '$present'),
-                  StatCard(title: 'Late', value: '$late'),
-                  StatCard(title: 'Absent', value: '$absent'),
-                  StatCard(title: 'Total', value: '$total'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _WeeklyOverview(week: data.week),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Text(
-                    'Date:',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: data.date,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
-                        );
-                        if (picked != null) {
-                          await ref
-                              .read(attendanceProvider.notifier)
-                              .setDate(picked);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
+        return RefreshIndicator(
+          onRefresh: () => ref.read(attendanceProvider.notifier).refresh(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              24 + MediaQuery.of(context).padding.bottom,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.16),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF0B1220)
-                              : AppColors.gray50,
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Row(
+                        child: const Icon(
+                          Icons.access_time_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
-                              Icons.calendar_today_outlined,
-                              size: 16,
-                              color: AppColors.gray400,
+                            Text(
+                              'Attendance Tracking',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
                             ),
-                            const SizedBox(width: 8),
-                            Text(dateKey),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Daily check-in / check-out records',
+                              style: TextStyle(
+                                color: Theme.of(context).hintColor,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (rows.isEmpty)
-                const EmptyState(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'No attendance',
-                  description: 'No records found for the selected date.',
-                )
-              else
-                AppCard(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('Technician')),
-                        DataColumn(label: Text('Specialization')),
-                        DataColumn(label: Text('Check In')),
-                        DataColumn(label: Text('Check Out')),
-                        DataColumn(label: Text('Hours')),
-                        DataColumn(label: Text('Status')),
+                      const SizedBox(width: 12),
+                      if (canViewEmployees) ...[
+                        AppButton(
+                          label: 'Employees',
+                          variant: AppButtonVariant.outline,
+                          size: AppButtonSize.sm,
+                          onPressed: () => context.go('/attendance/people'),
+                        ),
+                        const SizedBox(width: 8),
                       ],
-                      rows: [
-                        for (final r in rows)
-                          DataRow(
-                            cells: [
-                              DataCell(
-                                Row(
-                                  children: [
-                                    AppAvatar(
-                                      initials: initialsFromName(
-                                        r.technicianName,
-                                      ),
-                                      size: AppAvatarSize.sm,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 160,
-                                      ),
-                                      child: Text(
-                                        r.technicianName,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  r.specialization,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  r.checkIn ?? '—',
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  r.checkOut ?? '—',
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                  r.hours.toString(),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              DataCell(StatusBadge(label: r.status)),
-                            ],
-                          ),
-                      ],
-                    ),
+                      if (canEdit)
+                        AppButton(
+                          label: 'Mark Attendance',
+                          variant: AppButtonVariant.outline,
+                          size: AppButtonSize.sm,
+                          onPressed: () => _openMarkSheet(context, dateKey),
+                        ),
+                    ],
                   ),
                 ),
-            ],
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _SummaryPill(
+                      label: 'Present',
+                      value: present,
+                      color: AppColors.emerald500,
+                    ),
+                    _SummaryPill(
+                      label: 'Late',
+                      value: late,
+                      color: AppColors.amber500,
+                    ),
+                    _SummaryPill(
+                      label: 'Absent',
+                      value: absent,
+                      color: AppColors.red500,
+                    ),
+                    _SummaryPill(
+                      label: 'Total',
+                      value: total,
+                      color: AppColors.blue600,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.9,
+                  children: [
+                    StatCard(title: 'Present', value: '$present'),
+                    StatCard(title: 'Late', value: '$late'),
+                    StatCard(title: 'Absent', value: '$absent'),
+                    StatCard(title: 'Total', value: '$total'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _WeeklyOverview(week: data.week),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Text(
+                      'Date:',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: data.date,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
+                          );
+                          if (picked != null) {
+                            await ref
+                                .read(attendanceProvider.notifier)
+                                .setDate(picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.16),
+                            ),
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF0B1220)
+                                : AppColors.gray50,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_outlined,
+                                size: 16,
+                                color: AppColors.gray400,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(dateKey),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (rows.isEmpty)
+                  const EmptyState(
+                    icon: Icons.calendar_today_outlined,
+                    title: 'No attendance',
+                    description: 'No records found for the selected date.',
+                  )
+                else
+                  AppCard(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Technician')),
+                          DataColumn(label: Text('Specialization')),
+                          DataColumn(label: Text('Check In')),
+                          DataColumn(label: Text('Check Out')),
+                          DataColumn(label: Text('Hours')),
+                          DataColumn(label: Text('Status')),
+                        ],
+                        rows: [
+                          for (final r in rows)
+                            DataRow(
+                              cells: [
+                                DataCell(
+                                  Row(
+                                    children: [
+                                      AppAvatar(
+                                        initials: initialsFromName(
+                                          r.technicianName,
+                                        ),
+                                        size: AppAvatarSize.sm,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 160,
+                                        ),
+                                        child: Text(
+                                          r.technicianName,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    r.specialization,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    r.checkIn ?? '—',
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    r.checkOut ?? '—',
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    r.hours.toString(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(StatusBadge(label: r.status)),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },

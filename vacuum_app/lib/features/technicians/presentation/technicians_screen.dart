@@ -17,7 +17,6 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../core/ui/ui_providers.dart';
@@ -101,20 +100,6 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
-              title: 'Technicians',
-              subtitle: state.whenOrNull(
-                data: (d) =>
-                    '${d.items.where((t) => t.status == "Active").length} active of ${d.items.length} total',
-              ),
-              action: canEdit
-                  ? AppButton(
-                      label: '+ Add Technician',
-                      onPressed: () => context.push('/technicians/new'),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 12),
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,30 +123,30 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Manage technicians, documents, ratings and status',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w900),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Search technicians, open a profile, or jump into edit mode quickly.',
-                              style: TextStyle(
-                                color: Theme.of(context).hintColor,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                      const Spacer(),
+                      if (canEdit)
+                        AppButton(
+                          label: '+ Add Technician',
+                          size: AppButtonSize.sm,
+                          onPressed: () => context.push('/technicians/new'),
                         ),
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  Text(
+                    'Technicians',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Search technicians, open a profile, or jump into edit mode quickly.',
+                    style: TextStyle(
+                      color: Theme.of(context).hintColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
@@ -248,8 +233,8 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                     childAspectRatio: cols == 1
-                        ? (canEdit ? 1.25 : 1.45)
-                        : (canEdit ? 1.0 : 1.15),
+                        ? (canEdit ? 1.12 : 1.24)
+                        : (canEdit ? 0.98 : 1.12),
                   ),
                   itemCount: data.items.length,
                   itemBuilder: (context, i) {

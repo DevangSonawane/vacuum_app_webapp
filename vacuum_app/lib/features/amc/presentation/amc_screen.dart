@@ -20,7 +20,6 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
@@ -79,42 +78,6 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            state.when(
-              loading: () => SectionHeader(
-                title: 'AMC Contracts',
-                subtitle: 'Loading…',
-                action: canEdit
-                    ? AppButton(
-                        label: 'Add Contract',
-                        onPressed: () => context.push('/amc/new'),
-                      )
-                    : null,
-              ),
-              error: (e, _) => SectionHeader(
-                title: 'AMC Contracts',
-                subtitle: friendlyErrorMessage(e),
-                action: canEdit
-                    ? AppButton(
-                        label: 'Add Contract',
-                        onPressed: () => context.push('/amc/new'),
-                      )
-                    : null,
-              ),
-              data: (d) {
-                final totalValue = d.items.fold<num>(0, (p, e) => p + e.value);
-                return SectionHeader(
-                  title: 'AMC Contracts',
-                  subtitle: fmtRevenue(totalValue),
-                  action: canEdit
-                      ? AppButton(
-                          label: 'Add Contract',
-                          onPressed: () => context.push('/amc/new'),
-                        )
-                      : null,
-                );
-              },
-            ),
-            const SizedBox(height: 12),
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,10 +106,33 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Track active AMC contracts and renewals',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            Row(
+                              children: [
+                                Text(
+                                  'AMC Contract',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w900),
+                                ),
+                                const Spacer(),
+                                state.when(
+                                  loading: () => const SizedBox.shrink(),
+                                  error: (e, _) => const SizedBox.shrink(),
+                                  data: (d) {
+                                    final totalValue = d.items.fold<num>(
+                                      0,
+                                      (p, e) => p + e.value,
+                                    );
+                                    return Text(
+                                      fmtRevenue(totalValue),
+                                      style: TextStyle(
+                                        color: Theme.of(context).hintColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -162,50 +148,34 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _StatPill(
-                        label: 'Active',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((c) => c.status == 'Active')
-                                  .length,
-                            ) ??
-                            0,
-                        color: AppColors.blue600,
+                  state.when(
+                    loading: () => const Text(
+                      'Loading…',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    error: (e, _) => Text(
+                      friendlyErrorMessage(e),
+                      style: TextStyle(
+                        color: Theme.of(context).hintColor,
+                        fontSize: 12,
                       ),
-                      _StatPill(
-                        label: 'Expiring',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((c) => c.status == 'Expiring Soon')
-                                  .length,
-                            ) ??
-                            0,
-                        color: AppColors.orange500,
-                      ),
-                      _StatPill(
-                        label: 'Expired',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((c) => c.status == 'Expired')
-                                  .length,
-                            ) ??
-                            0,
-                        color: AppColors.gray500,
-                      ),
-                      _StatPill(
-                        label: 'All',
-                        value:
-                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
-                        color: AppColors.emerald500,
-                      ),
-                    ],
+                    ),
+                    data: (_) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (canEdit)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: AppButton(
+                                label: '+ Add Contract',
+                                size: AppButtonSize.sm,
+                                onPressed: () => context.push('/amc/new'),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 14),
                   TextField(
@@ -231,34 +201,14 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
               data: (data) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Filter by status',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Switch between active, expiring and expired contracts.',
-                          style: TextStyle(
-                            color: Theme.of(context).hintColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _FilterTabs(
-                          value: data.statusFilter,
-                          counts: {
-                            for (final s in _amcStatuses)
-                              s: data.items.where((c) => c.status == s).length,
-                          },
-                          onChanged: (s) =>
-                              ref.read(amcProvider.notifier).setFilter(s),
-                        ),
-                      ],
-                    ),
+                  _FilterTabs(
+                    value: data.statusFilter,
+                    counts: {
+                      for (final s in _amcStatuses)
+                        s: data.items.where((c) => c.status == s).length,
+                    },
+                    onChanged: (s) =>
+                        ref.read(amcProvider.notifier).setFilter(s),
                   ),
                   const SizedBox(height: 16),
                   if (data.items.isEmpty)
@@ -274,7 +224,7 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
                           _AmcCard(
                             contract: c,
                             canEdit: canEdit,
-                            onEdit: () => _openFormSheet(context, ref, c),
+                            onEdit: () => context.push('/amc/${c.id}/edit'),
                             onEmail: () => _openEmailDialog(context, c),
                             onDelete: () => _confirmDelete(context, ref, c),
                           ),
@@ -287,54 +237,6 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Future<void> _openFormSheet(
-    BuildContext context,
-    WidgetRef ref,
-    AmcContract? existing,
-  ) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (ctx) => _AmcFormSheet(
-        dio: ref.read(dioProvider),
-        existing: existing,
-        onSubmit: (payload, isEdit, id) async {
-          try {
-            final successMessage = isEdit
-                ? 'Contract updated!'
-                : 'Contract created!';
-            if (isEdit && id != null) {
-              final ok = await ref
-                  .read(amcProvider.notifier)
-                  .updateContract(id, payload);
-              if (!ok) {
-                throw StateError('Operation failed');
-              }
-            } else {
-              await ref.read(amcProvider.notifier).createWithResult(payload);
-            }
-            if (!context.mounted) return;
-            Navigator.of(ctx).pop();
-            AppToast.show(
-              context,
-              message: successMessage,
-              type: AppToastType.success,
-            );
-          } catch (err) {
-            if (!context.mounted) return;
-            AppToast.show(
-              context,
-              message: friendlyErrorMessage(err),
-              type: AppToastType.error,
-            );
-          }
-        },
       ),
     );
   }
@@ -655,6 +557,72 @@ class _AmcCreateScreenState extends ConsumerState<AmcCreateScreen> {
           );
         }
       },
+    );
+  }
+}
+
+class AmcEditScreen extends ConsumerStatefulWidget {
+  const AmcEditScreen({super.key, required this.id});
+
+  final String id;
+
+  @override
+  ConsumerState<AmcEditScreen> createState() => _AmcEditScreenState();
+}
+
+class _AmcEditScreenState extends ConsumerState<AmcEditScreen> {
+  Future<AmcContract?>? _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<AmcContract?> _load() {
+    return ref.read(amcProvider.notifier).fetchDetail(widget.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<AmcContract?>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final contract = snapshot.data;
+          if (contract == null) {
+            return const EmptyState(
+              icon: Icons.error_outline,
+              title: 'Contract not found',
+              description: 'The AMC contract may have been deleted.',
+            );
+          }
+          return _AmcFormSheet(
+            asSheet: false,
+            dio: ref.read(dioProvider),
+            existing: contract,
+            onSubmit: (payload, isEdit, id) async {
+              final ok = isEdit && id != null
+                  ? await ref
+                        .read(amcProvider.notifier)
+                        .updateContract(id, payload)
+                  : await ref.read(amcProvider.notifier).create(payload);
+              if (!context.mounted) return;
+              if (ok) {
+                Navigator.of(context).pop();
+              }
+              AppToast.show(
+                context,
+                message: ok ? 'Contract updated!' : 'Operation failed',
+                type: ok ? AppToastType.success : AppToastType.error,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -1198,60 +1166,6 @@ class _AmcCard extends StatelessWidget {
               ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  const _StatPill({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final int value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              color: Theme.of(context).hintColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            '$value',
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
         ],
       ),
     );

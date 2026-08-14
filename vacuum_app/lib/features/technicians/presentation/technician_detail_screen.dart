@@ -16,6 +16,7 @@ import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../application/technicians_notifier.dart';
 import '../domain/technician.dart';
@@ -85,7 +86,12 @@ class _TechnicianDetailScreenState
             onRefresh: _load,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                24 + MediaQuery.of(context).padding.bottom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -301,66 +307,44 @@ class _TechnicianDetailScreenState
                           ),
                       ],
                     ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppButton(
-                          label: 'Back',
-                          variant: AppButtonVariant.secondary,
-                          expanded: true,
-                          onPressed: () => context.go('/technicians'),
-                        ),
-                      ),
-                      if (canEdit) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AppButton(
-                            label: 'Edit',
-                            expanded: true,
-                            onPressed: () =>
-                                context.push('/technicians/${widget.id}/edit'),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
                   if (canDelete) ...[
                     const SizedBox(height: 12),
-                    AppButton(
-                      label: 'Delete Technician',
-                      variant: AppButtonVariant.danger,
-                      expanded: true,
-                      onPressed: () async {
-                        final confirmed = await showConfirmDialog(
-                          context,
-                          title: 'Delete Technician',
-                          body:
-                              'This will permanently remove ${tech.name}. This cannot be undone.',
-                          confirmLabel: 'Delete',
-                          confirmVariant: AppButtonVariant.danger,
-                        );
-                        if (!confirmed || !context.mounted) return;
-                        try {
-                          await ref
-                              .read(techniciansProvider.notifier)
-                              .delete(tech.id);
-                          if (!context.mounted) return;
-                          context.go('/technicians');
-                          AppToast.show(
+                    BottomSafeArea(
+                      child: AppButton(
+                        label: 'Delete Technician',
+                        variant: AppButtonVariant.danger,
+                        expanded: true,
+                        onPressed: () async {
+                          final confirmed = await showConfirmDialog(
                             context,
-                            message: 'Technician removed',
-                            type: AppToastType.success,
+                            title: 'Delete Technician',
+                            body:
+                                'This will permanently remove ${tech.name}. This cannot be undone.',
+                            confirmLabel: 'Delete',
+                            confirmVariant: AppButtonVariant.danger,
                           );
-                        } catch (e) {
-                          if (!context.mounted) return;
-                          AppToast.show(
-                            context,
-                            message: friendlyErrorMessage(e),
-                            type: AppToastType.error,
-                          );
-                        }
-                      },
+                          if (!confirmed || !context.mounted) return;
+                          try {
+                            await ref
+                                .read(techniciansProvider.notifier)
+                                .delete(tech.id);
+                            if (!context.mounted) return;
+                            context.go('/technicians');
+                            AppToast.show(
+                              context,
+                              message: 'Technician removed',
+                              type: AppToastType.success,
+                            );
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            AppToast.show(
+                              context,
+                              message: friendlyErrorMessage(e),
+                              type: AppToastType.error,
+                            );
+                          }
+                        },
+                      ),
                     ),
                   ],
                 ],

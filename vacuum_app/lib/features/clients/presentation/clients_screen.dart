@@ -14,7 +14,6 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
@@ -87,20 +86,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
-              title: 'Clients',
-              subtitle: state.whenOrNull(
-                data: (d) =>
-                    '${d.items.where((c) => c.status == "Active").length} active clients',
-              ),
-              action: canEdit
-                  ? AppButton(
-                      label: '+ Add Client',
-                      onPressed: () => context.push('/clients/new'),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 12),
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,10 +114,27 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Track clients, contract value and status',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Clients',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w900),
+                                  ),
+                                ),
+                                if (canEdit) ...[
+                                  const SizedBox(width: 12),
+                                  AppButton(
+                                    label: '+ Add Client',
+                                    size: AppButtonSize.sm,
+                                    onPressed: () =>
+                                        context.push('/clients/new'),
+                                  ),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -144,41 +146,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _StatPill(
-                        label: 'Active',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((c) => c.status == 'Active')
-                                  .length,
-                            ) ??
-                            0,
-                        color: AppColors.emerald500,
-                      ),
-                      _StatPill(
-                        label: 'Inactive',
-                        value:
-                            state.whenOrNull(
-                              data: (d) => d.items
-                                  .where((c) => c.status == 'Inactive')
-                                  .length,
-                            ) ??
-                            0,
-                        color: AppColors.red500,
-                      ),
-                      _StatPill(
-                        label: 'All',
-                        value:
-                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
-                        color: AppColors.blue600,
                       ),
                     ],
                   ),
@@ -214,19 +181,39 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: AppButton(
-                      label: 'Reset',
-                      variant: AppButtonVariant.secondary,
-                      size: AppButtonSize.sm,
-                      onPressed: () {
-                        _searchController.clear();
-                        ref
-                            .read(clientsProvider.notifier)
-                            .filter(search: '', type: '');
-                      },
-                    ),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _StatPill(
+                        label: 'Active',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((c) => c.status == 'Active')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.emerald500,
+                      ),
+                      _StatPill(
+                        label: 'Inactive',
+                        value:
+                            state.whenOrNull(
+                              data: (d) => d.items
+                                  .where((c) => c.status == 'Inactive')
+                                  .length,
+                            ) ??
+                            0,
+                        color: AppColors.red500,
+                      ),
+                      _StatPill(
+                        label: 'All',
+                        value:
+                            state.whenOrNull(data: (d) => d.items.length) ?? 0,
+                        color: AppColors.blue600,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -253,7 +240,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     _ClientsGrid(
                       items: data.items,
                       canEdit: canEdit,
-                      onTap: (c) => _openDetailSheet(context, c, canEdit),
+                      onTap: (c) => context.push('/clients/${c.id}'),
                       onEdit: (c) => _openFormSheet(context, c),
                       onDelete: (c) => _confirmDelete(context, c),
                     ),
@@ -289,32 +276,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                 : 'Operation failed',
             type: ok ? AppToastType.success : AppToastType.error,
           );
-        },
-      ),
-    );
-  }
-
-  Future<void> _openDetailSheet(
-    BuildContext context,
-    Client client,
-    bool canEdit,
-  ) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
-      builder: (_) => _ClientDetailSheet(
-        client: client,
-        canEdit: canEdit,
-        fetch: () => ref.read(clientsProvider.notifier).fetchDetail(client.id),
-        onEdit: () async {
-          Navigator.of(context).pop();
-          await _openFormSheet(context, client);
-        },
-        onDelete: () async {
-          Navigator.of(context).pop();
-          await _confirmDelete(context, client);
         },
       ),
     );
@@ -710,33 +671,6 @@ class _StatPill extends StatelessWidget {
   }
 }
 
-class _DetailPill extends StatelessWidget {
-  const _DetailPill({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Text(
-        '$label: $value',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.icon, required this.text});
 
@@ -763,318 +697,6 @@ class _InfoRow extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ClientDetailSheet extends StatelessWidget {
-  const _ClientDetailSheet({
-    required this.client,
-    required this.canEdit,
-    required this.fetch,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final Client client;
-  final bool canEdit;
-  final Future<Client?> Function() fetch;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.92,
-      minChildSize: 0.6,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scroll) => SingleChildScrollView(
-        controller: scroll,
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          MediaQuery.of(context).viewInsets.bottom + 16,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: const LinearGradient(
-                  colors: [AppColors.blue600, Color(0xFF1D4ED8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.apartment_outlined,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              client.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 18,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              client.contactPerson,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Close',
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _DetailPill(label: 'Status', value: client.status),
-                      _DetailPill(label: 'Type', value: client.type),
-                      _DetailPill(
-                        label: 'Value',
-                        value: fmtRevenue(client.contractValue),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            FutureBuilder<Client?>(
-              future: fetch(),
-              builder: (context, snapshot) {
-                final detail = snapshot.data;
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const AppCard(child: ShimmerBox(height: 140));
-                }
-                final stats = detail?.stats;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatBox(
-                            label: 'Total Jobs',
-                            value: '${stats?.totalJobs ?? 0}',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatBox(
-                            label: 'Open Jobs',
-                            value: '${stats?.openJobs ?? 0}',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatBox(
-                            label: 'Active AMC',
-                            value: '${stats?.activeAmcCount ?? 0}',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Contact',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    AppCard(
-                      child: Column(
-                        children: [
-                          if ((detail?.email ?? client.email).isNotEmpty)
-                            _DetailRow(
-                              icon: Icons.mail_outline,
-                              text: detail?.email ?? client.email,
-                            ),
-                          if ((detail?.phone ?? client.phone).isNotEmpty)
-                            _DetailRow(
-                              icon: Icons.phone_outlined,
-                              text: detail?.phone ?? client.phone,
-                            ),
-                          if ((detail?.address ?? client.address).isNotEmpty)
-                            _DetailRow(
-                              icon: Icons.location_on_outlined,
-                              text: detail?.address ?? client.address,
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Contract',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatBox(
-                            label: 'Value',
-                            value: fmtRevenue(
-                              detail?.contractValue ?? client.contractValue,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StatBox(
-                            label: 'Since',
-                            value: _shortDate(
-                              detail?.joinDate ?? client.joinDate,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (canEdit) ...[
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppButton(
-                              label: 'Edit Client',
-                              variant: AppButtonVariant.secondary,
-                              expanded: true,
-                              onPressed: onEdit,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: AppButton(
-                              label: 'Delete',
-                              variant: AppButtonVariant.danger,
-                              expanded: true,
-                              onPressed: onDelete,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF111827)
-                  : AppColors.gray50,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 16, color: AppColors.blue600),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, overflow: TextOverflow.ellipsis, maxLines: 2),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF111827) : AppColors.gray50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Theme.of(context).hintColor,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
-        ],
-      ),
-    );
-  }
-}
-
-String _shortDate(String? value) {
-  final v = (value ?? '').trim();
-  if (v.isEmpty) return '—';
-  if (v.length >= 10) return v.substring(0, 10);
-  return v;
 }
 
 class _ClientFormSheet extends StatefulWidget {

@@ -15,7 +15,6 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_notifier.dart';
@@ -91,66 +90,55 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeader(
-              title: 'Visit Scheduled',
-              subtitle: state.whenOrNull(
-                data: (d) =>
-                    '${d.items.where((j) => j.status != "Closed").length} active orders',
-              ),
-              action: canRaise
-                  ? AppButton(
-                      label: 'Raise Job',
-                      onPressed: () => context.push('/jobs/new'),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            state.whenOrNull(
-                  data: (d) => AppCard(
-                    child: Row(
+            AppCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.work_outline, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF2563EB), Color(0xFF0F172A)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.work_outline,
-                            color: Colors.white,
-                          ),
+                        Text(
+                          'Visit Scheduled',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Track work orders like the web app',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w900),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Raised, assigned, in progress, and closed jobs stay visible in one dense list.',
-                                style: TextStyle(
-                                  color: Theme.of(context).hintColor,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Raised, assigned, in progress, and closed jobs stay visible in one dense list.',
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ) ??
-                const SizedBox.shrink(),
+                  if (canRaise) ...[
+                    const SizedBox(width: 12),
+                    AppButton(
+                      label: '+ Raise Job',
+                      size: AppButtonSize.sm,
+                      onPressed: () => context.push('/jobs/new'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _searchController,
@@ -174,89 +162,41 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                   for (final s in _statuses)
                     s: data.items.where((j) => j.status == s).length,
                 };
-                final activeCount = data.items
-                    .where((j) => j.status != 'Closed')
-                    .length;
-
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AppCard(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Filter Jobs',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '$activeCount active of ${data.items.length} total',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Theme.of(context).hintColor,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.tune_rounded,
-                                size: 18,
-                                color: Theme.of(context).hintColor,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: [
-                              _StatPill(
-                                label: 'Raised',
-                                value: counts['Raised'] ?? 0,
-                                color: AppColors.purple500,
-                              ),
-                              _StatPill(
-                                label: 'Assigned',
-                                value: counts['Assigned'] ?? 0,
-                                color: AppColors.blue500,
-                              ),
-                              _StatPill(
-                                label: 'In Progress',
-                                value: counts['In Progress'] ?? 0,
-                                color: AppColors.amber500,
-                              ),
-                              _StatPill(
-                                label: 'Closed',
-                                value: counts['Closed'] ?? 0,
-                                color: AppColors.emerald500,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          _FilterTabs(
-                            value: data.statusFilter,
-                            counts: counts,
-                            onChanged: (s) =>
-                                ref.read(jobsProvider.notifier).setFilter(s),
-                          ),
-                        ],
-                      ),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _StatPill(
+                          label: 'Raised',
+                          value: counts['Raised'] ?? 0,
+                          color: AppColors.purple500,
+                        ),
+                        _StatPill(
+                          label: 'Assigned',
+                          value: counts['Assigned'] ?? 0,
+                          color: AppColors.blue500,
+                        ),
+                        _StatPill(
+                          label: 'In Progress',
+                          value: counts['In Progress'] ?? 0,
+                          color: AppColors.amber500,
+                        ),
+                        _StatPill(
+                          label: 'Closed',
+                          value: counts['Closed'] ?? 0,
+                          color: AppColors.emerald500,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _FilterTabs(
+                      value: data.statusFilter,
+                      counts: counts,
+                      onChanged: (s) =>
+                          ref.read(jobsProvider.notifier).setFilter(s),
                     ),
                     const SizedBox(height: 16),
                     if (data.items.isEmpty)

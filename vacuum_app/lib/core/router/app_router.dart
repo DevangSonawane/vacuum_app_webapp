@@ -160,6 +160,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AmcCreateScreen(),
           ),
           GoRoute(
+            path: '/amc/:id/edit',
+            builder: (context, state) =>
+                AmcEditScreen(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
             path: '/attendance',
             builder: (context, state) => const AttendanceEmployeesScreen(),
           ),

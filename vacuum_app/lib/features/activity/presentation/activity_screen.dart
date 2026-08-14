@@ -9,7 +9,6 @@ import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/section_header.dart';
 import '../../auth/application/auth_notifier.dart';
 import '../../notifications/application/notifications_notifier.dart';
 import '../../notifications/domain/app_notification.dart';
@@ -67,35 +66,38 @@ class ActivityScreen extends ConsumerWidget {
     final notif = ref.watch(notificationsProvider).valueOrNull;
     final notifUnread = notif?.unreadCount ?? 0;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
-            title: 'Activity History',
-            action: IconButton(
-              tooltip: 'Refresh',
-              onPressed: () {
-                if (tab == 0) {
-                  ref.read(activityProvider.notifier).refresh();
-                } else {
-                  ref.read(notificationsProvider.notifier).refresh();
-                }
-              },
-              icon: const Icon(Icons.refresh),
+    return RefreshIndicator(
+      onRefresh: () {
+        if (tab == 0) {
+          return ref.read(activityProvider.notifier).refresh();
+        }
+        return ref.read(notificationsProvider.notifier).refresh();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          24 + MediaQuery.of(context).padding.bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _TabsRow(
+              index: tab,
+              unreadCount: notifUnread,
+              connected: notif?.connected ?? false,
+              onChanged: (i) =>
+                  ref.read(activityTabProvider.notifier).state = i,
             ),
-          ),
-          const SizedBox(height: 12),
-          _TabsRow(
-            index: tab,
-            unreadCount: notifUnread,
-            connected: notif?.connected ?? false,
-            onChanged: (i) => ref.read(activityTabProvider.notifier).state = i,
-          ),
-          const SizedBox(height: 12),
-          if (tab == 0) const _ActivityLogTab() else const _NotificationsTab(),
-        ],
+            const SizedBox(height: 12),
+            if (tab == 0)
+              const _ActivityLogTab()
+            else
+              const _NotificationsTab(),
+          ],
+        ),
       ),
     );
   }
