@@ -87,6 +87,16 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
     }
   }
 
+  Future<bool> changePassword(int id, String password) async {
+    try {
+      await _repo.setPassword(id, password);
+      await refresh();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> deactivate(int id) async {
     try {
       await _repo.deactivateUser(id);

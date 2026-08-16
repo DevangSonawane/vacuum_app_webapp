@@ -11,6 +11,7 @@ class Report {
     required this.findings,
     required this.recommendations,
     required this.approvedAt,
+    this.technicianId,
     this.companyName,
     this.contactPerson,
     this.modelSerialInstallation,
@@ -45,6 +46,7 @@ class Report {
   final String findings;
   final String recommendations;
   final String? approvedAt;
+  final String? technicianId; // json: technician_id
   final String? companyName; // json: company_name
   final String? contactPerson; // json: contact_person
   final String? modelSerialInstallation; // json: model_serial_installation
@@ -94,6 +96,7 @@ class Report {
       findings: s(json['findings']),
       recommendations: s(json['recommendations']),
       approvedAt: json['approved_at']?.toString(),
+      technicianId: (json['technician_id'] as Object?)?.toString(),
       companyName: (json['company_name'] as Object?)?.toString(),
       contactPerson: (json['contact_person'] as Object?)?.toString(),
       modelSerialInstallation:

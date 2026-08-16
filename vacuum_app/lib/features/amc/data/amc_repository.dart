@@ -60,6 +60,29 @@ class AmcRepository {
   Future<void> sendEmail(String id, String email) =>
       _dio.post('amc/$id/send-email', data: {'email': email.trim()});
 
+  Future<List<int>> exportExcel({
+    String status = '',
+    String year = '',
+    String clientId = '',
+  }) async {
+    final response = await _dio.get(
+      'amc/export/excel',
+      queryParameters: {
+        if (status.isNotEmpty) 'status': status,
+        if (year.isNotEmpty) 'year': year,
+        if (clientId.isNotEmpty) 'client_id': clientId,
+      },
+      options: Options(responseType: ResponseType.bytes),
+    );
+
+    final data = response.data;
+    if (data is List<int>) return data;
+    if (data is List) {
+      return data.map((e) => e is int ? e : int.parse(e.toString())).toList();
+    }
+    throw Exception('Invalid Excel response from server.');
+  }
+
   Future<void> update(String id, Map<String, dynamic> payload) =>
       _dio.put('amc/$id', data: payload);
   Future<void> delete(String id) => _dio.delete('amc/$id');

@@ -1,12 +1,15 @@
 // ignore_for_file: use_build_context_synchronously, dead_code
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
@@ -164,15 +167,31 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (canEdit)
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: AppButton(
-                                label: '+ Add Contract',
-                                size: AppButtonSize.sm,
-                                onPressed: () => context.push('/amc/new'),
-                              ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.end,
+                              children: [
+                                AppButton(
+                                  label: 'Export',
+                                  size: AppButtonSize.sm,
+                                  variant: AppButtonVariant.secondary,
+                                  leading: const Icon(
+                                    Icons.download_outlined,
+                                  ),
+                                  onPressed: () => _openExportDialog(context),
+                                ),
+                                if (canEdit)
+                                  AppButton(
+                                    label: '+ Add Contract',
+                                    size: AppButtonSize.sm,
+                                    onPressed: () => context.push('/amc/new'),
+                                  ),
+                              ],
                             ),
+                          ),
                         ],
                       );
                     },
@@ -270,6 +289,16 @@ class _AmcScreenState extends ConsumerState<AmcScreen> {
       builder: (dialogContext) => _AmcSendEmailDialog(
         contractId: contract.id,
         initialEmail: (contract.clientEmail ?? '').trim(),
+        dio: ref.read(dioProvider),
+      ),
+    );
+  }
+
+  Future<void> _openExportDialog(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _AmcExportDialog(
         dio: ref.read(dioProvider),
       ),
     );
@@ -868,6 +897,206 @@ class _AmcSendEmailDialogState extends State<_AmcSendEmailDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AmcExportDialog extends StatefulWidget {
+  const _AmcExportDialog({required this.dio});
+
+  final Dio dio;
+
+  @override
+  State<_AmcExportDialog> createState() => _AmcExportDialogState();
+}
+
+class _AmcExportDialogState extends State<_AmcExportDialog> {
+  final _yearController = TextEditingController();
+  bool _loadingClients = true;
+  bool _exporting = false;
+  String _status = '';
+  String _clientId = '';
+  List<Client> _clients = const [];
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _yearController.text = DateTime.now().year.toString();
+    _loadClients();
+  }
+
+  @override
+  void dispose() {
+    _yearController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadClients() async {
+    setState(() {
+      _loadingClients = true;
+      _error = null;
+    });
+    try {
+      final repo = ClientsRepository(dio: widget.dio);
+      final clients = await repo.fetchClients(limit: 500, search: '', type: '');
+      if (!mounted) return;
+      setState(() {
+        _clients = clients;
+      });
+    } catch (err) {
+      if (!mounted) return;
+      setState(() {
+        _error = friendlyErrorMessage(err);
+        _clients = const [];
+      });
+    } finally {
+      if (mounted) setState(() => _loadingClients = false);
+    }
+  }
+
+  Future<void> _download() async {
+    if (_exporting) return;
+    final repo = AmcRepository(dio: widget.dio);
+    setState(() => _exporting = true);
+    try {
+      final bytes = await repo.exportExcel(
+        status: _status,
+        year: _yearController.text.trim(),
+        clientId: _clientId,
+      );
+
+      final tempDir = await getTemporaryDirectory();
+      final parts = <String>[
+        'AMC_Report',
+        _yearController.text.trim(),
+        if (_status.trim().isNotEmpty) _status.trim(),
+      ].where((part) => part.isNotEmpty).toList(growable: false);
+      final fileName = '${parts.join('_')}.xlsx';
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(bytes, flush: true);
+
+      final opened = await OpenFile.open(file.path);
+      if (opened.type != ResultType.done) {
+        throw Exception(opened.message);
+      }
+
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Excel downloaded!',
+        type: AppToastType.success,
+      );
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } catch (err) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: friendlyErrorMessage(err),
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentYear = DateTime.now().year;
+    final yearOptions = <AppDropdownItem<String>>[
+      const AppDropdownItem<String>(value: '', label: 'All Years'),
+      for (final y in [currentYear - 1, currentYear, currentYear + 1])
+        AppDropdownItem<String>(value: '$y', label: '$y'),
+    ];
+    final statusOptions = const [
+      AppDropdownItem<String>(value: '', label: 'All Statuses'),
+      AppDropdownItem<String>(value: 'Active', label: 'Active'),
+      AppDropdownItem<String>(value: 'Expiring Soon', label: 'Expiring Soon'),
+      AppDropdownItem<String>(value: 'Expired', label: 'Expired'),
+    ];
+    final clientOptions = <AppDropdownItem<String>>[
+      const AppDropdownItem<String>(value: '', label: 'All Clients'),
+      for (final client in _clients)
+        AppDropdownItem<String>(value: '${client.id}', label: client.name),
+    ];
+
+    return AlertDialog(
+      title: const Text('Export AMC Report'),
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Download an Excel report of AMC contracts with optional filters.',
+                style: TextStyle(color: Theme.of(context).hintColor),
+              ),
+              const SizedBox(height: 16),
+              AppDropdownField<String>(
+                label: 'Status',
+                value: _status,
+                items: statusOptions,
+                allowNull: true,
+                nullLabel: 'All Statuses',
+                onChanged: (value) => setState(() => _status = value ?? ''),
+              ),
+              const SizedBox(height: 12),
+              AppDropdownField<String>(
+                label: 'Year (contract start year)',
+                value: _yearController.text.trim().isEmpty
+                    ? null
+                    : _yearController.text.trim(),
+                items: yearOptions,
+                allowNull: true,
+                nullLabel: 'All Years',
+                onChanged: (value) {
+                  setState(() {
+                    _yearController.text = value ?? '';
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              AppDropdownField<String>(
+                label: 'Client',
+                value: _clientId,
+                items: clientOptions,
+                allowNull: true,
+                nullLabel: 'All Clients',
+                onChanged: (value) => setState(() => _clientId = value ?? ''),
+              ),
+              if (_loadingClients) ...[
+                const SizedBox(height: 12),
+                const LinearProgressIndicator(),
+              ] else if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _exporting
+              ? null
+              : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        AppButton(
+          label: _exporting ? 'Exporting…' : 'Download Excel',
+          loading: _exporting,
+          onPressed: (_exporting || _loadingClients) ? null : _download,
+        ),
+      ],
     );
   }
 }

@@ -48,7 +48,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final lowerRole = role.toLowerCase();
-    final canEdit = !['technician', 'engineer', 'labour'].contains(lowerRole);
+    final canCreate = lowerRole != 'labour';
     final canApprove = role == 'admin';
 
     final state = ref.watch(reportsProvider);
@@ -107,7 +107,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       ),
                     ],
                   ),
-                  if (canEdit) ...[
+                  if (canCreate) ...[
                     const SizedBox(height: 14),
                     Align(
                       alignment: Alignment.centerRight,

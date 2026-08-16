@@ -40,6 +40,13 @@ class UsersRepository {
     await _dio.put('users/$id', data: payload);
   }
 
+  Future<void> setPassword(int id, String newPassword) async {
+    await _dio.put(
+      'users/$id/password',
+      data: {'new_password': newPassword},
+    );
+  }
+
   Future<void> createUser(Map<String, dynamic> payload) async {
     await _dio.post('auth/register', data: payload);
   }

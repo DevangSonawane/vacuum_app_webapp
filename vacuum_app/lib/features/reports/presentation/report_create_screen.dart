@@ -16,7 +16,9 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/shimmer_box.dart';
+import '../../auth/application/auth_notifier.dart';
 import '../../clients/data/clients_repository.dart';
+import '../domain/report.dart';
 import '../../technicians/data/technicians_repository.dart';
 import '../application/reports_notifier.dart';
 
@@ -25,6 +27,8 @@ class ReportCreateScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).valueOrNull?.user;
+
     void close() {
       final nav = Navigator.of(context);
       if (nav.canPop()) {
@@ -36,6 +40,11 @@ class ReportCreateScreen extends ConsumerWidget {
 
     return _ServiceReportWizard(
       dio: ref.read(dioProvider),
+      initialReport: null,
+      isEditing: false,
+      currentUserId: user?.id,
+      currentUserName: user?.fullName ?? user?.firstName ?? 'You',
+      currentRole: user?.role ?? '',
       onSubmit: (payload, photos, technicalReports) async {
         final id = await ref
             .read(reportsProvider.notifier)
@@ -64,10 +73,122 @@ class ReportCreateScreen extends ConsumerWidget {
   }
 }
 
+class ReportEditScreen extends ConsumerStatefulWidget {
+  const ReportEditScreen({super.key, required this.id});
+
+  final String id;
+
+  @override
+  ConsumerState<ReportEditScreen> createState() => _ReportEditScreenState();
+}
+
+class _ReportEditScreenState extends ConsumerState<ReportEditScreen> {
+  Report? _report;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final report = await ref.read(reportsProvider.notifier).fetchDetail(widget.id);
+    if (!mounted) return;
+    setState(() {
+      _report = report;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).valueOrNull?.user;
+    if (_loading) {
+      return const Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: AppCard(child: ShimmerBox(height: 420)),
+          ),
+        ),
+      );
+    }
+
+    final report = _report;
+    if (report == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit Report')),
+        body: const Center(child: Text('Report not found')),
+      );
+    }
+
+    final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
+    final canEdit = _canEdit(role, report);
+    if (!canEdit) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit Report')),
+        body: const Center(child: Text('You cannot edit this report.')),
+      );
+    }
+
+    return _ServiceReportWizard(
+      dio: ref.read(dioProvider),
+      initialReport: report,
+      isEditing: true,
+      currentUserId: user?.id,
+      currentUserName: user?.fullName ?? user?.firstName ?? 'You',
+      currentRole: user?.role ?? '',
+      onSubmit: (payload, photos, technicalReports) async {
+        final ok = await ref.read(reportsProvider.notifier).updateWithUploads(
+              id: report.id,
+              payload: payload,
+              photos: photos,
+              technicalReports: technicalReports,
+            );
+        if (!context.mounted) return;
+        if (ok) {
+          AppToast.show(
+            context,
+            message: 'Report updated',
+            type: AppToastType.success,
+          );
+          context.go('/reports/${report.id}');
+        } else {
+          AppToast.show(
+            context,
+            message: 'Failed to update report',
+            type: AppToastType.error,
+          );
+        }
+      },
+    );
+  }
+
+  bool _canEdit(String role, Report report) {
+    final lower = role.toLowerCase();
+    return report.status != 'Approved' &&
+        (const ['admin', 'manager'].contains(lower) || lower == 'technician');
+  }
+}
+
 class _ServiceReportWizard extends StatefulWidget {
-  const _ServiceReportWizard({required this.dio, required this.onSubmit});
+  const _ServiceReportWizard({
+    required this.dio,
+    required this.onSubmit,
+    this.initialReport,
+    this.isEditing = false,
+    this.currentUserId,
+    this.currentUserName = 'You',
+    this.currentRole = '',
+  });
 
   final Dio dio;
+  final Report? initialReport;
+  final bool isEditing;
+  final int? currentUserId;
+  final String currentUserName;
+  final String currentRole;
   final Future<void> Function(
     Map<String, dynamic> payload,
     List<({String path, String name})> photos,
@@ -285,6 +406,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       String clientEmail,
       String contactPerson,
       String location,
+      String? amcId,
+      List<({int id, String name})> technicians,
     })
   >
   _jobs = const [];
@@ -294,6 +417,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   >
   _clients = const [];
   List<String> _poNumbers = const [];
+  final Map<String, String> _amcPoById = {};
 
   // form fields
   String? _jobId;
@@ -336,6 +460,16 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   @override
+  void didUpdateWidget(covariant _ServiceReportWizard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialReport?.id != widget.initialReport?.id &&
+        widget.initialReport != null &&
+        !_fetching) {
+      _applyInitialReport(widget.initialReport!);
+    }
+  }
+
+  @override
   void dispose() {
     _title.dispose();
     _serialNo.dispose();
@@ -371,6 +505,19 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             final clientId =
                 (e['client_id'] as num?)?.toInt() ??
                 int.tryParse('${e['client_id'] ?? ''}');
+            final technicians = <({int id, String name})>[];
+            for (final rawTech in (e['technicians'] as List? ?? const [])) {
+              if (rawTech is! Map) continue;
+              final tech = rawTech.map((k, v) => MapEntry(k.toString(), v));
+              final techId =
+                  (tech['id'] as num?)?.toInt() ??
+                  int.tryParse('${tech['id'] ?? ''}') ??
+                  0;
+              final techName = (tech['name'] ?? '').toString();
+              if (techId != 0) {
+                technicians.add((id: techId, name: techName));
+              }
+            }
             return (
               id: (e['id'] ?? '').toString(),
               title: (e['title'] ?? '').toString(),
@@ -379,6 +526,10 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
               clientEmail: (e['client_email'] ?? '').toString(),
               contactPerson: (e['contact_person'] ?? '').toString(),
               location: (e['location'] ?? '').toString(),
+              amcId: (e['amc_id'] ?? '').toString().trim().isEmpty
+                  ? null
+                  : (e['amc_id'] ?? '').toString(),
+              technicians: technicians,
             );
           })
           .where((e) => e.id.isNotEmpty)
@@ -410,8 +561,12 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
         final amcList = _asList(amcRoot['data']);
         final set = <String>{};
         for (final raw in amcList.whereType<Map>()) {
+          final amcId = (raw['id'] ?? '').toString().trim();
           final v = (raw['po_number'] ?? '').toString().trim();
           if (v.isNotEmpty) set.add(v);
+          if (amcId.isNotEmpty && v.isNotEmpty) {
+            _amcPoById[amcId] = v;
+          }
         }
         _poNumbers = set.toList()..sort();
       } catch (_) {
@@ -420,8 +575,83 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     } catch (_) {
       // ignore
     } finally {
+      if (widget.initialReport != null) {
+        _applyInitialReport(widget.initialReport!);
+      } else {
+        _syncJobSelection();
+      }
       if (mounted) setState(() => _fetching = false);
     }
+  }
+
+  void _applyInitialReport(Report report) {
+    _jobId = report.jobId.trim().isEmpty ? null : report.jobId.trim();
+    _techId = int.tryParse((report.technicianId ?? '').trim());
+    _clientId = int.tryParse((report.clientId ?? '').trim());
+    _clientName = report.clientName.trim();
+    _poNumber = (report.poNumber ?? '').trim().isEmpty
+        ? null
+        : report.poNumber!.trim();
+
+    _title.text = report.title;
+    _serialNo.text = (report.serialNo ?? '').trim();
+    _clientEmail.text = (report.clientEmail ?? '').trim();
+    _companyName.text = (report.companyName ?? report.clientName).trim();
+    _contactPerson.text = (report.contactPerson ?? '').trim();
+    _location.text = (report.location ?? '').trim();
+    _modelSerialInstallation.text = (report.modelSerialInstallation ?? '').trim();
+    _operatingHoursPerDay.text = (report.operatingHoursPerDay ?? '').trim();
+    _applicationProcessDescription.text =
+        (report.applicationProcessDescription ?? '').trim();
+    _findings.text = report.findings;
+    _recommendations.text = report.recommendations;
+    _comments.text = (report.comments ?? '').trim();
+    _remarks.text = (report.remarks ?? '').trim();
+    _vdtRepresentativeName.text = (report.vdtRepresentativeName ?? '').trim();
+    _clientRepresentativeName.text =
+        (report.clientRepresentativeName ?? '').trim();
+
+    for (int i = 0; i < _checklist.length; i++) {
+      final existing = report.checklistItems.where((item) => item.sr == i + 1);
+      if (existing.isNotEmpty) {
+        _checklist[i] = _checklist[i].copyWith(status: existing.first.status);
+      }
+    }
+
+    _issues
+      ..clear()
+      ..addAll(
+        report.issueObservations.isEmpty
+            ? [_IssueRow.empty(sr: 1)]
+            : [
+                for (final item in report.issueObservations)
+                  _IssueRow(
+                    sr: item.sr == 0 ? 1 : item.sr,
+                    issue: item.issue,
+                    observation: item.observation,
+                    impactOnPump: item.impactOnPump,
+                    severity: item.severity,
+                    recommendedSpares: item.recommendedSpares,
+                  ),
+              ],
+      );
+
+    _spares
+      ..clear()
+      ..addAll(
+        report.mandatorySpares.isEmpty
+            ? _defaultSpares.map((e) => e.copy()).toList()
+            : [
+                for (final item in report.mandatorySpares)
+                  _SpareRow(
+                    spareName: item.spareName,
+                    pumpModel: item.pumpModel,
+                    totalToOrder: item.totalToOrder,
+                ),
+              ],
+      );
+
+    _syncJobSelection();
   }
 
   void _applyJob(String id) {
@@ -459,6 +689,17 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     if (location.isNotEmpty) {
       _location.text = location;
     }
+
+    if (_isTechnician && widget.currentUserId != null) {
+      _techId = widget.currentUserId;
+    } else if (job.technicians.isNotEmpty) {
+      _techId = job.technicians.first.id;
+    }
+
+    final amcPo = job.amcId == null ? null : _amcPoById[job.amcId!];
+    if ((amcPo ?? '').trim().isNotEmpty) {
+      _poNumber = amcPo;
+    }
   }
 
   ({
@@ -469,12 +710,40 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     String clientEmail,
     String contactPerson,
     String location,
+    String? amcId,
+    List<({int id, String name})> technicians,
   })?
   _findJob(String id) {
     for (final j in _jobs) {
       if (j.id == id) return j;
     }
     return null;
+  }
+
+  void _syncJobSelection() {
+    final jobId = _jobId?.trim();
+    if (_isTechnician && widget.currentUserId != null) {
+      if ((jobId ?? '').isEmpty) {
+        final visibleJobs = _jobs.where((job) {
+          return job.technicians
+              .any((tech) => tech.id == widget.currentUserId);
+        }).toList(growable: false);
+        if (visibleJobs.length == 1) {
+          _jobId = visibleJobs.first.id;
+        }
+      }
+
+      if ((_jobId ?? '').trim().isNotEmpty) {
+        _applyJob(_jobId!);
+      } else {
+        _techId = widget.currentUserId;
+      }
+      return;
+    }
+
+    if ((jobId ?? '').isNotEmpty) {
+      _applyJob(jobId!);
+    }
   }
 
   ({int id, String name, String email, String contactPerson, String address})?
@@ -508,6 +777,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   void _prev() => setState(() => _step = (_step - 1).clamp(1, 5));
+
+  bool get _isTechnician => widget.currentRole.toLowerCase() == 'technician';
 
   Future<void> _pickTechnicalReports() async {
     final result = await FilePicker.platform.pickFiles(
@@ -690,7 +961,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionHeader(
-                title: 'Create Service Report',
+                title: widget.isEditing
+                    ? 'Edit Service Report'
+                    : 'Create Service Report',
                 subtitle:
                     'A 5-step wizard for client details, checklist, issues, spares and remarks.',
                 action: IconButton(
@@ -796,7 +1069,11 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: AppButton(
-                          label: step == 5 ? 'Submit Report' : 'Next',
+                          label: step == 5
+                              ? (widget.isEditing
+                                    ? 'Update Report'
+                                    : 'Submit Report')
+                              : 'Next',
                           expanded: true,
                           loading: _loading,
                           onPressed: _loading
@@ -905,6 +1182,16 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   Widget _dropdownJob() {
+    final visibleJobs = _isTechnician && widget.currentUserId != null
+        ? _jobs
+            .where(
+              (job) => job.technicians.any(
+                (tech) => tech.id == widget.currentUserId,
+              ),
+            )
+            .toList(growable: false)
+        : _jobs;
+
     return _SearchableDropdownString(
       label: 'Linked Job **',
       value: _jobId,
@@ -912,16 +1199,48 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       nullLabel: 'Select job...',
       enabled: !_loading,
       items: [
-        for (final j in _jobs) (value: j.id, label: '${j.id} — ${j.title}'),
+        for (final j in visibleJobs) (value: j.id, label: '${j.id} — ${j.title}'),
       ],
       onChanged: (v) => setState(() {
         _jobId = v;
-        if (v != null) _applyJob(v);
+        if (v != null) {
+          _applyJob(v);
+        }
       }),
     );
   }
 
   Widget _dropdownTech() {
+    if (_isTechnician) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Technician **',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF0B1220)
+                  : const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Text(
+              widget.currentUserName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      );
+    }
+
     return _SearchableDropdownInt(
       label: 'Technician **',
       value: _techId,
@@ -1256,8 +1575,6 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             lines: 2,
           ),
           const SizedBox(height: 12),
-          _field('Comments', _comments, hint: 'Comments…', lines: 2),
-          const SizedBox(height: 16),
           _field(
             'Remarks (PDF Page 3)',
             _remarks,
@@ -1265,31 +1582,69 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             lines: 3,
           ),
           const SizedBox(height: 16),
+          _field('Comments', _comments, hint: 'Comments…', lines: 2),
+          const SizedBox(height: 12),
+          const Divider(height: 24),
           Text(
-            'Service Photos',
+            'Signatures (PDF Page 4)',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: AppButton(
-                  label: 'Add Photos',
-                  variant: AppButtonVariant.secondary,
-                  leading: const Icon(Icons.photo_library_outlined),
-                  onPressed: _loading ? null : _pickPhotos,
+                child: _field(
+                  'VDT Representative Name',
+                  _vdtRepresentativeName,
+                  hint: 'Suresh Patil',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: AppButton(
-                  label: 'Camera',
-                  variant: AppButtonVariant.secondary,
-                  leading: const Icon(Icons.camera_alt_outlined),
-                  onPressed: _loading ? null : _capturePhoto,
+                child: _field(
+                  'Client Representative Name',
+                  _clientRepresentativeName,
+                  hint: 'Rajesh Mehta',
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Attachments',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Documents, reports, or photos',
+            style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          AppCard(
+            child: Column(
+              children: [
+                _UploadActionCard(
+                  title: 'Upload Document',
+                  subtitle: 'PDF, DOCX, XLSX…',
+                  icon: Icons.description_outlined,
+                  onTap: _loading ? null : _pickTechnicalReports,
+                ),
+                const SizedBox(height: 10),
+                _UploadActionCard(
+                  title: 'Upload Photo',
+                  subtitle: 'From gallery',
+                  icon: Icons.photo_library_outlined,
+                  onTap: _loading ? null : _pickPhotos,
+                ),
+                const SizedBox(height: 10),
+                _UploadActionCard(
+                  title: 'Capture Photo',
+                  subtitle: 'Use camera',
+                  icon: Icons.camera_alt_outlined,
+                  onTap: _loading ? null : _capturePhoto,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           if (_photos.isNotEmpty)
@@ -1298,7 +1653,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Attached photos',
+                    'Attached Photos',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 10),
@@ -1368,18 +1723,6 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
               'No photos selected yet.',
               style: TextStyle(color: Theme.of(context).hintColor),
             ),
-          const SizedBox(height: 16),
-          Text(
-            'Technical Reports',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          _UploadActionCard(
-            title: 'Technical Reports',
-            subtitle: 'PDF, DOCX, XLSX, or any file type',
-            icon: Icons.upload_file_outlined,
-            onTap: _loading ? null : _pickTechnicalReports,
-          ),
           const SizedBox(height: 12),
           if (_technicalReports.isNotEmpty) ...[
             AppCard(
@@ -1387,7 +1730,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Uploaded technical reports',
+                    'Uploaded Technical Reports',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
@@ -1413,30 +1756,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
           ],
-          const SizedBox(height: 12),
-          Text('Signatures', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _field(
-                  'VDT Representative Name',
-                  _vdtRepresentativeName,
-                  hint: 'VDT representative',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _field(
-                  'Client Representative Name',
-                  _clientRepresentativeName,
-                  hint: 'Client representative',
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -1652,7 +1972,7 @@ class _SearchableDropdownIntState extends State<_SearchableDropdownInt> {
                             onTap: () {
                               _controller.clear();
                               widget.onChanged(null);
-                              Navigator.of(context).maybePop();
+                              FocusManager.instance.primaryFocus?.unfocus();
                             },
                           );
                         }
@@ -1890,7 +2210,7 @@ class _SearchableDropdownStringState extends State<_SearchableDropdownString> {
                               _controller.clear();
                               widget.onChanged(null);
                               widget.onTextChanged?.call('');
-                              Navigator.of(context).maybePop();
+                              FocusManager.instance.primaryFocus?.unfocus();
                             },
                           );
                         }

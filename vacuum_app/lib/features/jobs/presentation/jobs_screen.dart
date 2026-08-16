@@ -422,7 +422,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final lowerRole = role.toLowerCase();
-    final canRaise = !['technician', 'labour'].contains(lowerRole);
+    final canRaise = lowerRole != 'labour';
     final canCancel = _canCancelJob(lowerRole);
     final canDelete = _canDeleteJob(lowerRole);
     final isAdmin = lowerRole == 'admin';
@@ -2082,13 +2082,14 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
                   color: AppColors.gray400,
                 ),
                 const SizedBox(width: 8),
-                Expanded(
+                Flexible(
                   child: Text(
                     value != null
                         ? value.toIso8601String().substring(0, 10)
                         : hint,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: TextStyle(
                       color: value != null ? null : AppColors.gray400,
                     ),

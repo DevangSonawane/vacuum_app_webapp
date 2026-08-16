@@ -174,6 +174,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                     ? null
                     : () => ref.read(usersProvider.notifier).nextPage(),
                 onEdit: (u) => _openUserSheet(context, ref, u),
+                onChangePassword: (u) =>
+                    _openPasswordSheet(context, ref, u),
                 onDeactivate: (u) => _confirmDeactivate(context, ref, u),
               ),
             ),
@@ -239,6 +241,34 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
       ),
     );
   }
+
+  Future<void> _openPasswordSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (ctx) => _ChangePasswordSheet(
+        user: user,
+        onSubmit: (password) async {
+          final ok = await ref
+              .read(usersProvider.notifier)
+              .changePassword(user.id, password);
+          if (!context.mounted) return;
+          Navigator.of(ctx).pop();
+          AppToast.show(
+            context,
+            message: ok ? 'Password updated!' : 'Operation failed',
+            type: ok ? AppToastType.success : AppToastType.error,
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _StatPill extends StatelessWidget {
@@ -283,6 +313,7 @@ class _UsersPremiumTable extends StatelessWidget {
     required this.onPrev,
     required this.onNext,
     required this.onEdit,
+    required this.onChangePassword,
     required this.onDeactivate,
   });
 
@@ -292,6 +323,7 @@ class _UsersPremiumTable extends StatelessWidget {
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
   final ValueChanged<AppUser> onEdit;
+  final ValueChanged<AppUser> onChangePassword;
   final ValueChanged<AppUser> onDeactivate;
 
   @override
@@ -404,6 +436,7 @@ class _UsersPremiumTable extends StatelessWidget {
                       index: i,
                       altColor: rowAlt,
                       onEdit: onEdit,
+                      onChangePassword: onChangePassword,
                       onDeactivate: onDeactivate,
                     ),
                 ],
@@ -494,6 +527,7 @@ class _UsersPremiumTable extends StatelessWidget {
     required int index,
     required Color altColor,
     required ValueChanged<AppUser> onEdit,
+    required ValueChanged<AppUser> onChangePassword,
     required ValueChanged<AppUser> onDeactivate,
   }) {
     final roleColors = _roleColors(user.role);
@@ -611,6 +645,8 @@ class _UsersPremiumTable extends StatelessWidget {
                 switch (action) {
                   case _UserAction.edit:
                     onEdit(user);
+                  case _UserAction.changePassword:
+                    onChangePassword(user);
                   case _UserAction.deactivate:
                     onDeactivate(user);
                 }
@@ -623,6 +659,16 @@ class _UsersPremiumTable extends StatelessWidget {
                       Icon(Icons.edit_outlined, size: 18),
                       SizedBox(width: 10),
                       Text('Edit user'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _UserAction.changePassword,
+                  child: Row(
+                    children: const [
+                      Icon(Icons.key_outlined, size: 18),
+                      SizedBox(width: 10),
+                      Text('Change password'),
                     ],
                   ),
                 ),
@@ -657,7 +703,7 @@ class _UsersPremiumTable extends StatelessWidget {
   }
 }
 
-enum _UserAction { edit, deactivate }
+enum _UserAction { edit, changePassword, deactivate }
 
 class _UserFormSheet extends StatefulWidget {
   const _UserFormSheet({
@@ -956,6 +1002,119 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChangePasswordSheet extends StatefulWidget {
+  const _ChangePasswordSheet({
+    required this.user,
+    required this.onSubmit,
+  });
+
+  final AppUser user;
+  final Future<void> Function(String password) onSubmit;
+
+  @override
+  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
+}
+
+class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
+  final _password = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_saving) return;
+    final password = _password.text.trim();
+    if (password.length < 6) {
+      AppToast.show(
+        context,
+        message: 'Password must be at least 6 characters.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await widget.onSubmit(password);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.55,
+      minChildSize: 0.35,
+      maxChildSize: 0.7,
+      expand: false,
+      builder: (context, scroll) => SingleChildScrollView(
+        controller: scroll,
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Change Password',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              widget.user.fullName,
+              style: TextStyle(
+                color: Theme.of(context).hintColor,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppInput(
+              label: 'New Password *',
+              controller: _password,
+              type: AppInputType.password,
+              enabled: !_saving,
+            ),
+            const SizedBox(height: 20),
+            BottomSafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: 'Cancel',
+                      variant: AppButtonVariant.secondary,
+                      expanded: true,
+                      onPressed: _saving
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      label: 'Update Password',
+                      expanded: true,
+                      loading: _saving,
+                      onPressed: _saving ? null : _submit,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

@@ -496,86 +496,6 @@ class _TechnicianDetailScreenState
     review.dispose();
   }
 
-  Future<void> _openPasswordDialog() async {
-    final parsed = int.tryParse(widget.id);
-    if (parsed == null) return;
-
-    final password = TextEditingController();
-    bool saving = false;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Set Password'),
-              content: SizedBox(
-                width: 360,
-                child: TextField(
-                  controller: password,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'New Password',
-                    hintText: 'Minimum 6 characters',
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: saving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                AppButton(
-                  label: 'Update',
-                  loading: saving,
-                  onPressed: saving
-                      ? null
-                      : () async {
-                          if (password.text.trim().length < 6) {
-                            AppToast.show(
-                              dialogContext,
-                              message: 'Password must be at least 6 characters.',
-                              type: AppToastType.error,
-                            );
-                            return;
-                          }
-                          setDialogState(() => saving = true);
-                          try {
-                            await ref
-                                .read(techniciansRepositoryProvider)
-                                .setPassword(parsed, password.text.trim());
-                            if (!dialogContext.mounted) return;
-                            AppToast.show(
-                              dialogContext,
-                              message: 'Password updated!',
-                              type: AppToastType.success,
-                            );
-                            Navigator.of(dialogContext).pop();
-                          } catch (e) {
-                            if (!dialogContext.mounted) return;
-                            AppToast.show(
-                              dialogContext,
-                              message: friendlyErrorMessage(e),
-                              type: AppToastType.error,
-                            );
-                          } finally {
-                            if (dialogContext.mounted) {
-                              setDialogState(() => saving = false);
-                            }
-                          }
-                        },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    password.dispose();
-  }
-
   Future<void> _deleteDocument(TechnicianDocument doc) async {
     final parsed = int.tryParse(widget.id);
     if (parsed == null) return;
@@ -690,14 +610,6 @@ class _TechnicianDetailScreenState
                         ),
                       ),
                       if (_canEdit && parsedId != null) ...[
-                        AppButton(
-                          label: 'Password',
-                          variant: AppButtonVariant.secondary,
-                          size: AppButtonSize.sm,
-                          leading: const Icon(Icons.key_outlined),
-                          onPressed: _openPasswordDialog,
-                        ),
-                        const SizedBox(width: 8),
                         AppButton(
                           label: 'Edit',
                           variant: AppButtonVariant.outline,

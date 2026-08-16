@@ -50,7 +50,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
-    final canRaise = !['technician', 'labour'].contains(role);
+    final canRaise = role.toLowerCase() != 'labour';
 
     return Scaffold(
       body: _job.when(

@@ -138,6 +138,16 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
     }
   }
 
+  Future<bool> deleteReport(String id) async {
+    try {
+      await _repo.delete(id);
+      await refresh();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<Report?> fetchDetail(String id) async {
     try {
       return await _repo.fetchById(id);
@@ -225,6 +235,38 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
       return id;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<bool> updateWithUploads({
+    required String id,
+    required Map<String, dynamic> payload,
+    List<({String path, String name})> photos = const [],
+    List<({String path, String name})> technicalReports = const [],
+  }) async {
+    try {
+      final next = Map<String, dynamic>.from(payload);
+      if (technicalReports.isNotEmpty) {
+        final uploaded = await _repo.uploadTechnicalReports(technicalReports);
+        next['technical_reports'] = [
+          for (final f in uploaded)
+            {
+              'file_name': f.fileName,
+              'file_url': f.fileUrl,
+              'mime_type': f.mimeType,
+              'file_size_bytes': f.fileSizeBytes,
+            },
+        ];
+      }
+
+      await _repo.update(id, next);
+      if (photos.isNotEmpty) {
+        await uploadAndLinkImages(id, photos);
+      }
+      await refresh();
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 

@@ -42,8 +42,13 @@ class ReportsRepository {
     return id;
   }
 
+  Future<void> update(String id, Map<String, dynamic> payload) =>
+      _dio.put('reports/$id', data: payload);
+
   Future<void> updateStatus(String id, String status) =>
       _dio.patch('reports/$id/status', data: {'status': status});
+
+  Future<void> delete(String id) => _dio.delete('reports/$id');
 
   Future<void> shareReport({
     required String id,

@@ -82,7 +82,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location.startsWith('/attendance');
       if (restrictedModule && restrictedRoles.contains(userRole)) return '/';
 
-      if (location == '/reports/new' && restrictedRoles.contains(userRole)) {
+      if (location == '/reports/new' && userRole == 'labour') {
         return '/reports';
       }
 
@@ -153,6 +153,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/reports/new',
             builder: (context, state) => const ReportCreateScreen(),
+          ),
+          GoRoute(
+            path: '/reports/:id/edit',
+            builder: (context, state) =>
+                ReportEditScreen(id: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/reports/:id',

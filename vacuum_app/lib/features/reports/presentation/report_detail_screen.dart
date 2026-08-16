@@ -14,6 +14,7 @@ import '../../../core/utils/error_message.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -53,6 +54,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canApprove = role == 'admin';
     final report = _report.valueOrNull;
+    final canEdit = _canEdit(role, report);
+    final canDelete = _canDelete(role, report);
     final showBottomActions = canApprove && report?.status == 'Pending';
 
     return Scaffold(
@@ -71,6 +74,18 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   )
                 : const Icon(Icons.download_outlined),
           ),
+          if (canEdit && report != null)
+            IconButton(
+              tooltip: 'Edit Report',
+              onPressed: () => context.push('/reports/${report.id}/edit'),
+              icon: const Icon(Icons.edit_outlined),
+            ),
+          if (canDelete && report != null)
+            IconButton(
+              tooltip: 'Delete Report',
+              onPressed: _updatingStatus ? null : () => _deleteReport(report),
+              icon: const Icon(Icons.delete_outline),
+            ),
         ],
       ),
       bottomNavigationBar: showBottomActions
@@ -735,6 +750,50 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     } finally {
       if (mounted) setState(() => _downloadingPdf = false);
     }
+  }
+
+  Future<void> _deleteReport(Report report) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Delete Report',
+      body:
+          'Are you sure you want to delete ${report.id}? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmVariant: AppButtonVariant.danger,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _updatingStatus = true);
+    try {
+      final ok = await ref.read(reportsProvider.notifier).deleteReport(report.id);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: ok ? 'Report deleted' : 'Failed to delete report',
+        type: ok ? AppToastType.success : AppToastType.error,
+      );
+      if (ok) {
+        context.go('/reports');
+      }
+    } finally {
+      if (mounted) setState(() => _updatingStatus = false);
+    }
+  }
+
+  bool _canDelete(String role, Report? report) {
+    if (report == null) return false;
+    final lowerRole = role.toLowerCase();
+    return (const ['admin', 'manager'].contains(lowerRole) &&
+            report.status != 'Approved') ||
+        (lowerRole == 'technician' && report.status == 'Pending');
+  }
+
+  bool _canEdit(String role, Report? report) {
+    if (report == null) return false;
+    final lowerRole = role.toLowerCase();
+    return report.status != 'Approved' &&
+        (const ['admin', 'manager'].contains(lowerRole) ||
+            lowerRole == 'technician');
   }
 
   Widget _signatureCard({
