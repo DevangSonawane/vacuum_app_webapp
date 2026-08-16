@@ -82,6 +82,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location.startsWith('/attendance');
       if (restrictedModule && restrictedRoles.contains(userRole)) return '/';
 
+      if (location == '/reports/new' && restrictedRoles.contains(userRole)) {
+        return '/reports';
+      }
+
       return null;
     },
     routes: [

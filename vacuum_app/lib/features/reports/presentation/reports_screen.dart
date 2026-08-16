@@ -47,7 +47,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
-    final canEdit = !['technician', 'labour'].contains(role);
+    final lowerRole = role.toLowerCase();
+    final canEdit = !['technician', 'engineer', 'labour'].contains(lowerRole);
     final canApprove = role == 'admin';
 
     final state = ref.watch(reportsProvider);

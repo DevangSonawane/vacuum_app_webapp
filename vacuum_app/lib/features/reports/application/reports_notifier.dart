@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../auth/application/auth_notifier.dart';
+import '../../auth/domain/user.dart';
 import '../data/reports_repository.dart';
 import '../domain/report.dart';
 
@@ -44,9 +46,22 @@ final reportsProvider = AsyncNotifierProvider<ReportsNotifier, ReportsState>(
 class ReportsNotifier extends AsyncNotifier<ReportsState> {
   ReportsRepository get _repo => ref.read(reportsRepositoryProvider);
 
+  bool _isRestrictedRole([User? user]) {
+    final auth = user ?? ref.read(authProvider).valueOrNull?.user;
+    if (auth == null) return false;
+    final role = auth.role.toLowerCase();
+    return const {'technician', 'engineer', 'labour'}.contains(role);
+  }
+
   @override
   Future<ReportsState> build() async {
-    final items = await _repo.fetchReports();
+    final authState = ref.watch(authProvider);
+    final user = authState.valueOrNull?.user;
+    if (user == null) {
+      return const ReportsState(items: [], allItems: []);
+    }
+
+    final items = await _repo.fetchReports(mine: _isRestrictedRole(user));
     return ReportsState(
       items: items,
       allItems: items,
@@ -57,7 +72,10 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
     final prev = state.valueOrNull;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final items = await _repo.fetchReports(status: status);
+      final items = await _repo.fetchReports(
+        status: status,
+        mine: _isRestrictedRole(),
+      );
       return _applySearch(
         ReportsState(
           items: items,
@@ -85,7 +103,10 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
     final filter = current?.statusFilter ?? 'All';
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final items = await _repo.fetchReports(status: filter);
+      final items = await _repo.fetchReports(
+        status: filter,
+        mine: _isRestrictedRole(),
+      );
       return _applySearch(
         ReportsState(
           items: items,

@@ -83,8 +83,8 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final lowerRole = role.toLowerCase();
-    final canEdit = !['technician', 'labour'].contains(lowerRole);
-    final canDelete = ['admin', 'manager'].contains(lowerRole);
+    final canEdit = lowerRole != 'technician';
+    final canDelete = canEdit;
     final state = ref.watch(techniciansProvider);
 
     ref.listen<String>(searchQueryProvider, (_, next) {

@@ -703,51 +703,19 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
       return;
     }
 
-    final reasonController = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final reason = await showDialog<String?>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Cancel Visit'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'The visit will be marked as cancelled and the client will be notified.',
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: reasonController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Cancel reason',
-                    hintText: 'e.g. Client requested reschedule',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Keep Visit'),
-            ),
-            FilledButton.tonal(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Cancel Visit'),
-            ),
-          ],
-        );
-      },
+      builder: (dialogContext) => const _CancelVisitDialog(
+        title: 'Cancel Visit',
+        body:
+            'The visit will be marked as cancelled and the client will be '
+            'notified.',
+        hintText: 'e.g. Client requested reschedule',
+        cancelLabel: 'Keep Visit',
+        confirmLabel: 'Cancel Visit',
+      ),
     );
-    final reason = reasonController.text.trim();
-    reasonController.dispose();
-    if (confirmed != true || !context.mounted) return;
+    if (reason == null || !context.mounted) return;
 
     final ok = await ref
         .read(jobsProvider.notifier)
@@ -835,6 +803,71 @@ class JobCreateScreen extends ConsumerWidget {
           type: ok ? AppToastType.success : AppToastType.error,
         );
       },
+    );
+  }
+}
+
+class _CancelVisitDialog extends StatefulWidget {
+  const _CancelVisitDialog({
+    required this.title,
+    required this.body,
+    required this.hintText,
+    required this.cancelLabel,
+    required this.confirmLabel,
+  });
+
+  final String title;
+  final String body;
+  final String hintText;
+  final String cancelLabel;
+  final String confirmLabel;
+
+  @override
+  State<_CancelVisitDialog> createState() => _CancelVisitDialogState();
+}
+
+class _CancelVisitDialogState extends State<_CancelVisitDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.body),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Cancel reason',
+                hintText: widget.hintText,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: Text(widget.cancelLabel),
+        ),
+        FilledButton.tonal(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(widget.confirmLabel),
+        ),
+      ],
     );
   }
 }
@@ -2288,10 +2321,9 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color:
-                              isDark ? const Color(0xFF172554) : const Color(
-                                0xFFEFF6FF,
-                              ),
+                          color: isDark
+                              ? const Color(0xFF172554)
+                              : const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
                             color: isDark
@@ -2449,9 +2481,8 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
                                           vertical: 11,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Theme.of(
-                                            context,
-                                          ).dividerColor.withValues(alpha: 0.04),
+                                          color: Theme.of(context).dividerColor
+                                              .withValues(alpha: 0.04),
                                           borderRadius: BorderRadius.circular(
                                             14,
                                           ),

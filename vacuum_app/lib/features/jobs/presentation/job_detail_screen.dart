@@ -432,51 +432,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
     required Job job,
   }) async {
     if (job.status == 'Closed' || job.status == 'Cancelled') return;
-    final reasonController = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final reason = await showDialog<String?>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Cancel Visit'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'This visit will be marked as cancelled and the client should receive a WhatsApp notification.',
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: reasonController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Cancel reason',
-                    hintText: 'e.g. Client asked to reschedule',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Keep Visit'),
-            ),
-            FilledButton.tonal(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Cancel Visit'),
-            ),
-          ],
-        );
-      },
+      builder: (dialogContext) => const _CancelVisitDialog(
+        title: 'Cancel Visit',
+        body:
+            'This visit will be marked as cancelled and the client should receive a WhatsApp notification.',
+        hintText: 'e.g. Client asked to reschedule',
+        cancelLabel: 'Keep Visit',
+        confirmLabel: 'Cancel Visit',
+      ),
     );
-    final reason = reasonController.text.trim();
-    reasonController.dispose();
-    if (confirmed != true || !context.mounted) return;
+    if (reason == null || !context.mounted) return;
 
     final ok = await ref
         .read(jobsProvider.notifier)
@@ -496,6 +463,71 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
       context,
       message: 'Visit cancelled',
       type: AppToastType.success,
+    );
+  }
+}
+
+class _CancelVisitDialog extends StatefulWidget {
+  const _CancelVisitDialog({
+    required this.title,
+    required this.body,
+    required this.hintText,
+    required this.cancelLabel,
+    required this.confirmLabel,
+  });
+
+  final String title;
+  final String body;
+  final String hintText;
+  final String cancelLabel;
+  final String confirmLabel;
+
+  @override
+  State<_CancelVisitDialog> createState() => _CancelVisitDialogState();
+}
+
+class _CancelVisitDialogState extends State<_CancelVisitDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.body),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Cancel reason',
+                hintText: widget.hintText,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: Text(widget.cancelLabel),
+        ),
+        FilledButton.tonal(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(widget.confirmLabel),
+        ),
+      ],
     );
   }
 }

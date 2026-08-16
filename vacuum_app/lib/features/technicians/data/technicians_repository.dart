@@ -78,6 +78,78 @@ class TechniciansRepository {
     return Technician.fromJson(data);
   }
 
+  Future<List<TechnicianDocument>> fetchDocuments(int id) async {
+    final response = await _dio.get('technicians/$id/documents');
+    final root = _asMap(response.data);
+    final list = _asList(root['data']);
+    return list
+        .whereType<Map>()
+        .map((e) => TechnicianDocument.fromJson(_asMap(e)))
+        .toList();
+  }
+
+  Future<TechnicianDocument> createDocument(
+    int technicianId,
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _dio.post(
+      'technicians/$technicianId/documents',
+      data: payload,
+    );
+    final root = _asMap(response.data);
+    final data = _asMap(root['data'] ?? root);
+    return TechnicianDocument.fromJson(data);
+  }
+
+  Future<void> updateDocument(
+    int technicianId,
+    int documentId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _dio.put('technicians/$technicianId/documents/$documentId', data: payload);
+  }
+
+  Future<void> deleteDocument(int technicianId, int documentId) async {
+    await _dio.delete('technicians/$technicianId/documents/$documentId');
+  }
+
+  Future<List<TechnicianRating>> fetchRatings(int id) async {
+    final response = await _dio.get('technicians/$id/ratings');
+    final root = _asMap(response.data);
+    final data = root['data'];
+    final list = data is Map ? _asList(data['ratings']) : _asList(data);
+    return list
+        .whereType<Map>()
+        .map((e) => TechnicianRating.fromJson(_asMap(e)))
+        .toList();
+  }
+
+  Future<void> createRating(
+    int technicianId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _dio.post('technicians/$technicianId/ratings', data: payload);
+  }
+
+  Future<void> updateRating(
+    int technicianId,
+    int ratingId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _dio.put('technicians/$technicianId/ratings/$ratingId', data: payload);
+  }
+
+  Future<void> deleteRating(int technicianId, int ratingId) async {
+    await _dio.delete('technicians/$technicianId/ratings/$ratingId');
+  }
+
+  Future<void> setPassword(int id, String newPassword) async {
+    await _dio.post(
+      'technicians/$id/password',
+      data: {'new_password': newPassword},
+    );
+  }
+
   Future<void> create(Map<String, dynamic> payload) async {
     await _dio.post('technicians', data: payload);
   }

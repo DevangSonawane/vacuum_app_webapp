@@ -10,9 +10,12 @@ class ReportsRepository {
 
   final Dio _dio;
 
-  Future<List<Report>> fetchReports({String status = ''}) async {
+  Future<List<Report>> fetchReports({
+    String status = '',
+    bool mine = false,
+  }) async {
     final response = await _dio.get(
-      'reports',
+      mine ? 'reports/my' : 'reports',
       queryParameters: {
         'limit': 100,
         if (status.isNotEmpty && status != 'All') 'status': status,

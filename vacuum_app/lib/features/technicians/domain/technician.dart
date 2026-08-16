@@ -179,3 +179,45 @@ class TechnicianDocument {
     );
   }
 }
+
+class TechnicianRating {
+  const TechnicianRating({
+    required this.id,
+    required this.rating,
+    required this.review,
+    required this.jobId,
+    required this.ratedByName,
+    required this.createdAt,
+  });
+
+  final int id;
+  final double rating;
+  final String review;
+  final String jobId;
+  final String ratedByName;
+  final String? createdAt;
+
+  factory TechnicianRating.fromJson(Map<String, dynamic> json) {
+    String s(Object? v) => v == null ? '' : v.toString();
+    double d(Object? v) {
+      if (v is double) return v;
+      if (v is num) return v.toDouble();
+      return double.tryParse(s(v)) ?? 0.0;
+    }
+
+    int i(Object? v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(s(v)) ?? 0;
+    }
+
+    return TechnicianRating(
+      id: i(json['id']),
+      rating: d(json['rating']),
+      review: s(json['review']),
+      jobId: s(json['job_id']),
+      ratedByName: s(json['rated_by_name']),
+      createdAt: json['created_at']?.toString(),
+    );
+  }
+}
