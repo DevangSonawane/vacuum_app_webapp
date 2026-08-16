@@ -339,7 +339,7 @@ class _FilterChip extends StatelessWidget {
           border: Border.all(
             color: selected
                 ? (isDark ? AppColors.gray700 : const Color(0xFFBFDBFE))
-                : Theme.of(context).dividerColor.withValues(alpha: 0.16),
+                : Theme.of(context).dividerColor.withValues(alpha: 0.12),
           ),
         ),
         child: Text(

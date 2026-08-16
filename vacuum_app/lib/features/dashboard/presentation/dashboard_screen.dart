@@ -559,9 +559,7 @@ class _VisitListCard extends StatelessWidget {
                               : AppColors.gray50,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.08),
+                            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                           ),
                         ),
                         child: Row(
@@ -704,9 +702,7 @@ class _JobStatusCard extends StatelessWidget {
                   ? [
                       PieChartSectionData(
                         value: 1,
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.15),
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                         radius: 40,
                         showTitle: false,
                       ),
@@ -1035,9 +1031,7 @@ class _RecentJobsCard extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).dividerColor.withValues(alpha: 0.14),
+                    color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                   ),
                 ),
                 child: SingleChildScrollView(
@@ -1051,7 +1045,7 @@ class _RecentJobsCard extends StatelessWidget {
                     horizontalMargin: 16,
                     columnSpacing: 20,
                     headingRowColor: WidgetStatePropertyAll(
-                      Theme.of(context).dividerColor.withValues(alpha: 0.06),
+                      Theme.of(context).dividerColor.withValues(alpha: 0.12),
                     ),
                     columns: const [
                       DataColumn(label: Text('Job ID')),

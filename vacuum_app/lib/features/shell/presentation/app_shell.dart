@@ -84,7 +84,7 @@ class _TopBar extends ConsumerWidget {
     final bg = Theme.of(context).brightness == Brightness.dark
         ? const Color(0xCC030712)
         : const Color(0xCCFFFFFF);
-    final border = Theme.of(context).dividerColor.withValues(alpha: 0.08);
+    final border = Theme.of(context).dividerColor.withValues(alpha: 0.12);
 
     return ClipRect(
       child: BackdropFilter(
@@ -152,9 +152,7 @@ class _TopBar extends ConsumerWidget {
                     Container(
                       width: 1,
                       height: 24,
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.2),
+                      color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                     ),
                     const SizedBox(width: 4),
                     if (user != null)

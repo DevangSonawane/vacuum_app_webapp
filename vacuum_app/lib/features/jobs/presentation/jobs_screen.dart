@@ -60,6 +60,8 @@ const _statusFlow = <String, String>{
   'In Progress': 'Closed',
 };
 
+enum _JobAction { viewDetails, advance, cancel }
+
 class JobsScreen extends ConsumerStatefulWidget {
   const JobsScreen({super.key});
 
@@ -422,7 +424,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final lowerRole = role.toLowerCase();
-    final canRaise = lowerRole != 'labour';
+    final canRaise = !['technician', 'labour'].contains(lowerRole);
     final canCancel = _canCancelJob(lowerRole);
     final canDelete = _canDeleteJob(lowerRole);
     final isAdmin = lowerRole == 'admin';
@@ -529,39 +531,16 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                   for (final s in _statuses)
                     s: data.items.where((j) => j.status == s).length,
                 };
+                final activeCount = data.items
+                    .where((j) => j.status != 'Closed')
+                    .length;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        _StatPill(
-                          label: 'Raised',
-                          value: counts['Raised'] ?? 0,
-                          color: AppColors.purple500,
-                        ),
-                        _StatPill(
-                          label: 'Assigned',
-                          value: counts['Assigned'] ?? 0,
-                          color: AppColors.blue500,
-                        ),
-                        _StatPill(
-                          label: 'In Progress',
-                          value: counts['In Progress'] ?? 0,
-                          color: AppColors.amber500,
-                        ),
-                        _StatPill(
-                          label: 'Closed',
-                          value: counts['Closed'] ?? 0,
-                          color: AppColors.emerald500,
-                        ),
-                        _StatPill(
-                          label: 'Cancelled',
-                          value: counts['Cancelled'] ?? 0,
-                          color: AppColors.red500,
-                        ),
-                      ],
+                    _StatPill(
+                      label: 'Active',
+                      value: activeCount,
+                      color: AppColors.blue500,
                     ),
                     const SizedBox(height: 12),
                     _FilterTabs(
@@ -887,41 +866,68 @@ class _FilterTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final tabs = ['All', ..._statuses];
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final t in tabs)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InkWell(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final t in tabs)
+          Builder(
+            builder: (context) {
+              final selected = value == t;
+              final accent = t == 'All'
+                  ? AppColors.blue600
+                  : _statusBorderColor[t] ?? AppColors.gray500;
+              final background = selected
+                  ? accent.withValues(alpha: isDark ? 0.22 : 0.14)
+                  : (isDark
+                        ? const Color(0xFF111827)
+                        : const Color(0xFFF9FAFB));
+              final borderColor = selected
+                  ? accent.withValues(alpha: 0.45)
+                  : Theme.of(context).dividerColor.withValues(alpha: 0.12);
+
+              return InkWell(
                 borderRadius: BorderRadius.circular(999),
                 onTap: () => onChanged(t),
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+                    horizontal: 14,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
-                    color: value == t
-                        ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.16),
-                    ),
+                    color: background,
+                    border: Border.all(color: borderColor),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: accent.withValues(alpha: 0.14),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         t,
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
-                          color: value == t
-                              ? (isDark ? Colors.white : AppColors.blue600)
+                          color: selected
+                              ? accent
                               : Theme.of(context).hintColor,
                         ),
                       ),
@@ -933,16 +939,19 @@ class _FilterTabs extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.12),
+                            color: accent.withValues(
+                              alpha: isDark ? 0.22 : 0.12,
+                            ),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             '${counts[t] ?? 0}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
+                              color: selected
+                                  ? accent
+                                  : Theme.of(context).hintColor,
                             ),
                           ),
                         ),
@@ -950,10 +959,10 @@ class _FilterTabs extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
-            ),
-        ],
-      ),
+              );
+            },
+          ),
+      ],
     );
   }
 }
@@ -1133,6 +1142,7 @@ class _JobCardVertical extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final border = _statusBorderColor[job.status] ?? AppColors.gray200;
+    final next = _statusFlow[job.status];
     return AppCard(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -1177,7 +1187,22 @@ class _JobCardVertical extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    StatusBadge(label: job.status),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        StatusBadge(label: job.status),
+                        if (canRaise)
+                          _JobOverflowMenuButton(
+                            job: job,
+                            canRaise: canRaise,
+                            canCancel: canCancel,
+                            onViewDetails: onTap,
+                            onAdvance: onAdvance,
+                            onCancel: onCancel,
+                            nextStatus: next,
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: 6),
                     StatusBadge(label: job.priority),
                   ],
@@ -1204,37 +1229,6 @@ class _JobCardVertical extends StatelessWidget {
               Text(
                 '₹${job.amount.toStringAsFixed(0)}',
                 style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ],
-            if (canRaise &&
-                job.status != 'Closed' &&
-                job.status != 'Cancelled') ...[
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Advance status',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onAdvance,
-                    icon: const Icon(
-                      Icons.arrow_forward,
-                      size: 18,
-                      color: AppColors.blue600,
-                    ),
-                  ),
-                  if (canCancel)
-                    IconButton(
-                      tooltip: 'Cancel visit',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: onCancel,
-                      icon: const Icon(
-                        Icons.cancel_outlined,
-                        size: 18,
-                        color: AppColors.red500,
-                      ),
-                    ),
-                ],
               ),
             ],
           ],
@@ -1268,6 +1262,7 @@ class _JobCardHorizontal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final border = _statusBorderColor[job.status] ?? AppColors.gray200;
+    final next = _statusFlow[job.status];
     return AppCard(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -1324,9 +1319,7 @@ class _JobCardHorizontal extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.08),
+                            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -1347,48 +1340,123 @@ class _JobCardHorizontal extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                StatusBadge(label: job.status),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    StatusBadge(label: job.status),
+                    if (canRaise)
+                      _JobOverflowMenuButton(
+                        job: job,
+                        canRaise: canRaise,
+                        canCancel: canCancel,
+                        onViewDetails: onTap,
+                        onAdvance: onAdvance,
+                        onCancel: onCancel,
+                        nextStatus: next,
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 6),
                 Text(
                   '₹${job.amount.toStringAsFixed(0)}',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                if (canRaise &&
-                    job.status != 'Closed' &&
-                    job.status != 'Cancelled') ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Advance status',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: onAdvance,
-                        icon: const Icon(
-                          Icons.arrow_forward,
-                          size: 18,
-                          color: AppColors.blue600,
-                        ),
-                      ),
-                      if (canCancel)
-                        IconButton(
-                          tooltip: 'Cancel visit',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: onCancel,
-                          icon: const Icon(
-                            Icons.cancel_outlined,
-                            size: 18,
-                            color: AppColors.red500,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _JobOverflowMenuButton extends StatelessWidget {
+  const _JobOverflowMenuButton({
+    required this.job,
+    required this.canRaise,
+    required this.canCancel,
+    required this.onViewDetails,
+    required this.onAdvance,
+    required this.onCancel,
+    required this.nextStatus,
+  });
+
+  final Job job;
+  final bool canRaise;
+  final bool canCancel;
+  final VoidCallback onViewDetails;
+  final VoidCallback onAdvance;
+  final VoidCallback onCancel;
+  final String? nextStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final canAdvance = nextStatus != null && job.status != 'Cancelled';
+    final canCancelVisit =
+        canCancel && ['Raised', 'Assigned'].contains(job.status);
+
+    return PopupMenuButton<_JobAction>(
+      tooltip: 'More actions',
+      icon: const Icon(Icons.more_horiz, size: 20),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onSelected: (action) {
+        switch (action) {
+          case _JobAction.viewDetails:
+            onViewDetails();
+            break;
+          case _JobAction.advance:
+            onAdvance();
+            break;
+          case _JobAction.cancel:
+            onCancel();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem<_JobAction>(
+          value: _JobAction.viewDetails,
+          child: Row(
+            children: [
+              Icon(Icons.visibility_outlined, size: 18),
+              SizedBox(width: 10),
+              Text('View Details'),
+            ],
+          ),
+        ),
+        if (canAdvance)
+          PopupMenuItem<_JobAction>(
+            value: _JobAction.advance,
+            child: Row(
+              children: [
+                Icon(
+                  job.status == 'In Progress'
+                      ? Icons.camera_alt_outlined
+                      : Icons.arrow_forward,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  job.status == 'In Progress'
+                      ? 'Close Job'
+                      : 'Move to $nextStatus',
+                ),
+              ],
+            ),
+          ),
+        if (canCancelVisit)
+          const PopupMenuItem<_JobAction>(
+            value: _JobAction.cancel,
+            child: Row(
+              children: [
+                Icon(Icons.cancel_outlined, size: 18, color: AppColors.red500),
+                SizedBox(width: 10),
+                Text('Cancel Visit'),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1924,7 +1992,7 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
         color: bg ?? chipBg,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
         ),
       ),
       child: Text(
@@ -2418,9 +2486,7 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
                       color: isDark ? const Color(0xFF111827) : surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.12),
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                       ),
                     ),
                     child: Column(
@@ -2482,7 +2548,7 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
                                           vertical: 11,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Theme.of(context).dividerColor
+                                          color: Theme.of(context).dividerColor.withValues(alpha: 0.12)
                                               .withValues(alpha: 0.04),
                                           borderRadius: BorderRadius.circular(
                                             14,
@@ -2688,7 +2754,7 @@ class _SearchableDropdownIntState extends State<_SearchableDropdownInt> {
   @override
   Widget build(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
-    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.18);
+    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.12);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final baseBorder = OutlineInputBorder(
@@ -2915,7 +2981,7 @@ class _SearchableDropdownStringState extends State<_SearchableDropdownString> {
   @override
   Widget build(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
-    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.18);
+    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.12);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final baseBorder = OutlineInputBorder(

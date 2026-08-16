@@ -261,7 +261,7 @@ class _FilterTabs extends StatelessWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).dividerColor.withValues(alpha: 0.16),
+                      ).dividerColor.withValues(alpha: 0.12),
                     ),
                   ),
                   child: Row(

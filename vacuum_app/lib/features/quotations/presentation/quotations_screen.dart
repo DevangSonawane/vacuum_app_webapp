@@ -864,7 +864,7 @@ class _ErpQuotationCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Divider(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.14),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
           ),
           const SizedBox(height: 10),
           Row(

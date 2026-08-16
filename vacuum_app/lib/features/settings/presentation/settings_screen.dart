@@ -179,9 +179,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: isDark ? const Color(0xFF111827) : AppColors.gray50,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.12),
+                      color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                     ),
                   ),
                   child: Row(

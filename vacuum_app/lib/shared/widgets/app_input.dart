@@ -63,7 +63,7 @@ class _AppInputState extends State<AppInput> {
           text: TextSpan(
             text: widget.label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               fontSize: compact ? 12 : 13,
               color: labelColor,
             ),
@@ -114,16 +114,16 @@ class _AppInputState extends State<AppInput> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: borderColor),
             ),
-            focusedBorder: const OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(12)),
-              borderSide: BorderSide(color: Color(0xFF2563EB), width: 2),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: borderColor, width: 1.25),
             ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: 12,
               vertical: compact ? 10 : 12,
             ),
           ),
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
         ),
         if (widget.helperText != null) ...[
           SizedBox(height: compact ? 4 : 6),

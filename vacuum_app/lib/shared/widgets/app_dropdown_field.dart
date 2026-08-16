@@ -39,11 +39,6 @@ class AppDropdownField<T> extends StatelessWidget {
       borderSide: BorderSide(color: borderColor),
     );
 
-    final focusedBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
-    );
-
     Widget menuRow(String text) => Row(
       children: [Expanded(child: Text(text, overflow: TextOverflow.ellipsis))],
     );
@@ -79,7 +74,7 @@ class AppDropdownField<T> extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
         ),
         const SizedBox(height: 6),
         if (dropdownItems.isEmpty)
@@ -104,6 +99,11 @@ class AppDropdownField<T> extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             dropdownColor: surface,
             icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             decoration: InputDecoration(
               isDense: false,
               filled: true,
@@ -116,7 +116,10 @@ class AppDropdownField<T> extends StatelessWidget {
               ),
               border: baseBorder,
               enabledBorder: baseBorder,
-              focusedBorder: focusedBorder,
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: borderColor, width: 1.25),
+              ),
             ),
             items: dropdownItems,
             onChanged: enabled ? onChanged : null,

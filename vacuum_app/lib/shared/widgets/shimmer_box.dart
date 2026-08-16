@@ -16,7 +16,7 @@ class ShimmerBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context).dividerColor.withValues(alpha: 0.12);
-    final highlight = Theme.of(context).dividerColor.withValues(alpha: 0.06);
+    final highlight = Theme.of(context).dividerColor.withValues(alpha: 0.12);
     return Shimmer.fromColors(
       baseColor: base,
       highlightColor: highlight,

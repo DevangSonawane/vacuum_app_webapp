@@ -1180,9 +1180,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                                   : AppColors.gray50,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: Theme.of(
-                                  context,
-                                ).dividerColor.withValues(alpha: 0.12),
+                                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                               ),
                             ),
                             child: Column(

@@ -571,78 +571,122 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   const SizedBox(height: 16),
                 ],
                 Text(
-                  'Report Copies (${report.technicalReports.length})',
+                  'Attachments (${report.technicalReports.length + report.images.length})',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
-                if (report.technicalReports.isEmpty)
+                if (report.technicalReports.isEmpty && report.images.isEmpty)
                   Text(
-                    'No documents',
+                    'No attachments',
                     style: TextStyle(color: Theme.of(context).hintColor),
                   )
                 else
                   AppCard(
-                    padding: EdgeInsets.zero,
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: report.technicalReports.length,
-                      separatorBuilder: (context, i) => Divider(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.12),
-                        height: 1,
-                      ),
-                      itemBuilder: (context, i) {
-                        final f = report.technicalReports[i];
-                        final size = _fmtBytes(f.fileSizeBytes);
-                        return ListTile(
-                          leading: const Icon(Icons.description_outlined),
-                          title: Text(
-                            f.fileName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (report.images.isNotEmpty) ...[
+                          Text(
+                            'Photos (${report.images.length})',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
                           ),
-                          subtitle: size == null ? null : Text(size),
-                          trailing: const Icon(Icons.open_in_new, size: 18),
-                          onTap: () => _openUrl(context, f.fileUrl),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                Text(
-                  'Attached Photos (${report.images.length})',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                if (report.images.isEmpty)
-                  Text(
-                    'No photos',
-                    style: TextStyle(color: Theme.of(context).hintColor),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: MediaQuery.sizeOf(context).width >= 700
-                          ? 3
-                          : 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    itemCount: report.images.length,
-                    itemBuilder: (context, i) => ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: CachedNetworkImage(
-                        imageUrl: report.images[i].fileUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            const ShimmerBox(height: 80),
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.broken_image_outlined),
-                      ),
+                          const SizedBox(height: 8),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount:
+                                      MediaQuery.sizeOf(context).width >= 700
+                                      ? 3
+                                      : 2,
+                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8,
+                                ),
+                            itemCount: report.images.length,
+                            itemBuilder: (context, i) {
+                              final image = report.images[i];
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () =>
+                                    _previewAttachment(context, image.fileUrl),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: CachedNetworkImage(
+                                    imageUrl: image.fileUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        const ShimmerBox(height: 80),
+                                    errorWidget: (context, url, error) =>
+                                        const Icon(Icons.broken_image_outlined),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                        if (report.images.isNotEmpty &&
+                            report.technicalReports.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Divider(
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.12),
+                            height: 1,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        if (report.technicalReports.isNotEmpty) ...[
+                          Text(
+                            'Documents (${report.technicalReports.length})',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: report.technicalReports.length,
+                            separatorBuilder: (context, i) => Divider(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.12),
+                              height: 1,
+                            ),
+                            itemBuilder: (context, i) {
+                              final f = report.technicalReports[i];
+                              final size = _fmtBytes(f.fileSizeBytes);
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.description_outlined),
+                                title: Text(
+                                  f.fileName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: size == null ? null : Text(size),
+                                trailing: const Icon(
+                                  Icons.open_in_new,
+                                  size: 18,
+                                ),
+                                onTap: () => _previewAttachment(
+                                  context,
+                                  f.fileUrl,
+                                  title: f.fileName,
+                                  mimeType: f.mimeType,
+                                  sizeLabel: size,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 const SizedBox(height: 16),
@@ -765,7 +809,9 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
 
     setState(() => _updatingStatus = true);
     try {
-      final ok = await ref.read(reportsProvider.notifier).deleteReport(report.id);
+      final ok = await ref
+          .read(reportsProvider.notifier)
+          .deleteReport(report.id);
       if (!mounted) return;
       AppToast.show(
         context,
@@ -975,7 +1021,7 @@ class _InfoGrid extends StatelessWidget {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.10),
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(items[i].icon, size: 18, color: AppColors.blue600),
@@ -1028,7 +1074,13 @@ String? _fmtBytes(int? bytes) {
   return '${gb.toStringAsFixed(1)} GB';
 }
 
-Future<void> _openUrl(BuildContext context, String url) async {
+Future<void> _previewAttachment(
+  BuildContext context,
+  String url, {
+  String? title,
+  String? mimeType,
+  String? sizeLabel,
+}) async {
   final uri = Uri.tryParse(url.trim());
   if (uri == null) {
     AppToast.show(
@@ -1038,14 +1090,172 @@ Future<void> _openUrl(BuildContext context, String url) async {
     );
     return;
   }
-  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-  if (!ok && context.mounted) {
-    AppToast.show(
-      context,
-      message: 'Could not open link',
-      type: AppToastType.error,
+
+  final isImage = _isImageAttachment(mimeType, url);
+  if (isImage) {
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title?.trim().isNotEmpty == true ? title! : 'Preview',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AspectRatio(
+                    aspectRatio: 1.1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: InteractiveViewer(
+                        minScale: 0.8,
+                        maxScale: 4,
+                        child: CachedNetworkImage(
+                          imageUrl: uri.toString(),
+                          fit: BoxFit.contain,
+                          placeholder: (context, url) =>
+                              const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) => Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.broken_image_outlined, size: 40),
+                                SizedBox(height: 8),
+                                Text('Could not load preview'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (sizeLabel != null || mimeType != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      [sizeLabel, mimeType].whereType<String>().join(' • '),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
+    return;
   }
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      final theme = Theme.of(sheetContext);
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.description_outlined),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title?.trim().isNotEmpty == true ? title! : 'Attachment',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Preview is available inside the app for supported files.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (sizeLabel != null || mimeType != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  [sizeLabel, mimeType].whereType<String>().join(' • '),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              AppButton(
+                label: 'Open preview',
+                onPressed: () async {
+                  Navigator.of(sheetContext).pop();
+                  final ok = await launchUrl(
+                    uri,
+                    mode: LaunchMode.inAppBrowserView,
+                  );
+                  if (!ok && context.mounted) {
+                    AppToast.show(
+                      context,
+                      message: 'Could not open preview',
+                      type: AppToastType.error,
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+bool _isImageAttachment(String? mimeType, String url) {
+  final mime = (mimeType ?? '').toLowerCase().trim();
+  if (mime.startsWith('image/')) return true;
+  final path = Uri.tryParse(url.trim())?.path.toLowerCase() ?? '';
+  return path.endsWith('.png') ||
+      path.endsWith('.jpg') ||
+      path.endsWith('.jpeg') ||
+      path.endsWith('.webp') ||
+      path.endsWith('.gif') ||
+      path.endsWith('.bmp') ||
+      path.endsWith('.heic');
 }
 
 class _Banner extends StatelessWidget {

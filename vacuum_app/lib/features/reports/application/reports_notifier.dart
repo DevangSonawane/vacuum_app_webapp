@@ -62,10 +62,7 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
     }
 
     final items = await _repo.fetchReports(mine: _isRestrictedRole(user));
-    return ReportsState(
-      items: items,
-      allItems: items,
-    );
+    return ReportsState(items: items, allItems: items);
   }
 
   Future<void> setFilter(String status) async {
@@ -91,11 +88,7 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
     final prev = state.valueOrNull;
     if (prev == null) return;
     final nextQuery = query.trim();
-    state = AsyncData(
-      _applySearch(
-        prev.copyWith(search: nextQuery),
-      ),
-    );
+    state = AsyncData(_applySearch(prev.copyWith(search: nextQuery)));
   }
 
   Future<void> refresh() async {
@@ -241,14 +234,25 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
   Future<bool> updateWithUploads({
     required String id,
     required Map<String, dynamic> payload,
+    List<TechnicalReportFile> existingTechnicalReports = const [],
     List<({String path, String name})> photos = const [],
     List<({String path, String name})> technicalReports = const [],
   }) async {
     try {
       final next = Map<String, dynamic>.from(payload);
+      final mergedTechnicalReports = <Map<String, dynamic>>[
+        for (final f in existingTechnicalReports)
+          {
+            'file_name': f.fileName,
+            'file_url': f.fileUrl,
+            'mime_type': f.mimeType,
+            'file_size_bytes': f.fileSizeBytes,
+          },
+      ];
+
       if (technicalReports.isNotEmpty) {
         final uploaded = await _repo.uploadTechnicalReports(technicalReports);
-        next['technical_reports'] = [
+        mergedTechnicalReports.addAll([
           for (final f in uploaded)
             {
               'file_name': f.fileName,
@@ -256,8 +260,10 @@ class ReportsNotifier extends AsyncNotifier<ReportsState> {
               'mime_type': f.mimeType,
               'file_size_bytes': f.fileSizeBytes,
             },
-        ];
+        ]);
       }
+
+      next['technical_reports'] = mergedTechnicalReports;
 
       await _repo.update(id, next);
       if (photos.isNotEmpty) {

@@ -9,6 +9,12 @@ class AppTheme {
   static final light = ThemeData(
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.gray50,
+    dividerColor: AppColors.gray200,
+    dividerTheme: const DividerThemeData(
+      color: AppColors.gray200,
+      thickness: 1,
+      space: 1,
+    ),
     colorScheme: const ColorScheme.light(
       primary: AppColors.blue600,
       secondary: AppColors.blue500,
@@ -50,7 +56,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.blue600, width: 2),
+        borderSide: const BorderSide(color: AppColors.gray200, width: 1.25),
       ),
     ),
     textTheme: _textTheme(Brightness.light),
@@ -60,6 +66,12 @@ class AppTheme {
   static final dark = ThemeData(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColors.darkBg,
+    dividerColor: const Color(0xFF334155),
+    dividerTheme: const DividerThemeData(
+      color: Color(0xFF334155),
+      thickness: 1,
+      space: 1,
+    ),
     colorScheme: const ColorScheme.dark(
       primary: AppColors.blue600,
       secondary: AppColors.blue500,
@@ -101,7 +113,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.blue600, width: 2),
+        borderSide: const BorderSide(color: Color(0xFF1B2A44), width: 1.25),
       ),
     ),
     textTheme: _textTheme(Brightness.dark),
@@ -119,11 +131,11 @@ class AppTheme {
     return body.copyWith(
       titleSmall: body.titleSmall?.copyWith(
         fontSize: 13,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
       ),
       labelMedium: body.labelMedium?.copyWith(
         fontSize: 13,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
       ),
       titleLarge: display.titleLarge?.copyWith(
         fontSize: 22,

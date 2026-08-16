@@ -93,7 +93,9 @@ class _ReportEditScreenState extends ConsumerState<ReportEditScreen> {
   }
 
   Future<void> _load() async {
-    final report = await ref.read(reportsProvider.notifier).fetchDetail(widget.id);
+    final report = await ref
+        .read(reportsProvider.notifier)
+        .fetchDetail(widget.id);
     if (!mounted) return;
     setState(() {
       _report = report;
@@ -140,9 +142,12 @@ class _ReportEditScreenState extends ConsumerState<ReportEditScreen> {
       currentUserName: user?.fullName ?? user?.firstName ?? 'You',
       currentRole: user?.role ?? '',
       onSubmit: (payload, photos, technicalReports) async {
-        final ok = await ref.read(reportsProvider.notifier).updateWithUploads(
+        final ok = await ref
+            .read(reportsProvider.notifier)
+            .updateWithUploads(
               id: report.id,
               payload: payload,
+              existingTechnicalReports: report.technicalReports,
               photos: photos,
               technicalReports: technicalReports,
             );
@@ -452,6 +457,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
 
   final List<_PhotoAttachment> _photos = [];
   final List<({String path, String name})> _technicalReports = [];
+  final List<TechnicalReportFile> _existingTechnicalReports = [];
+  final List<ReportImage> _existingImages = [];
 
   @override
   void initState() {
@@ -599,7 +606,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     _companyName.text = (report.companyName ?? report.clientName).trim();
     _contactPerson.text = (report.contactPerson ?? '').trim();
     _location.text = (report.location ?? '').trim();
-    _modelSerialInstallation.text = (report.modelSerialInstallation ?? '').trim();
+    _modelSerialInstallation.text = (report.modelSerialInstallation ?? '')
+        .trim();
     _operatingHoursPerDay.text = (report.operatingHoursPerDay ?? '').trim();
     _applicationProcessDescription.text =
         (report.applicationProcessDescription ?? '').trim();
@@ -608,8 +616,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     _comments.text = (report.comments ?? '').trim();
     _remarks.text = (report.remarks ?? '').trim();
     _vdtRepresentativeName.text = (report.vdtRepresentativeName ?? '').trim();
-    _clientRepresentativeName.text =
-        (report.clientRepresentativeName ?? '').trim();
+    _clientRepresentativeName.text = (report.clientRepresentativeName ?? '')
+        .trim();
 
     for (int i = 0; i < _checklist.length; i++) {
       final existing = report.checklistItems.where((item) => item.sr == i + 1);
@@ -647,9 +655,16 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                     spareName: item.spareName,
                     pumpModel: item.pumpModel,
                     totalToOrder: item.totalToOrder,
-                ),
+                  ),
               ],
       );
+
+    _existingTechnicalReports
+      ..clear()
+      ..addAll(report.technicalReports);
+    _existingImages
+      ..clear()
+      ..addAll(report.images);
 
     _syncJobSelection();
   }
@@ -724,10 +739,13 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     final jobId = _jobId?.trim();
     if (_isTechnician && widget.currentUserId != null) {
       if ((jobId ?? '').isEmpty) {
-        final visibleJobs = _jobs.where((job) {
-          return job.technicians
-              .any((tech) => tech.id == widget.currentUserId);
-        }).toList(growable: false);
+        final visibleJobs = _jobs
+            .where((job) {
+              return job.technicians.any(
+                (tech) => tech.id == widget.currentUserId,
+              );
+            })
+            .toList(growable: false);
         if (visibleJobs.length == 1) {
           _jobId = visibleJobs.first.id;
         }
@@ -1028,9 +1046,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                       child: LinearProgressIndicator(
                         minHeight: 8,
                         value: _step / _steps.length,
-                        backgroundColor: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.12),
+                        backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                         valueColor: const AlwaysStoppedAnimation(
                           AppColors.blue600,
                         ),
@@ -1141,9 +1157,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                   decoration: BoxDecoration(
                     color: _step > _steps[i].id
                         ? (isDark ? const Color(0xFF34D399) : doneFg)
-                        : Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.22),
+                        : Theme.of(context).dividerColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -1184,12 +1198,12 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   Widget _dropdownJob() {
     final visibleJobs = _isTechnician && widget.currentUserId != null
         ? _jobs
-            .where(
-              (job) => job.technicians.any(
-                (tech) => tech.id == widget.currentUserId,
-              ),
-            )
-            .toList(growable: false)
+              .where(
+                (job) => job.technicians.any(
+                  (tech) => tech.id == widget.currentUserId,
+                ),
+              )
+              .toList(growable: false)
         : _jobs;
 
     return _SearchableDropdownString(
@@ -1199,7 +1213,8 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       nullLabel: 'Select job...',
       enabled: !_loading,
       items: [
-        for (final j in visibleJobs) (value: j.id, label: '${j.id} — ${j.title}'),
+        for (final j in visibleJobs)
+          (value: j.id, label: '${j.id} — ${j.title}'),
       ],
       onChanged: (v) => setState(() {
         _jobId = v;
@@ -1229,7 +1244,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                   : const Color(0xFFF9FAFB),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.18),
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
               ),
             ),
             child: Text(
@@ -1610,42 +1625,94 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            'Attachments',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('Attachments', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
             'Documents, reports, or photos',
             style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
           ),
           const SizedBox(height: 12),
-          AppCard(
-            child: Column(
-              children: [
-                _UploadActionCard(
-                  title: 'Upload Document',
-                  subtitle: 'PDF, DOCX, XLSX…',
-                  icon: Icons.description_outlined,
-                  onTap: _loading ? null : _pickTechnicalReports,
-                ),
-                const SizedBox(height: 10),
-                _UploadActionCard(
-                  title: 'Upload Photo',
-                  subtitle: 'From gallery',
-                  icon: Icons.photo_library_outlined,
-                  onTap: _loading ? null : _pickPhotos,
-                ),
-                const SizedBox(height: 10),
-                _UploadActionCard(
-                  title: 'Capture Photo',
-                  subtitle: 'Use camera',
-                  icon: Icons.camera_alt_outlined,
-                  onTap: _loading ? null : _capturePhoto,
-                ),
-              ],
-            ),
+          _AttachmentPicker(
+            enabled: !_loading,
+            onDocumentTap: _pickTechnicalReports,
+            onGalleryTap: _pickPhotos,
+            onCameraTap: _capturePhoto,
           ),
+          if (_existingTechnicalReports.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Existing Report Copies',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final file in _existingTechnicalReports)
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.description_outlined, size: 18),
+                      title: Text(
+                        file.fileName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: file.fileSizeBytes == null
+                          ? null
+                          : Text(_fmtBytes(file.fileSizeBytes) ?? '—'),
+                      trailing: const Icon(Icons.open_in_new, size: 18),
+                    ),
+                ],
+              ),
+            ),
+          ],
+          if (_existingImages.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Existing Photos',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 10),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                    itemCount: _existingImages.length,
+                    itemBuilder: (context, i) {
+                      final img = _existingImages[i];
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          img.fileUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.broken_image_outlined,
+                                  size: 30,
+                                ),
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           if (_photos.isNotEmpty)
             AppCard(
@@ -1680,9 +1747,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                               gaplessPlayback: true,
                               errorBuilder: (context, error, stackTrace) =>
                                   Container(
-                                    color: Theme.of(
-                                      context,
-                                    ).dividerColor.withValues(alpha: 0.08),
+                                    color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                                     alignment: Alignment.center,
                                     child: const Icon(
                                       Icons.broken_image_outlined,
@@ -1723,14 +1788,14 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
               'No photos selected yet.',
               style: TextStyle(color: Theme.of(context).hintColor),
             ),
-          const SizedBox(height: 12),
           if (_technicalReports.isNotEmpty) ...[
+            const SizedBox(height: 12),
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Uploaded Technical Reports',
+                    'Uploaded Report Copies',
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
@@ -1856,7 +1921,7 @@ class _SearchableDropdownIntState extends State<_SearchableDropdownInt> {
   @override
   Widget build(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
-    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.18);
+    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.12);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final baseBorder = OutlineInputBorder(
@@ -2091,7 +2156,7 @@ class _SearchableDropdownStringState extends State<_SearchableDropdownString> {
   @override
   Widget build(BuildContext context) {
     final surface = Theme.of(context).colorScheme.surface;
-    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.18);
+    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.12);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final baseBorder = OutlineInputBorder(
@@ -2241,36 +2306,84 @@ class _SearchableDropdownStringState extends State<_SearchableDropdownString> {
   }
 }
 
-class _UploadActionCard extends StatelessWidget {
-  const _UploadActionCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
+enum _AttachmentAction { document, gallery, camera }
+
+class _AttachmentPicker extends StatelessWidget {
+  const _AttachmentPicker({
+    required this.enabled,
+    required this.onDocumentTap,
+    required this.onGalleryTap,
+    required this.onCameraTap,
   });
 
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback? onTap;
+  final bool enabled;
+  final VoidCallback onDocumentTap;
+  final VoidCallback onGalleryTap;
+  final VoidCallback onCameraTap;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
+    return PopupMenuButton<_AttachmentAction>(
+      enabled: enabled,
+      tooltip: 'Add attachment',
+      offset: const Offset(0, 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      padding: EdgeInsets.zero,
+      onSelected: (action) {
+        switch (action) {
+          case _AttachmentAction.document:
+            onDocumentTap();
+            break;
+          case _AttachmentAction.gallery:
+            onGalleryTap();
+            break;
+          case _AttachmentAction.camera:
+            onCameraTap();
+            break;
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem<_AttachmentAction>(
+          value: _AttachmentAction.document,
+          child: _AttachmentMenuTile(
+            icon: Icons.description_outlined,
+            title: 'Upload Document',
+            subtitle: 'PDF, DOCX, XLSX…',
+            color: AppColors.blue600,
+          ),
+        ),
+        PopupMenuItem<_AttachmentAction>(
+          value: _AttachmentAction.gallery,
+          child: _AttachmentMenuTile(
+            icon: Icons.photo_library_outlined,
+            title: 'Upload Photo',
+            subtitle: 'From gallery',
+            color: Color(0xFF8B5CF6),
+          ),
+        ),
+        PopupMenuItem<_AttachmentAction>(
+          value: _AttachmentAction.camera,
+          child: _AttachmentMenuTile(
+            icon: Icons.camera_alt_outlined,
+            title: 'Take Photo',
+            subtitle: 'Opens camera',
+            color: Color(0xFFF59E0B),
+          ),
+        ),
+      ],
       child: Container(
-        padding: const EdgeInsets.all(14),
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF111827) : AppColors.gray50,
-          borderRadius: BorderRadius.circular(16),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF111827)
+              : const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
           ),
         ),
-        child: Row(
+        child: Column(
           children: [
             Container(
               width: 40,
@@ -2279,35 +2392,93 @@ class _UploadActionCard extends StatelessWidget {
                 color: const Color(0xFFDBEAFE),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: AppColors.blue600),
+              child: const Icon(Icons.add, color: AppColors.blue600),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Theme.of(context).hintColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 10),
+            const Text(
+              'Add Attachment',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Documents, photos, or camera capture',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).hintColor,
+                fontSize: 12,
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.add_circle_outline, size: 18),
           ],
         ),
       ),
     );
   }
+}
+
+class _AttachmentMenuTile extends StatelessWidget {
+  const _AttachmentMenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Theme.of(context).hintColor,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String? _fmtBytes(int? bytes) {
+  if (bytes == null || bytes <= 0) return null;
+  if (bytes >= 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  if (bytes >= 1024) {
+    return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  }
+  return '$bytes B';
 }
 
 class _ChecklistItem {
@@ -2499,9 +2670,7 @@ class _ChecklistRow extends StatelessWidget {
                             ? const Color(0xFF0B1220)
                             : Colors.white,
                         side: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.18),
+                          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                         ),
                         checkmarkColor: Colors.white,
                       ),
@@ -2576,7 +2745,7 @@ class _IssueCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.14),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
         ),
       ),
       child: Column(
@@ -2765,7 +2934,7 @@ class _SpareCardState extends State<_SpareCard> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.14),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
         ),
       ),
       child: Column(
@@ -2907,7 +3076,7 @@ class _StepChip extends StatelessWidget {
       _StepChipState.idle => (
         idleBg,
         idleFg,
-        Theme.of(context).dividerColor.withValues(alpha: 0.14),
+        Theme.of(context).dividerColor.withValues(alpha: 0.12),
       ),
     };
 

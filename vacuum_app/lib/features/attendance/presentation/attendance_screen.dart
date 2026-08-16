@@ -202,9 +202,7 @@ class AttendanceScreen extends ConsumerWidget {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withValues(alpha: 0.16),
+                              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                             ),
                             color:
                                 Theme.of(context).brightness == Brightness.dark
@@ -392,9 +390,7 @@ class _WeeklyOverview extends StatelessWidget {
                             : AppColors.gray50,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.12),
+                          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                         ),
                       ),
                       child: Column(

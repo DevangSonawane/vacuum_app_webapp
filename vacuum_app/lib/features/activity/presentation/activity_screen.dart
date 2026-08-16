@@ -132,7 +132,7 @@ class _TabsRow extends StatelessWidget {
                 ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
                 : Colors.transparent,
             border: Border.all(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
             ),
           ),
           child: Row(
@@ -609,7 +609,7 @@ class _NotificationsTab extends ConsumerWidget {
               ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
               : Colors.transparent,
           border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.16),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
           ),
         ),
         child: Text(

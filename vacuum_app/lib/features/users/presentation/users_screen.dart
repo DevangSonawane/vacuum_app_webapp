@@ -331,9 +331,7 @@ class _UsersPremiumTable extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final headerBg = isDark ? const Color(0xFF0B1220) : AppColors.gray50;
-    final borderColor = Theme.of(
-      context,
-    ).dividerColor.withValues(alpha: isDark ? 0.22 : 0.16);
+    final borderColor = Theme.of(context).dividerColor.withValues(alpha: 0.12);
     final rowHover = (isDark ? Colors.white : Colors.black).withValues(
       alpha: 0.04,
     );
@@ -939,9 +937,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withValues(alpha: 0.16),
+                              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                             ),
                           ),
                           child: Row(
@@ -1136,7 +1132,7 @@ class _UsersSkeleton extends StatelessWidget {
             width: 280,
             height: 24,
             decoration: BoxDecoration(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -1153,9 +1149,7 @@ class _UsersSkeleton extends StatelessWidget {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.15),
+                            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
@@ -1164,9 +1158,7 @@ class _UsersSkeleton extends StatelessWidget {
                           child: Container(
                             height: 16,
                             decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withValues(alpha: 0.15),
+                              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),

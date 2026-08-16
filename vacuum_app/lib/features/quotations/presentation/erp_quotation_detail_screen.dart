@@ -267,9 +267,7 @@ class _ErpQuotationDetailScreenState
                           if (quotation.authorization != null) ...[
                             const SizedBox(height: 14),
                             Divider(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withValues(alpha: 0.14),
+                              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                             ),
                             const SizedBox(height: 12),
                             _kv(

@@ -1137,9 +1137,7 @@ class _FilterTabs extends StatelessWidget {
                         ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
                         : Colors.transparent,
                     border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.16),
+                      color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                     ),
                   ),
                   child: Row(
@@ -1163,9 +1161,7 @@ class _FilterTabs extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.12),
+                            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -1296,9 +1292,7 @@ class _AmcCard extends StatelessWidget {
                           : AppColors.gray100,
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.12),
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                       ),
                     ),
                     child: Text(

@@ -90,9 +90,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).dividerColor.withValues(alpha: 0.08),
+                          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.arrow_back),
@@ -718,7 +716,7 @@ class _InfoGrid extends StatelessWidget {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.10),
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(items[i].icon, size: 18, color: AppColors.blue600),
