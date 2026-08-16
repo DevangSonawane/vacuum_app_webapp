@@ -48,6 +48,32 @@ class AppDropdownField<T> extends StatelessWidget {
       children: [Expanded(child: Text(text, overflow: TextOverflow.ellipsis))],
     );
 
+    final dropdownItems = <DropdownMenuItem<T?>>[];
+    final seenValues = <Object?>{};
+
+    if (allowNull) {
+      seenValues.add(null);
+      dropdownItems.add(
+        DropdownMenuItem<T?>(value: null, child: menuRow(nullLabel)),
+      );
+    }
+
+    for (final item in items) {
+      if (seenValues.contains(item.value)) continue;
+      seenValues.add(item.value);
+      dropdownItems.add(
+        DropdownMenuItem<T?>(value: item.value, child: menuRow(item.label)),
+      );
+    }
+
+    final hasCurrentValue =
+        dropdownItems.where((item) => item.value == value).length == 1;
+    final selectedValue = hasCurrentValue
+        ? value
+        : (allowNull
+              ? null
+              : (dropdownItems.isNotEmpty ? dropdownItems.first.value : null));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -56,37 +82,45 @@ class AppDropdownField<T> extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         ),
         const SizedBox(height: 6),
-        DropdownButtonFormField<T?>(
-          initialValue: value,
-          isExpanded: true,
-          menuMaxHeight: 360,
-          borderRadius: BorderRadius.circular(16),
-          dropdownColor: surface,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-          decoration: InputDecoration(
-            isDense: false,
-            filled: true,
-            fillColor: isDark
-                ? const Color(0xFF0B1220)
-                : const Color(0xFFF9FAFB),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 13,
+        if (dropdownItems.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0B1220) : const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor),
             ),
-            border: baseBorder,
-            enabledBorder: baseBorder,
-            focusedBorder: focusedBorder,
+            child: Text(
+              'No options available',
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
+          )
+        else
+          DropdownButtonFormField<T?>(
+            initialValue: selectedValue,
+            isExpanded: true,
+            menuMaxHeight: 360,
+            borderRadius: BorderRadius.circular(16),
+            dropdownColor: surface,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+            decoration: InputDecoration(
+              isDense: false,
+              filled: true,
+              fillColor: isDark
+                  ? const Color(0xFF0B1220)
+                  : const Color(0xFFF9FAFB),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 13,
+              ),
+              border: baseBorder,
+              enabledBorder: baseBorder,
+              focusedBorder: focusedBorder,
+            ),
+            items: dropdownItems,
+            onChanged: enabled ? onChanged : null,
           ),
-          items: [
-            if (allowNull)
-              DropdownMenuItem<T?>(value: null, child: menuRow(nullLabel)),
-            ...items.map(
-              (o) =>
-                  DropdownMenuItem<T?>(value: o.value, child: menuRow(o.label)),
-            ),
-          ],
-          onChanged: enabled ? onChanged : null,
-        ),
       ],
     );
   }

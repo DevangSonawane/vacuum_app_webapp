@@ -13,6 +13,7 @@ import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_dropdown_field.dart';
+import '../../../shared/widgets/app_input.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/bottom_safe_area.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
@@ -921,7 +922,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
       } else {
         AppToast.show(
           context,
-          message: 'Operation failed',
+          message: 'Unable to save the technician. Please try again.',
           type: AppToastType.error,
         );
       }
@@ -1127,7 +1128,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                           'Password (optional)',
                           _password,
                           hint: 'Leave blank if no login needed',
-                          obscure: true,
+                          type: AppInputType.password,
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -1280,26 +1281,21 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
     TextEditingController ctrl, {
     String? hint,
     TextInputType? keyboard,
-    bool obscure = false,
-    int maxLines = 1,
+    AppInputType type = AppInputType.text,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: ctrl,
-          keyboardType: keyboard,
-          obscureText: obscure,
-          enabled: !_loading,
-          maxLines: maxLines,
-          decoration: InputDecoration(hintText: hint),
-        ),
-      ],
+    final effectiveType = switch (keyboard) {
+      TextInputType.emailAddress => AppInputType.email,
+      TextInputType.phone => AppInputType.phone,
+      TextInputType.number => AppInputType.number,
+      _ => type,
+    };
+
+    return AppInput(
+      label: label,
+      controller: ctrl,
+      type: effectiveType,
+      placeholder: hint,
+      enabled: !_loading,
     );
   }
 

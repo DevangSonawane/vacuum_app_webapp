@@ -7,8 +7,10 @@ class DashboardRepository {
 
   final Dio _dio;
 
-  Future<DashboardData> fetchDashboard() async {
-    final response = await _dio.get('dashboard');
+  Future<DashboardData> fetchDashboard({required bool isTechnician}) async {
+    final response = await _dio.get(
+      isTechnician ? 'dashboard/my' : 'dashboard',
+    );
     final root = _asMap(response.data);
     final success = root['success'] == true;
     if (!success) {

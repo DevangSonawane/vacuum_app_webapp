@@ -44,6 +44,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   }
 
   String? role() => ref.read(authProvider).valueOrNull?.user?.role;
+  const restrictedRoles = {'technician', 'engineer', 'labour'};
 
   return GoRouter(
     initialLocation: '/',
@@ -65,12 +66,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // authenticated
       if (isAuthRoute || state.matchedLocation == '/splash') return '/';
 
-      final userRole = role();
+      final userRole = role()?.toLowerCase() ?? '';
+      final location = state.matchedLocation;
       final adminOnly =
-          state.matchedLocation == '/users' ||
-          state.matchedLocation == '/email' ||
-          state.matchedLocation == '/activity';
+          location == '/quotations' ||
+          location == '/users' ||
+          location == '/email' ||
+          location == '/activity';
       if (adminOnly && userRole != 'admin') return '/';
+
+      final restrictedModule =
+          location.startsWith('/technicians') ||
+          location.startsWith('/clients') ||
+          location.startsWith('/amc') ||
+          location.startsWith('/attendance');
+      if (restrictedModule && restrictedRoles.contains(userRole)) return '/';
 
       return null;
     },

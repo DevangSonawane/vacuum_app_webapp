@@ -439,11 +439,12 @@ class _Sidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider).valueOrNull;
-    final role = auth?.user?.role;
+    final role = auth?.user?.role.toLowerCase();
 
     final location = GoRouterState.of(context).matchedLocation;
     final items = _navItems
         .where((i) => !i.adminOnly || role == 'admin')
+        .where((i) => !i.hideForRoles.contains(role))
         .toList();
 
     return Container(
@@ -620,12 +621,14 @@ class _NavDescriptor {
     required this.route,
     required this.icon,
     required this.adminOnly,
+    this.hideForRoles = const [],
   });
 
   final String label;
   final String route;
   final IconData icon;
   final bool adminOnly;
+  final List<String> hideForRoles;
 }
 
 const _navItems = <_NavDescriptor>[
@@ -640,12 +643,14 @@ const _navItems = <_NavDescriptor>[
     route: '/technicians',
     icon: Icons.engineering_outlined,
     adminOnly: false,
+    hideForRoles: ['technician', 'engineer', 'labour'],
   ),
   _NavDescriptor(
     label: 'Clients',
     route: '/clients',
     icon: Icons.groups_outlined,
     adminOnly: false,
+    hideForRoles: ['technician', 'engineer', 'labour'],
   ),
   _NavDescriptor(
     label: 'Visit Scheduled',
@@ -664,6 +669,7 @@ const _navItems = <_NavDescriptor>[
     route: '/amc',
     icon: Icons.verified_user_outlined,
     adminOnly: false,
+    hideForRoles: ['technician', 'engineer', 'labour'],
   ),
   _NavDescriptor(
     label: 'Quotations',
@@ -676,6 +682,7 @@ const _navItems = <_NavDescriptor>[
     route: '/attendance',
     icon: Icons.access_time,
     adminOnly: false,
+    hideForRoles: ['technician', 'engineer', 'labour'],
   ),
   _NavDescriptor(
     label: 'Email Settings',

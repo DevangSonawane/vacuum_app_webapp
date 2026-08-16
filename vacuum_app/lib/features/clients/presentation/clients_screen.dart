@@ -403,8 +403,8 @@ class _ClientsGrid extends StatelessWidget {
         crossAxisCount: cols,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        // Slightly taller cards to avoid RenderFlex overflow on smaller heights.
-        childAspectRatio: cols == 1 ? 1.30 : 1.18,
+        // Single-column cards need extra height for the header, chips, and details.
+        childAspectRatio: cols == 1 ? 1.05 : 1.18,
       ),
       itemCount: items.length,
       itemBuilder: (context, i) => _ClientCard(

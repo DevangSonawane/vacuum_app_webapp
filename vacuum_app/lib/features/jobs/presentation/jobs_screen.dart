@@ -348,6 +348,10 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     );
   }
 
+  bool _canCancelJob(String role) => ['admin', 'manager'].contains(role);
+
+  bool _canDeleteJob(String role) => role == 'admin';
+
   Future<bool> _downloadVisitScheduleExcel({
     required int month,
     required int year,
@@ -417,8 +421,11 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
-    final canRaise = !['technician', 'labour'].contains(role);
-    final isAdmin = role.toLowerCase() == 'admin';
+    final lowerRole = role.toLowerCase();
+    final canRaise = !['technician', 'labour'].contains(lowerRole);
+    final canCancel = _canCancelJob(lowerRole);
+    final canDelete = _canDeleteJob(lowerRole);
+    final isAdmin = lowerRole == 'admin';
 
     final state = ref.watch(jobsProvider);
     return RefreshIndicator(
@@ -574,25 +581,29 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                       _KanbanAllView(
                         jobs: data.items,
                         canRaise: canRaise,
+                        canCancel: canCancel,
+                        canDelete: canDelete,
                         onTap: (id) => context.go('/jobs/$id'),
                         onAdvance: (job) =>
                             _advanceOrClose(context, ref, job, canRaise),
                         onCancel: (job) =>
-                            _confirmCancelJob(context, ref, job, canRaise),
+                            _confirmCancelJob(context, ref, job, canCancel),
                         onDelete: (job) =>
-                            _confirmDeleteJob(context, ref, job, canRaise),
+                            _confirmDeleteJob(context, ref, job, canDelete),
                       )
                     else
                       _FilteredListView(
                         jobs: data.items,
                         canRaise: canRaise,
+                        canCancel: canCancel,
+                        canDelete: canDelete,
                         onTap: (id) => context.go('/jobs/$id'),
                         onAdvance: (job) =>
                             _advanceOrClose(context, ref, job, canRaise),
                         onCancel: (job) =>
-                            _confirmCancelJob(context, ref, job, canRaise),
+                            _confirmCancelJob(context, ref, job, canCancel),
                         onDelete: (job) =>
-                            _confirmDeleteJob(context, ref, job, canRaise),
+                            _confirmDeleteJob(context, ref, job, canDelete),
                       ),
                   ],
                 );
@@ -632,9 +643,9 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     BuildContext context,
     WidgetRef ref,
     Job job,
-    bool canRaise,
+    bool canDelete,
   ) async {
-    if (!canRaise) {
+    if (!canDelete) {
       AppToast.show(
         context,
         message: 'You do not have permission to delete jobs.',
@@ -673,9 +684,9 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     BuildContext context,
     WidgetRef ref,
     Job job,
-    bool canRaise,
+    bool canCancel,
   ) async {
-    if (!canRaise) {
+    if (!canCancel) {
       AppToast.show(
         context,
         message: 'You do not have permission to cancel visits.',
@@ -918,6 +929,8 @@ class _KanbanAllView extends StatelessWidget {
   const _KanbanAllView({
     required this.jobs,
     required this.canRaise,
+    required this.canCancel,
+    required this.canDelete,
     required this.onTap,
     required this.onAdvance,
     required this.onCancel,
@@ -926,6 +939,8 @@ class _KanbanAllView extends StatelessWidget {
 
   final List<Job> jobs;
   final bool canRaise;
+  final bool canCancel;
+  final bool canDelete;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
   final ValueChanged<Job> onCancel;
@@ -940,6 +955,8 @@ class _KanbanAllView extends StatelessWidget {
             status: status,
             items: jobs.where((j) => j.status == status).toList(),
             canRaise: canRaise,
+            canCancel: canCancel,
+            canDelete: canDelete,
             onTap: onTap,
             onAdvance: onAdvance,
             onCancel: onCancel,
@@ -957,6 +974,8 @@ class _StatusSection extends StatelessWidget {
     required this.status,
     required this.items,
     required this.canRaise,
+    required this.canCancel,
+    required this.canDelete,
     required this.onTap,
     required this.onAdvance,
     required this.onCancel,
@@ -966,6 +985,8 @@ class _StatusSection extends StatelessWidget {
   final String status;
   final List<Job> items;
   final bool canRaise;
+  final bool canCancel;
+  final bool canDelete;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
   final ValueChanged<Job> onCancel;
@@ -996,10 +1017,12 @@ class _StatusSection extends StatelessWidget {
                 _JobCardVertical(
                   job: job,
                   canRaise: canRaise,
+                  canCancel: canCancel,
+                  canDelete: canDelete,
                   onTap: () => onTap(job.id),
                   onAdvance: () => onAdvance(job),
                   onCancel: () => onCancel(job),
-                  onLongPress: () => onDelete(job),
+                  onLongPress: canDelete ? () => onDelete(job) : null,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -1014,6 +1037,8 @@ class _FilteredListView extends StatelessWidget {
   const _FilteredListView({
     required this.jobs,
     required this.canRaise,
+    required this.canCancel,
+    required this.canDelete,
     required this.onTap,
     required this.onAdvance,
     required this.onCancel,
@@ -1022,6 +1047,8 @@ class _FilteredListView extends StatelessWidget {
 
   final List<Job> jobs;
   final bool canRaise;
+  final bool canCancel;
+  final bool canDelete;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
   final ValueChanged<Job> onCancel;
@@ -1035,10 +1062,12 @@ class _FilteredListView extends StatelessWidget {
           _JobCardHorizontal(
             job: job,
             canRaise: canRaise,
+            canCancel: canCancel,
+            canDelete: canDelete,
             onTap: () => onTap(job.id),
             onAdvance: () => onAdvance(job),
             onCancel: () => onCancel(job),
-            onLongPress: () => onDelete(job),
+            onLongPress: canDelete ? () => onDelete(job) : null,
           ),
           const SizedBox(height: 12),
         ],
@@ -1051,6 +1080,8 @@ class _JobCardVertical extends StatelessWidget {
   const _JobCardVertical({
     required this.job,
     required this.canRaise,
+    required this.canCancel,
+    required this.canDelete,
     required this.onTap,
     required this.onAdvance,
     required this.onCancel,
@@ -1059,10 +1090,12 @@ class _JobCardVertical extends StatelessWidget {
 
   final Job job;
   final bool canRaise;
+  final bool canCancel;
+  final bool canDelete;
   final VoidCallback onTap;
   final VoidCallback onAdvance;
   final VoidCallback onCancel;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -1157,16 +1190,17 @@ class _JobCardVertical extends StatelessWidget {
                       color: AppColors.blue600,
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Cancel visit',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onCancel,
-                    icon: const Icon(
-                      Icons.cancel_outlined,
-                      size: 18,
-                      color: AppColors.red500,
+                  if (canCancel)
+                    IconButton(
+                      tooltip: 'Cancel visit',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: onCancel,
+                      icon: const Icon(
+                        Icons.cancel_outlined,
+                        size: 18,
+                        color: AppColors.red500,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -1181,6 +1215,8 @@ class _JobCardHorizontal extends StatelessWidget {
   const _JobCardHorizontal({
     required this.job,
     required this.canRaise,
+    required this.canCancel,
+    required this.canDelete,
     required this.onTap,
     required this.onAdvance,
     required this.onCancel,
@@ -1189,10 +1225,12 @@ class _JobCardHorizontal extends StatelessWidget {
 
   final Job job;
   final bool canRaise;
+  final bool canCancel;
+  final bool canDelete;
   final VoidCallback onTap;
   final VoidCallback onAdvance;
   final VoidCallback onCancel;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -1299,16 +1337,17 @@ class _JobCardHorizontal extends StatelessWidget {
                           color: AppColors.blue600,
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Cancel visit',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: onCancel,
-                        icon: const Icon(
-                          Icons.cancel_outlined,
-                          size: 18,
-                          color: AppColors.red500,
+                      if (canCancel)
+                        IconButton(
+                          tooltip: 'Cancel visit',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: onCancel,
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            size: 18,
+                            color: AppColors.red500,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -2010,12 +2049,16 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
                   color: AppColors.gray400,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  value != null
-                      ? value.toIso8601String().substring(0, 10)
-                      : hint,
-                  style: TextStyle(
-                    color: value != null ? null : AppColors.gray400,
+                Expanded(
+                  child: Text(
+                    value != null
+                        ? value.toIso8601String().substring(0, 10)
+                        : hint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: value != null ? null : AppColors.gray400,
+                    ),
                   ),
                 ),
               ],
@@ -2089,19 +2132,47 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
   String _query = '';
+  bool _isOpen = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController();
     _focusNode = FocusNode();
+    _focusNode.addListener(_handleFocusChange);
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_handleFocusChange);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _handleFocusChange() {
+    if (_focusNode.hasFocus) {
+      if (!_isOpen) setState(() => _isOpen = true);
+    }
+  }
+
+  void _openPicker() {
+    if (!widget.enabled) return;
+    if (_isOpen) return;
+    setState(() => _isOpen = true);
+    _focusNode.requestFocus();
+  }
+
+  void _closePicker({bool clearQuery = false}) {
+    if (!mounted) return;
+    setState(() {
+      _isOpen = false;
+      if (clearQuery) {
+        _query = '';
+        _controller.clear();
+      }
+    });
+    _focusNode.unfocus();
   }
 
   List<({int id, String name, String phone})> get _filteredItems {
@@ -2121,7 +2192,10 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
     if (!widget.enabled || widget.selectedIds.contains(id)) return;
     widget.onChanged([...widget.selectedIds, id]);
     _controller.clear();
-    setState(() => _query = '');
+    setState(() {
+      _query = '';
+      _isOpen = true;
+    });
     _focusNode.requestFocus();
   }
 
@@ -2140,187 +2214,333 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
         .where((item) => widget.selectedIds.contains(item.id))
         .toList(growable: false);
     final filtered = _filteredItems;
-    final showList = _focusNode.hasFocus || _query.trim().isNotEmpty;
+    final showList = _isOpen;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.label,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        if (selectedItems.isNotEmpty) ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final tech in selectedItems)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.engineering_outlined,
-                        size: 14,
-                        color: AppColors.blue600,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        tech.name,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.blue600,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(999),
-                        onTap: widget.enabled ? () => _remove(tech.id) : null,
-                        child: const Padding(
-                          padding: EdgeInsets.all(2),
-                          child: Icon(
-                            Icons.close,
-                            size: 14,
-                            color: AppColors.blue600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0B1220) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-        ],
-        TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          enabled: widget.enabled,
-          onChanged: (value) => setState(() => _query = value),
-          onTapOutside: (_) => _focusNode.unfocus(),
-          decoration: InputDecoration(
-            hintText: widget.selectedIds.isEmpty
-                ? 'Search and select technicians...'
-                : 'Add more technicians...',
-            prefixIcon: const Icon(Icons.search, size: 18),
-            suffixIcon: _controller.text.trim().isNotEmpty && widget.enabled
-                ? IconButton(
-                    tooltip: 'Clear',
-                    onPressed: () {
-                      _controller.clear();
-                      setState(() => _query = '');
-                      _focusNode.requestFocus();
-                    },
-                    icon: const Icon(Icons.close, size: 18),
-                  )
-                : null,
-          ),
-        ),
-        if (showList) ...[
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 220),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF111827) : surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
-              ),
-            ),
-            child: filtered.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      widget.items.isEmpty
-                          ? 'No technicians available'
-                          : 'No more technicians to add',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Theme.of(context).hintColor),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.label,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Search, pick multiple technicians, or collapse the list when done.',
+                          style: TextStyle(
+                            color: Theme.of(context).hintColor,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                : ListView.separated(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.all(8),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, index) => const SizedBox(height: 4),
-                    itemBuilder: (context, index) {
-                      final tech = filtered[index];
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: widget.enabled ? () => _add(tech.id) : null,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
+                  ),
+                  if (widget.enabled)
+                    TextButton.icon(
+                      onPressed: _isOpen ? () => _closePicker() : _openPicker,
+                      icon: Icon(
+                        _isOpen
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                      ),
+                      label: Text(_isOpen ? 'Close' : 'Open'),
+                    ),
+                ],
+              ),
+              if (selectedItems.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final tech in selectedItems)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark ? const Color(0xFF172554) : const Color(
+                                0xFFEFF6FF,
+                              ),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF1E3A8A)
+                                : const Color(0xFFBFDBFE),
                           ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFDBEAFE),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.engineering_outlined,
-                                  size: 18,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.engineering_outlined,
+                              size: 14,
+                              color: AppColors.blue600,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              tech.name,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.blue600,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(999),
+                              onTap: widget.enabled
+                                  ? () => _remove(tech.id)
+                                  : null,
+                              child: const Padding(
+                                padding: EdgeInsets.all(2),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 14,
                                   color: AppColors.blue600,
                                 ),
                               ),
-                              const SizedBox(width: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                enabled: widget.enabled,
+                onTap: _openPicker,
+                onChanged: (value) => setState(() {
+                  _query = value;
+                  _isOpen = true;
+                }),
+                onTapOutside: (_) => _focusNode.unfocus(),
+                decoration: InputDecoration(
+                  hintText: widget.selectedIds.isEmpty
+                      ? 'Search technicians...'
+                      : 'Add more technicians...',
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  suffixIcon: !_isOpen && _controller.text.trim().isEmpty
+                      ? const Icon(Icons.unfold_more_rounded, size: 18)
+                      : _controller.text.trim().isNotEmpty && widget.enabled
+                      ? IconButton(
+                          tooltip: 'Clear',
+                          onPressed: () {
+                            _controller.clear();
+                            setState(() => _query = '');
+                            _focusNode.requestFocus();
+                          },
+                          icon: const Icon(Icons.close, size: 18),
+                        )
+                      : IconButton(
+                          tooltip: 'Close',
+                          onPressed: () => _closePicker(),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_up_rounded,
+                            size: 18,
+                          ),
+                        ),
+                ),
+              ),
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 240),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF111827) : surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                          child: Row(
+                            children: [
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      tech.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    if (tech.phone.trim().isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        tech.phone,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Theme.of(context).hintColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                child: Text(
+                                  filtered.isEmpty
+                                      ? 'No matches'
+                                      : '${filtered.length} technician${filtered.length == 1 ? '' : 's'}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
                                 ),
+                              ),
+                              TextButton(
+                                onPressed: () => _closePicker(),
+                                child: const Text('Done'),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
+                        const Divider(height: 1),
+                        Expanded(
+                          child: filtered.isEmpty
+                              ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text(
+                                      widget.items.isEmpty
+                                          ? 'No technicians available'
+                                          : 'No more technicians to add',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Theme.of(context).hintColor,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  padding: const EdgeInsets.all(8),
+                                  itemCount: filtered.length,
+                                  separatorBuilder: (_, index) =>
+                                      const SizedBox(height: 4),
+                                  itemBuilder: (context, index) {
+                                    final tech = filtered[index];
+                                    return InkWell(
+                                      borderRadius: BorderRadius.circular(14),
+                                      onTap: widget.enabled
+                                          ? () => _add(tech.id)
+                                          : null,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 11,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(
+                                            context,
+                                          ).dividerColor.withValues(alpha: 0.04),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 34,
+                                              height: 34,
+                                              decoration: BoxDecoration(
+                                                gradient: const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFFDBEAFE),
+                                                    Color(0xFFF0F9FF),
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: const Icon(
+                                                Icons.engineering_outlined,
+                                                size: 18,
+                                                color: AppColors.blue600,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    tech.name,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                    ),
+                                                  ),
+                                                  if (tech.phone
+                                                      .trim()
+                                                      .isNotEmpty) ...[
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      tech.phone,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).hintColor,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Icon(
+                                              Icons.add_circle_outline,
+                                              size: 18,
+                                              color: AppColors.blue600,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+                crossFadeState: showList
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 180),
+                sizeCurve: Curves.easeOut,
+              ),
+            ],
           ),
-        ],
+        ),
       ],
     );
   }

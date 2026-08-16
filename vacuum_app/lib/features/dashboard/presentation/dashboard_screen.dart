@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/error_message.dart';
+import '../../../core/utils/initials.dart';
 import '../../../core/utils/revenue.dart';
+import '../../../shared/widgets/app_avatar.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/section_header.dart';
@@ -25,7 +27,9 @@ class DashboardScreen extends ConsumerWidget {
       loading: () => const _DashboardSkeleton(),
       error: (error, _) =>
           _DashboardError(message: friendlyErrorMessage(error)),
-      data: (data) => _DashboardBody(data: data),
+      data: (data) => data.technicianProfile != null
+          ? _TechnicianDashboardBody(data: data)
+          : _DashboardBody(data: data),
     );
   }
 }
@@ -142,9 +146,160 @@ class _DashboardBody extends ConsumerWidget {
   }
 }
 
+class _TechnicianDashboardBody extends StatelessWidget {
+  const _TechnicianDashboardBody({required this.data});
+
+  final DashboardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = data.stats;
+    final profile = data.technicianProfile;
+
+    return RefreshIndicator(
+      onRefresh: () async {},
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (profile != null) ...[
+                  AppAvatar(
+                    initials: initialsFromName(profile.name),
+                    size: AppAvatarSize.lg,
+                  ),
+                  const SizedBox(width: 14),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile != null ? 'Hi, ${profile.name}' : 'Dashboard',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (profile?.specialization.isNotEmpty == true)
+                            Text(
+                              profile!.specialization,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          if ((profile?.rating ?? 0) > 0)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 14,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  profile!.rating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton(onPressed: () {}, icon: const Icon(Icons.refresh)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: MediaQuery.sizeOf(context).width >= 1024 ? 3 : 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: MediaQuery.sizeOf(context).width < 520
+                  ? 1.55
+                  : 1.8,
+              children: [
+                StatCard(
+                  title: 'Today\'s Visits',
+                  value: stats.todayVisits.toString(),
+                  icon: Icons.calendar_today_outlined,
+                  accentColor: AppColors.blue600,
+                ),
+                StatCard(
+                  title: 'This Week',
+                  value: stats.weekVisits.toString(),
+                  icon: Icons.schedule_outlined,
+                  accentColor: AppColors.purple500,
+                ),
+                StatCard(
+                  title: 'Open Jobs',
+                  value: stats.openJobs.toString(),
+                  icon: Icons.work_outline,
+                  accentColor: AppColors.amber500,
+                ),
+                StatCard(
+                  title: 'Closed Jobs',
+                  value: stats.closedJobs.toString(),
+                  icon: Icons.check_circle_outline,
+                  accentColor: AppColors.emerald500,
+                ),
+                StatCard(
+                  title: 'Pending Reports',
+                  value: stats.pendingReports.toString(),
+                  icon: Icons.description_outlined,
+                  accentColor: AppColors.orange500,
+                ),
+                StatCard(
+                  title: 'Revenue',
+                  value: fmtRevenue(stats.totalRevenue),
+                  icon: Icons.payments_outlined,
+                  accentColor: AppColors.blue600,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _JobsAndRevenueCard(items: data.monthlyStats, technicianMode: true),
+            const SizedBox(height: 16),
+            _JobStatusCard(items: data.jobStatusBreakdown),
+            const SizedBox(height: 16),
+            _ScheduleCards(
+              todayVisits: data.todayVisits,
+              upcomingVisits: data.upcomingVisits,
+              onJobTap: (id) => GoRouter.of(context).go('/jobs/$id'),
+            ),
+            const SizedBox(height: 16),
+            _RecentJobsCard(
+              items: data.recentJobs,
+              onJobTap: (id) => GoRouter.of(context).go('/jobs/$id'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _JobsAndRevenueCard extends StatelessWidget {
-  const _JobsAndRevenueCard({required this.items});
+  const _JobsAndRevenueCard({required this.items, this.technicianMode = false});
   final List<MonthlyStat> items;
+  final bool technicianMode;
 
   @override
   Widget build(BuildContext context) {
@@ -152,9 +307,13 @@ class _JobsAndRevenueCard extends StatelessWidget {
         ? 1.0
         : (items
                       .map(
-                        (e) => e.jobsRaised > e.jobsCompleted
-                            ? e.jobsRaised
-                            : e.jobsCompleted,
+                        (e) => technicianMode
+                            ? (e.jobsAssigned > e.jobsCompleted
+                                  ? e.jobsAssigned
+                                  : e.jobsCompleted)
+                            : (e.jobsRaised > e.jobsCompleted
+                                  ? e.jobsRaised
+                                  : e.jobsCompleted),
                       )
                       .reduce((a, b) => a > b ? a : b) +
                   2)
@@ -171,12 +330,14 @@ class _JobsAndRevenueCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Jobs & Revenue',
+                      technicianMode ? 'Monthly Performance' : 'Jobs & Revenue',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Last 6 months',
+                      technicianMode
+                          ? 'Assigned vs Completed'
+                          : 'Last 6 months',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).hintColor,
                       ),
@@ -240,7 +401,11 @@ class _JobsAndRevenueCard extends StatelessWidget {
                       barsSpace: 4,
                       barRods: [
                         BarChartRodData(
-                          toY: items[i].jobsRaised.toDouble(),
+                          toY:
+                              (technicianMode
+                                      ? items[i].jobsAssigned
+                                      : items[i].jobsRaised)
+                                  .toDouble(),
                           width: 10,
                           color: const Color(0xFFBFDBFE),
                           borderRadius: const BorderRadius.only(
@@ -263,6 +428,233 @@ class _JobsAndRevenueCard extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleCards extends StatelessWidget {
+  const _ScheduleCards({
+    required this.todayVisits,
+    required this.upcomingVisits,
+    required this.onJobTap,
+  });
+
+  final List<DashboardVisit> todayVisits;
+  final List<DashboardVisit> upcomingVisits;
+  final ValueChanged<String> onJobTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _VisitListCard(
+            title: "Today's Schedule",
+            countLabel: '${todayVisits.length} visits',
+            emptyLabel: 'No visits scheduled today',
+            emptyIcon: Icons.calendar_today_outlined,
+            visits: todayVisits,
+            accent: AppColors.blue600,
+            onJobTap: onJobTap,
+            showDate: false,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _VisitListCard(
+            title: 'Upcoming (14 days)',
+            countLabel: '${upcomingVisits.length}',
+            emptyLabel: 'No upcoming visits',
+            emptyIcon: Icons.schedule_outlined,
+            visits: upcomingVisits,
+            accent: AppColors.purple500,
+            onJobTap: onJobTap,
+            showDate: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VisitListCard extends StatelessWidget {
+  const _VisitListCard({
+    required this.title,
+    required this.countLabel,
+    required this.emptyLabel,
+    required this.emptyIcon,
+    required this.visits,
+    required this.accent,
+    required this.onJobTap,
+    required this.showDate,
+  });
+
+  final String title;
+  final String countLabel;
+  final String emptyLabel;
+  final IconData emptyIcon;
+  final List<DashboardVisit> visits;
+  final Color accent;
+  final ValueChanged<String> onJobTap;
+  final bool showDate;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Text(
+                countLabel,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (visits.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(emptyIcon, size: 28, color: AppColors.gray400),
+                    const SizedBox(height: 6),
+                    Text(
+                      emptyLabel,
+                      style: TextStyle(color: Theme.of(context).hintColor),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Column(
+              children: [
+                for (final visit in visits)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => onJobTap(visit.id),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF111827)
+                              : AppColors.gray50,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                showDate
+                                    ? Icons.calendar_month_outlined
+                                    : Icons.work_outline,
+                                size: 18,
+                                color: accent,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    visit.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      if ((visit.clientName ?? '').isNotEmpty)
+                                        Text(
+                                          visit.clientName!,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Theme.of(context).hintColor,
+                                          ),
+                                        ),
+                                      if ((visit.siteLocation ?? '').isNotEmpty)
+                                        Text(
+                                          visit.siteLocation!,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Theme.of(context).hintColor,
+                                          ),
+                                        ),
+                                      if ((visit.clientPhone ?? '').isNotEmpty)
+                                        Text(
+                                          visit.clientPhone!,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Theme.of(context).hintColor,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                StatusBadge(label: visit.status),
+                                if (showDate &&
+                                    (visit.scheduledDate ?? '').isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      visit.scheduledDate!.substring(0, 10),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(context).hintColor,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );

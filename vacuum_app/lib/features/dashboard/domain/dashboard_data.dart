@@ -6,6 +6,9 @@ class DashboardData {
     required this.revenueTrend,
     required this.quickOverview,
     required this.recentJobs,
+    required this.todayVisits,
+    required this.upcomingVisits,
+    required this.technicianProfile,
   });
 
   final DashboardStats stats;
@@ -14,6 +17,9 @@ class DashboardData {
   final List<RevenueTrendPoint> revenueTrend;
   final QuickOverview quickOverview;
   final List<RecentJob> recentJobs;
+  final List<DashboardVisit> todayVisits;
+  final List<DashboardVisit> upcomingVisits;
+  final TechnicianDashboardProfile? technicianProfile;
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
     return DashboardData(
@@ -31,6 +37,40 @@ class DashboardData {
       recentJobs: _asList(
         json['recent_jobs'],
       ).map((e) => RecentJob.fromJson(_asMap(e))).toList(),
+      todayVisits: _asList(
+        json['today_visits'],
+      ).map((e) => DashboardVisit.fromJson(_asMap(e))).toList(),
+      upcomingVisits: _asList(
+        json['upcoming_visits'],
+      ).map((e) => DashboardVisit.fromJson(_asMap(e))).toList(),
+      technicianProfile: json['technician_profile'] == null
+          ? null
+          : TechnicianDashboardProfile.fromJson(
+              _asMap(json['technician_profile']),
+            ),
+    );
+  }
+}
+
+class TechnicianDashboardProfile {
+  const TechnicianDashboardProfile({
+    required this.name,
+    required this.avatar,
+    required this.specialization,
+    required this.rating,
+  });
+
+  final String name;
+  final String avatar;
+  final String specialization;
+  final num rating;
+
+  factory TechnicianDashboardProfile.fromJson(Map<String, dynamic> json) {
+    return TechnicianDashboardProfile(
+      name: (json['name'] ?? '').toString(),
+      avatar: (json['avatar'] ?? '').toString(),
+      specialization: (json['specialization'] ?? '').toString(),
+      rating: _asNum(json['rating']),
     );
   }
 }
@@ -45,6 +85,12 @@ class DashboardStats {
     required this.momActiveJobs,
     required this.momClients,
     required this.momRevenue,
+    required this.todayVisits,
+    required this.weekVisits,
+    required this.openJobs,
+    required this.closedJobs,
+    required this.pendingReports,
+    required this.totalRevenue,
   });
 
   final int activeJobs;
@@ -55,6 +101,12 @@ class DashboardStats {
   final num momActiveJobs;
   final num momClients;
   final num momRevenue;
+  final int todayVisits;
+  final int weekVisits;
+  final int openJobs;
+  final int closedJobs;
+  final int pendingReports;
+  final num totalRevenue;
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
     return DashboardStats(
@@ -66,6 +118,12 @@ class DashboardStats {
       momActiveJobs: _asNum(json['mom_active_jobs']),
       momClients: _asNum(json['mom_clients']),
       momRevenue: _asNum(json['mom_revenue']),
+      todayVisits: _asInt(json['today_visits']),
+      weekVisits: _asInt(json['week_visits']),
+      openJobs: _asInt(json['open_jobs']),
+      closedJobs: _asInt(json['closed_jobs']),
+      pendingReports: _asInt(json['pending_reports']),
+      totalRevenue: _asNum(json['total_revenue']),
     );
   }
 }
@@ -86,12 +144,14 @@ class JobStatusSlice {
 class MonthlyStat {
   const MonthlyStat({
     required this.month,
+    required this.jobsAssigned,
     required this.jobsRaised,
     required this.jobsCompleted,
     required this.revenue,
   });
 
   final String month;
+  final int jobsAssigned;
   final int jobsRaised;
   final int jobsCompleted;
   final num revenue;
@@ -99,6 +159,7 @@ class MonthlyStat {
   factory MonthlyStat.fromJson(Map<String, dynamic> json) {
     return MonthlyStat(
       month: (json['month'] ?? '').toString(),
+      jobsAssigned: _asInt(json['jobs_assigned']),
       jobsRaised: _asInt(json['jobs_raised']),
       jobsCompleted: _asInt(json['jobs_completed']),
       revenue: _asNum(json['revenue']),
@@ -184,6 +245,38 @@ class RecentJob {
       priority: (json['priority'] ?? '').toString(),
       amount: _asNum(json['amount']),
       clientName: (json['client_name'] as Object?)?.toString(),
+    );
+  }
+}
+
+class DashboardVisit {
+  const DashboardVisit({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.clientName,
+    required this.siteLocation,
+    required this.clientPhone,
+    required this.scheduledDate,
+  });
+
+  final String id;
+  final String title;
+  final String status;
+  final String? clientName;
+  final String? siteLocation;
+  final String? clientPhone;
+  final String? scheduledDate;
+
+  factory DashboardVisit.fromJson(Map<String, dynamic> json) {
+    return DashboardVisit(
+      id: (json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      clientName: (json['client_name'] as Object?)?.toString(),
+      siteLocation: (json['site_location'] as Object?)?.toString(),
+      clientPhone: (json['client_phone'] as Object?)?.toString(),
+      scheduledDate: (json['scheduled_date'] as Object?)?.toString(),
     );
   }
 }

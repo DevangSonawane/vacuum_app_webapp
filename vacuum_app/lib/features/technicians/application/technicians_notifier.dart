@@ -56,23 +56,15 @@ class TechniciansNotifier extends AsyncNotifier<TechniciansState> {
   }
 
   Future<bool> create(Map<String, dynamic> payload) async {
-    try {
-      await _repo.create(payload);
-      await refresh();
-      return true;
-    } catch (_) {
-      return false;
-    }
+    await _repo.create(payload);
+    await refresh();
+    return true;
   }
 
   Future<bool> updateTechnician(int id, Map<String, dynamic> payload) async {
-    try {
-      await _repo.update(id, payload);
-      await refresh();
-      return true;
-    } catch (_) {
-      return false;
-    }
+    await _repo.update(id, payload);
+    await refresh();
+    return true;
   }
 
   Future<void> delete(int id) async {

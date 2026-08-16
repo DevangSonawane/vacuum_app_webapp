@@ -43,8 +43,17 @@ String friendlyErrorMessage(
   }
 
   final text = error.toString().trim();
-  if (text.isNotEmpty && text != 'Exception') return text;
+  if (text.isNotEmpty && text != 'Exception') {
+    return _cleanMessage(text);
+  }
   return fallback;
+}
+
+String _cleanMessage(String text) {
+  if (text.startsWith('Exception: ')) {
+    return text.substring('Exception: '.length).trim();
+  }
+  return text;
 }
 
 String? _messageFromBody(DioException error) {
