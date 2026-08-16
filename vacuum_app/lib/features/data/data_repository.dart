@@ -5,8 +5,29 @@ class DataRepository {
 
   final Dio _dio;
 
-  Future<List<Map<String, dynamic>>> fetchVisitSchedule() async {
-    final res = await _dio.get('data/visit-schedule');
+  Future<List<Map<String, dynamic>>> fetchVisitSchedule({
+    int? month,
+    int? year,
+    int? day,
+    String? technicianId,
+    String? status,
+    String? category,
+  }) async {
+    final params = <String, dynamic>{};
+    if (month != null) params['month'] = month;
+    if (year != null) params['year'] = year;
+    if (day != null) params['day'] = day;
+    if (technicianId != null && technicianId.trim().isNotEmpty) {
+      params['technician_id'] = technicianId.trim();
+    }
+    if (status != null && status.trim().isNotEmpty) {
+      params['status'] = status.trim();
+    }
+    if (category != null && category.trim().isNotEmpty) {
+      params['category'] = category.trim();
+    }
+
+    final res = await _dio.get('data/visit-schedule', queryParameters: params);
     final root = _asMap(res.data);
     final list = _asList(root['data']);
     return [
@@ -40,4 +61,3 @@ Map<String, dynamic> _asMap(dynamic v) {
 }
 
 List<dynamic> _asList(dynamic v) => v is List ? v : const [];
-

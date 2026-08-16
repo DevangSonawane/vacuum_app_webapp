@@ -1016,7 +1016,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                           children: [
                             Expanded(
                               child: _field(
-                                'Email',
+                                'Email (optional)',
                                 _email,
                                 hint: 'ravi@ism.com',
                                 keyboard: TextInputType.emailAddress,
@@ -1035,7 +1035,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                         )
                       else ...[
                         _field(
-                          'Email',
+                          'Email (optional)',
                           _email,
                           hint: 'ravi@ism.com',
                           keyboard: TextInputType.emailAddress,
@@ -1117,6 +1117,12 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         const SizedBox(height: 12),
+                        Text(
+                          'Technicians can log in with their registered mobile number. Email is optional.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Theme.of(context).hintColor),
+                        ),
+                        const SizedBox(height: 12),
                         _field(
                           'Password (optional)',
                           _password,
@@ -1125,7 +1131,7 @@ class _TechnicianFormSheetState extends ConsumerState<_TechnicianFormSheet> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'If provided, this technician can log in via /api/technicians/login.',
+                          'If provided, this technician can also log in via email.',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: Theme.of(context).hintColor),
                         ),

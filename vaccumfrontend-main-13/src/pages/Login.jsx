@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, CheckCircle2, HardHat, Mail, Phone } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2, Mail, Phone } from "lucide-react";
+import logo from "../assets/logo.png";
 import { useDispatch, useSelector } from "react-redux";
 import { login, clearError } from "../store/authSlice";
 import { Link } from "react-router-dom";
@@ -24,15 +25,11 @@ export default function Login() {
     e.preventDefault();
     dispatch(clearError());
 
+    const digits = mobile.replace(/\D/g, "").slice(-10);
     const credentials =
       activeTab === "email"
         ? { email, password }
-        : {
-            phone_number: mobile.startsWith("+")
-              ? mobile
-              : `+91${mobile}`,
-            password,
-          };
+        : { phone_number: `+91${digits}`, password };
 
     dispatch(login(credentials));
   };
@@ -50,8 +47,8 @@ export default function Login() {
         />
 
         <div className="relative z-10">
-          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mb-10 shadow-lg shadow-blue-600/20">
-            <HardHat size={32} className="text-white" />
+          <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-10 shadow-lg shadow-blue-600/20 overflow-hidden">
+            <img src={logo} alt="VDTI" className="w-full h-full object-contain p-1" />
           </div>
 
           <h1 className="text-5xl font-bold mb-6 tracking-tight">VDTI Service Hub</h1>

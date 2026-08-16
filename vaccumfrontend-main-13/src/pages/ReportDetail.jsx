@@ -13,7 +13,7 @@ import {
   Image as ImageIcon, FileText, ClipboardList,
   ChevronRight, Clock, MapPin, Hash, Package,
   AlertTriangle, Wrench, Mail, PenLine, ExternalLink, Download,
-  X
+  X, Pencil, Trash2
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -38,6 +38,8 @@ export default function ReportDetail() {
   const [approving, setApproving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting]     = useState(false);
 
   useEffect(() => { fetchReport(); }, [id]);
 
@@ -100,6 +102,31 @@ export default function ReportDetail() {
   };
 
   const canApprove = currentUser?.role === "admin";
+  const role = currentUser?.role?.toLowerCase();
+  const canEdit = report && report.status !== "Approved" &&
+    (["admin", "manager"].includes(role) || role === "technician");
+  const canDelete = report && (
+    (["admin", "manager"].includes(role) && report.status !== "Approved") ||
+    (role === "technician" && report.status === "Pending")
+  );
+
+  const openEdit = () => navigate(`/reports/${id}/edit`);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_BASE_URL}/reports/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showToast("Report deleted", "success");
+      navigate("/reports");
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to delete", "error");
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
 
   // ── Loading skeleton ─────────────────────────────────────
   if (loading) {
@@ -153,14 +180,21 @@ export default function ReportDetail() {
             </div>
           </div>
           
-          <Button 
-            onClick={handleDownloadPDF} 
-            disabled={downloading}
-            className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
-          >
-            {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            Download PDF
-          </Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canEdit && (
+              <Button onClick={openEdit} variant="secondary" className="hidden sm:flex items-center gap-2">
+                <Pencil size={15} /> Edit
+              </Button>
+            )}
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+            >
+              {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              Download PDF
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -335,25 +369,41 @@ export default function ReportDetail() {
 
 
 
-            {/* ── Technical Reports ───────────────────────────── */}
+            {/* ── Attachments (images + docs unified) ─────────── */}
             {report.technical_reports?.length > 0 && (
               <Card className="p-5">
-                <SectionLabel icon={FileText} label={`Technical Reports (${report.technical_reports.length})`} />
-                <div className="space-y-2 mt-4">
-                  {report.technical_reports.map(doc => (
-                    <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group">
-                      <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                        <FileText size={15} className="text-blue-600 dark:text-blue-400" />
+                <SectionLabel icon={FileText} label={`Attachments (${report.technical_reports.length})`} />
+                {/* Image grid */}
+                {report.technical_reports.filter(f => f.mime_type?.startsWith("image/")).length > 0 && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4">
+                    {report.technical_reports.filter(f => f.mime_type?.startsWith("image/")).map((img, i) => (
+                      <div key={i} onClick={() => setSelectedImage(img)} className="group cursor-pointer">
+                        <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition group-hover:ring-2 group-hover:ring-blue-500">
+                          <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
+                        </div>
+                        <p className="text-[10px] text-gray-400 truncate mt-1">{img.file_name}</p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{doc.file_name}</p>
-                        {doc.file_size_bytes && <p className="text-xs text-gray-400">{(doc.file_size_bytes / 1024).toFixed(0)} KB</p>}
-                      </div>
-                      <ExternalLink size={13} className="text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
-                    </a>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
+                {/* Document links */}
+                {report.technical_reports.filter(f => !f.mime_type?.startsWith("image/")).length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    {report.technical_reports.filter(f => !f.mime_type?.startsWith("image/")).map((doc, i) => (
+                      <a key={i} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                          <FileText size={15} className="text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{doc.file_name}</p>
+                          {doc.file_size_bytes && <p className="text-xs text-gray-400">{(doc.file_size_bytes / 1024).toFixed(0)} KB</p>}
+                        </div>
+                        <ExternalLink size={13} className="text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </Card>
             )}
           </div>
@@ -374,6 +424,22 @@ export default function ReportDetail() {
                 </p>
               )}
             </Card>
+
+            {/* Edit / Delete actions */}
+            {(canEdit || canDelete) && (
+              <Card className="p-4 space-y-2">
+                {canEdit && (
+                  <Button className="w-full" onClick={openEdit}>
+                    <Pencil size={14} /> Edit Report
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white" onClick={() => setDeleteOpen(true)}>
+                    <Trash2 size={14} /> Delete Report
+                  </Button>
+                )}
+              </Card>
+            )}
 
             {/* Approve / Reject */}
             {canApprove && report.status === "Pending" && (
@@ -417,8 +483,7 @@ export default function ReportDetail() {
                   { label: "Checklist Items",  value: report.checklist_items?.length ?? 0 },
                   { label: "Issues Recorded",  value: report.issue_observations?.length ?? 0 },
                   { label: "Mandatory Spares", value: report.mandatory_spares?.length ?? 0 },
-                  { label: "Photos",           value: report.images?.length ?? 0 },
-                  { label: "Tech Documents",   value: report.technical_reports?.length ?? 0 },
+                  { label: "Attachments",      value: report.technical_reports?.length ?? 0 },
                 ].map(item => (
                   <div key={item.label} className="flex items-center justify-between">
                     <span className="text-sm text-gray-500 dark:text-gray-400">{item.label}</span>
@@ -486,27 +551,6 @@ export default function ReportDetail() {
               </Card>
             )}
 
-            {/* ── Photos ──────────────────────────────────────── */}
-            <Card className="p-5">
-              <SectionLabel icon={ImageIcon} label={`Attached Photos${report.images?.length > 0 ? ` (${report.images.length})` : ""}`} />
-              {report.images?.length > 0 ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4">
-                  {report.images.map(img => (
-                    <div key={img.id} onClick={() => setSelectedImage(img)} className="group cursor-pointer">
-                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition group-hover:ring-2 group-hover:ring-blue-500">
-                        <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
-                      </div>
-                      <p className="text-[10px] text-gray-400 truncate mt-1">{img.file_name}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-gray-300 dark:text-gray-600 mt-3">
-                  <ImageIcon size={28} className="mb-2 opacity-40" />
-                  <p className="text-sm">No photos attached</p>
-                </div>
-              )}
-            </Card>
           </div>
         </div>
       </div>
@@ -536,6 +580,31 @@ export default function ReportDetail() {
               </div>
               <div className="mt-4 text-center">
                 <p className="text-white font-medium">{selectedImage.file_name}</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Confirmation ───────────────────────────────── */}
+      <AnimatePresence>
+        {deleteOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[160] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={22} className="text-red-500" />
+              </div>
+              <h3 className="font-bold text-gray-900 dark:text-white text-center mb-1">Delete Report?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">
+                <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{report.id}</span> will be permanently deleted. This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="secondary" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+                <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? <><Loader2 size={14} className="animate-spin" /> Deleting…</> : <><Trash2 size={14} /> Delete</>}
+                </Button>
               </div>
             </motion.div>
           </motion.div>

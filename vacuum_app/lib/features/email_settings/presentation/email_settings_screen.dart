@@ -34,6 +34,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
   bool _jobCompleted = true;
   bool _reportApproved = true;
   bool _amcRenewal = true;
+  bool _amcServiceReminder = true;
   bool _quotationSent = true;
 
   bool _didInit = false;
@@ -61,6 +62,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
     _jobCompleted = s.notifications.jobCompleted;
     _reportApproved = s.notifications.reportApproved;
     _amcRenewal = s.notifications.amcRenewal;
+    _amcServiceReminder = s.notifications.amcServiceReminder;
     _quotationSent = s.notifications.quotationSent;
   }
 
@@ -77,6 +79,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
         jobCompleted: _jobCompleted,
         reportApproved: _reportApproved,
         amcRenewal: _amcRenewal,
+        amcServiceReminder: _amcServiceReminder,
         quotationSent: _quotationSent,
       ),
     );
@@ -114,6 +117,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
           _jobCompleted,
           _reportApproved,
           _amcRenewal,
+          _amcServiceReminder,
           _quotationSent,
         ].where((v) => v).length;
 
@@ -338,6 +342,14 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                     ),
                     const SizedBox(height: 10),
                     _TriggerTile(
+                      title: 'AMC Service Reminder',
+                      subtitle:
+                          'Automatic reminder before the next scheduled visit',
+                      value: _amcServiceReminder,
+                      onChanged: (v) => setState(() => _amcServiceReminder = v),
+                    ),
+                    const SizedBox(height: 10),
+                    _TriggerTile(
                       title: 'Quotation Created',
                       value: _quotationSent,
                       onChanged: (v) => setState(() => _quotationSent = v),
@@ -415,7 +427,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  'A new Work Order (JOB-XXXX) has been raised and assigned to you. Please review the details and proceed accordingly.',
+                                  'A new AMC or work order notification will appear here when the backend sends a reminder, assignment, or service update.',
                                   style: TextStyle(
                                     color: Theme.of(
                                       context,
@@ -442,7 +454,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Text(
-                                        'Job Details',
+                                        'Notification Details',
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w800,
@@ -451,7 +463,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
-                                        'Job ID: JOB-XXXX',
+                                        'Event: AMC service reminder',
                                         style: TextStyle(
                                           color: Theme.of(context).hintColor,
                                           fontSize: 12,
@@ -465,7 +477,7 @@ class _EmailSettingsScreenState extends ConsumerState<EmailSettingsScreen> {
                                         ),
                                       ),
                                       Text(
-                                        'Scheduled: DD-MM-YYYY',
+                                        'Visit: DD-MM-YYYY',
                                         style: TextStyle(
                                           color: Theme.of(context).hintColor,
                                           fontSize: 12,
@@ -542,11 +554,13 @@ class _TriggerTile extends StatelessWidget {
     required this.title,
     required this.value,
     required this.onChanged,
+    this.subtitle,
   });
 
   final String title;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -573,7 +587,7 @@ class _TriggerTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Send email notification when this event occurs',
+                  subtitle ?? 'Send email notification when this event occurs',
                   style: TextStyle(
                     color: Theme.of(context).hintColor,
                     fontSize: 12,

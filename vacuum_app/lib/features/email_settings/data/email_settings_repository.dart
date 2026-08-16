@@ -20,7 +20,8 @@ class EmailSettingsRepository {
           ? '587'
           : (data['smtp_port'] ?? '').toString(),
       fromEmail: (data['from_email'] ?? '').toString(),
-      fromName: ((data['from_name'] ?? '') as Object?)?.toString().trim().isEmpty ==
+      fromName:
+          ((data['from_name'] ?? '') as Object?)?.toString().trim().isEmpty ==
               true
           ? 'VDTI Service Hub'
           : (data['from_name'] ?? 'VDTI Service Hub').toString(),
@@ -31,6 +32,7 @@ class EmailSettingsRepository {
         jobCompleted: _b(notifications['job_completed']),
         reportApproved: _b(notifications['report_approved']),
         amcRenewal: _b(notifications['amc_renewal']),
+        amcServiceReminder: _b(notifications['amc_service_reminder']),
         quotationSent: _b(notifications['quotation_sent']),
       ),
     );
@@ -52,6 +54,7 @@ class EmailSettingsRepository {
         'job_completed': settings.notifications.jobCompleted,
         'report_approved': settings.notifications.reportApproved,
         'amc_renewal': settings.notifications.amcRenewal,
+        'amc_service_reminder': settings.notifications.amcServiceReminder,
         'quotation_sent': settings.notifications.quotationSent,
       },
     };
@@ -74,6 +77,7 @@ class EmailSettingsRepository {
         jobCompleted: _b(notifications['job_completed']),
         reportApproved: _b(notifications['report_approved']),
         amcRenewal: _b(notifications['amc_renewal']),
+        amcServiceReminder: _b(notifications['amc_service_reminder']),
         quotationSent: _b(notifications['quotation_sent']),
       ),
     );
@@ -91,4 +95,3 @@ Map<String, dynamic> _asMap(dynamic v) {
 }
 
 bool _b(Object? v) => v == true || v?.toString() == 'true';
-

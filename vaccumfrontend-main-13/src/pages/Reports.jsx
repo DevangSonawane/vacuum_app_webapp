@@ -12,7 +12,7 @@ import {
   Loader2, Image as ImageIcon, FileText,
   Calendar, User, ExternalLink,
   Hash, MapPin, Package, Mail,
-  AlertTriangle, Wrench, ChevronRight
+  AlertTriangle, Wrench, ChevronRight, Trash2
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -33,6 +33,8 @@ export default function Reports() {
   const [detailReport, setDetailReport]   = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [approving, setApproving]         = useState(false);
+  const [reportToDelete, setReportToDelete] = useState(null);
+  const [deleting, setDeleting]             = useState(false);
 
   useEffect(() => { fetchReports(); }, [statusFilter]);
 
@@ -91,6 +93,30 @@ export default function Reports() {
 
   const canApprove  = currentUser?.role === "admin";
   const STATUS_TABS = ["All", "Pending", "Approved", "Rejected"];
+  const role = currentUser?.role?.toLowerCase();
+  const canDeleteReport = (r) => (
+    (["admin", "manager"].includes(role) && r.status !== "Approved") ||
+    (role === "technician" && r.status === "Pending")
+  );
+
+  const handleDelete = async () => {
+    if (!reportToDelete) return;
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_BASE_URL}/reports/${reportToDelete.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showToast("Report deleted", "success");
+      setReportToDelete(null);
+      fetchReports();
+      if (detailReport?.id === reportToDelete.id) setDetailReport(null);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to delete", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <PageTransition>
@@ -204,19 +230,30 @@ export default function Reports() {
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-gray-400">
-                        <span>{r.technician_name || "—"} · {r.report_date ? r.report_date.slice(0, 10) : "—"}</span>
-                        {canApprove && r.status === "Pending" && (
-                          <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => updateStatus(r.id, "Approved")} disabled={approving}
-                              className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-semibold disabled:opacity-50">
-                              <CheckCircle size={13} /> Approve
+                        <span>
+                          {r.technicians?.length > 0 ? r.technicians.map(t => t.name).join(", ") : r.technician_name || "—"}
+                          {" · "}{r.report_date ? r.report_date.slice(0, 10) : "—"}
+                        </span>
+                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                          {canApprove && r.status === "Pending" && (
+                            <>
+                              <button onClick={() => updateStatus(r.id, "Approved")} disabled={approving}
+                                className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-semibold disabled:opacity-50">
+                                <CheckCircle size={13} /> Approve
+                              </button>
+                              <button onClick={() => updateStatus(r.id, "Rejected")} disabled={approving}
+                                className="flex items-center gap-1 text-red-500 hover:text-red-600 font-semibold disabled:opacity-50">
+                                <XCircle size={13} /> Reject
+                              </button>
+                            </>
+                          )}
+                          {canDeleteReport(r) && (
+                            <button onClick={() => setReportToDelete(r)}
+                              className="p-1 text-red-400 hover:text-red-600 transition rounded">
+                              <Trash2 size={13} />
                             </button>
-                            <button onClick={() => updateStatus(r.id, "Rejected")} disabled={approving}
-                              className="flex items-center gap-1 text-red-500 hover:text-red-600 font-semibold disabled:opacity-50">
-                              <XCircle size={13} /> Reject
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </Card>
                   </motion.div>
@@ -277,7 +314,7 @@ export default function Reports() {
                     {[
                       { label: "Job",         value: detailReport.job_id             || "—" },
                       { label: "Date",        value: detailReport.report_date ? detailReport.report_date.slice(0, 10) : "—" },
-                      { label: "Technician",  value: detailReport.technician_name    || "—" },
+                      { label: "Technician",  value: detailReport.technicians?.length > 0 ? detailReport.technicians.map(t => t.name).join(", ") : detailReport.technician_name || "—" },
                       { label: "Contact",     value: detailReport.contact_person     || detailReport.client_name || "—" },
                       { label: "Model/S/N",   value: detailReport.model_serial_installation || "—" },
                       { label: "Hrs/Day",     value: detailReport.operating_hours_per_day   || "—" },
@@ -373,15 +410,27 @@ export default function Reports() {
                     </div>
                   )}
 
-                  {/* Technical docs */}
+                  {/* Attachments (unified: images + docs) */}
                   {detailReport.technical_reports?.length > 0 && (
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                        Technical Reports ({detailReport.technical_reports.length})
+                        Attachments ({detailReport.technical_reports.length})
                       </p>
+                      {/* Image thumbnails */}
+                      {detailReport.technical_reports.filter(f => f.mime_type?.startsWith("image/")).length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {detailReport.technical_reports.filter(f => f.mime_type?.startsWith("image/")).map((img, i) => (
+                            <a key={i} href={img.file_url} target="_blank" rel="noopener noreferrer"
+                              className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 block hover:opacity-90 transition">
+                              <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                      {/* Document links */}
                       <div className="space-y-2">
-                        {detailReport.technical_reports.map(doc => (
-                          <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                        {detailReport.technical_reports.filter(f => !f.mime_type?.startsWith("image/")).map((doc, i) => (
+                          <a key={i} href={doc.file_url} target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group">
                             <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                               <FileText size={13} className="text-blue-600 dark:text-blue-400" />
@@ -420,6 +469,35 @@ export default function Reports() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Delete Confirmation */}
+      <AnimatePresence>
+        {reportToDelete && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={22} className="text-red-500" />
+              </div>
+              <h3 className="font-bold text-gray-900 dark:text-white text-center mb-1">Delete Report?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">
+                <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{reportToDelete.id}</span> will be permanently deleted. This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setReportToDelete(null)} disabled={deleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50">
+                  Cancel
+                </button>
+                <button onClick={handleDelete} disabled={deleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-60">
+                  {deleting ? <><Loader2 size={14} className="animate-spin" /> Deleting…</> : <><Trash2 size={14} /> Delete</>}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {toast && <Toast {...toast} onClose={() => {}} />}
     </PageTransition>

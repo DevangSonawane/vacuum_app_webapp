@@ -266,6 +266,44 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                       ],
                     ),
                   )
+                else if (job.status == 'Cancelled')
+                  AppCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.cancel_outlined,
+                            color: AppColors.red500,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'This visit is cancelled',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              Text(
+                                'A WhatsApp notification should be sent to the client and concerned team members.',
+                                style: TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 else if (canRaise && next != null)
                   BottomSafeArea(
                     child: AppCard(
@@ -308,6 +346,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                               );
                             },
                           ),
+                          if (job.status != 'Cancelled' &&
+                              job.status != 'Closed') ...[
+                            const SizedBox(height: 10),
+                            AppButton(
+                              label: 'Cancel Visit',
+                              variant: AppButtonVariant.danger,
+                              expanded: true,
+                              onPressed: () async {
+                                await _confirmCancelJob(context, ref, job: job);
+                              },
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -373,6 +423,79 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
           }
         },
       ),
+    );
+  }
+
+  Future<void> _confirmCancelJob(
+    BuildContext context,
+    WidgetRef ref, {
+    required Job job,
+  }) async {
+    if (job.status == 'Closed' || job.status == 'Cancelled') return;
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Cancel Visit'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'This visit will be marked as cancelled and the client should receive a WhatsApp notification.',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Cancel reason',
+                    hintText: 'e.g. Client asked to reschedule',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Keep Visit'),
+            ),
+            FilledButton.tonal(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Cancel Visit'),
+            ),
+          ],
+        );
+      },
+    );
+    final reason = reasonController.text.trim();
+    reasonController.dispose();
+    if (confirmed != true || !context.mounted) return;
+
+    final ok = await ref
+        .read(jobsProvider.notifier)
+        .cancelJob(job.id, reason: reason);
+    if (!context.mounted) return;
+    if (!ok) {
+      AppToast.show(
+        context,
+        message: 'Failed to cancel visit',
+        type: AppToastType.error,
+      );
+      return;
+    }
+    await _load();
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: 'Visit cancelled',
+      type: AppToastType.success,
     );
   }
 }
@@ -507,7 +630,9 @@ class _InfoGrid extends StatelessWidget {
       ),
       (
         label: 'Technician',
-        value: job.technicianName.isNotEmpty ? job.technicianName : '—',
+        value: job.technicianDisplayName.isNotEmpty
+            ? job.technicianDisplayName
+            : '—',
         icon: Icons.engineering_outlined,
       ),
       (
@@ -521,8 +646,10 @@ class _InfoGrid extends StatelessWidget {
         icon: Icons.calendar_today_outlined,
       ),
       (
-        label: 'Scheduled',
-        value: _shortDate(job.scheduledDate),
+        label: job.startDate != null || job.endDate != null
+            ? 'Visit Window'
+            : 'Scheduled',
+        value: _jobScheduleText(job),
         icon: Icons.event_outlined,
       ),
       (
@@ -648,6 +775,15 @@ String _shortDate(String? value) {
   final v = (value ?? '').trim();
   if (v.isEmpty) return '—';
   return v.length >= 10 ? v.substring(0, 10) : v;
+}
+
+String _jobScheduleText(Job job) {
+  final start = job.startDate == null ? '' : _shortDate(job.startDate);
+  final end = job.endDate == null ? '' : _shortDate(job.endDate);
+  if (start != '—' && end != '—') return '$start → $end';
+  if (start != '—') return start;
+  if (end != '—') return end;
+  return _shortDate(job.scheduledDate);
 }
 
 class _HeroChip extends StatelessWidget {

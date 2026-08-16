@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
@@ -22,11 +25,12 @@ import '../../amc/data/amc_repository.dart';
 import '../../amc/domain/amc_contract.dart';
 import '../../clients/data/clients_repository.dart';
 import '../../technicians/data/technicians_repository.dart';
+import '../../technicians/domain/technician.dart';
 import '../application/jobs_notifier.dart';
 import '../domain/job.dart';
 import 'close_job_sheet.dart';
 
-const _statuses = ['Raised', 'Assigned', 'In Progress', 'Closed'];
+const _statuses = ['Raised', 'Assigned', 'In Progress', 'Closed', 'Cancelled'];
 const _priorities = ['Low', 'Medium', 'High', 'Critical'];
 const _categories = [
   'Service',
@@ -35,6 +39,11 @@ const _categories = [
   'Installation & Commissioning',
   'Inspection',
   'Workshop',
+  'Trial',
+  'Office',
+  'Office Visit',
+  'Vendor Visit',
+  'Trial Pump Installation',
 ];
 
 const _statusBorderColor = <String, Color>{
@@ -42,6 +51,7 @@ const _statusBorderColor = <String, Color>{
   'Assigned': AppColors.blue500,
   'In Progress': AppColors.amber500,
   'Closed': AppColors.emerald500,
+  'Cancelled': AppColors.red500,
 };
 
 const _statusFlow = <String, String>{
@@ -76,10 +86,339 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     });
   }
 
+  static String _monthName(int month) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return months[(month - 1).clamp(0, 11)];
+  }
+
+  void _openExportDialog(BuildContext context) {
+    final now = DateTime.now();
+    final techniciansFuture = TechniciansRepository(
+      dio: ref.read(dioProvider),
+    ).fetchTechnicians(limit: 200, search: '');
+    int month = now.month;
+    int year = now.year;
+    int? day;
+    int? technicianId;
+    String? status;
+    String? category;
+    bool exporting = false;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final navigator = Navigator.of(dialogContext);
+        return FutureBuilder<List<Technician>>(
+          future: techniciansFuture,
+          builder: (context, snapshot) {
+            final technicians = snapshot.data ?? const <Technician>[];
+            final loadingTechnicians =
+                snapshot.connectionState == ConnectionState.waiting;
+            final technicianLoadFailed = snapshot.hasError;
+
+            return StatefulBuilder(
+              builder: (context, setLocalState) {
+                Future<void> exportNow() async {
+                  if (exporting || loadingTechnicians || technicianLoadFailed) {
+                    return;
+                  }
+                  setLocalState(() => exporting = true);
+                  try {
+                    final ok = await _downloadVisitScheduleExcel(
+                      month: month,
+                      year: year,
+                      day: day,
+                      technicianId: technicianId,
+                      status: status,
+                      category: category,
+                    );
+                    if (ok && navigator.mounted) {
+                      navigator.pop();
+                    }
+                  } finally {
+                    if (navigator.mounted) {
+                      setLocalState(() => exporting = false);
+                    }
+                  }
+                }
+
+                final yearOptions = [year - 1, year, year + 1]
+                    .map((y) => AppDropdownItem<int?>(value: y, label: '$y'))
+                    .toList(growable: false);
+                final monthOptions = List.generate(
+                  12,
+                  (i) => AppDropdownItem<int?>(
+                    value: i + 1,
+                    label: _monthName(i + 1),
+                  ),
+                );
+                final dayOptions = [
+                  const AppDropdownItem<int?>(value: null, label: 'All Days'),
+                  ...List.generate(
+                    31,
+                    (i) => AppDropdownItem<int?>(
+                      value: i + 1,
+                      label: 'Day ${i + 1}',
+                    ),
+                  ),
+                ];
+                final techOptions = technicians
+                    .map(
+                      (t) => AppDropdownItem<int?>(
+                        value: t.id,
+                        label: t.phone.isNotEmpty
+                            ? '${t.name} • ${t.phone}'
+                            : t.name,
+                      ),
+                    )
+                    .toList(growable: false);
+                final statusOptions = [
+                  const AppDropdownItem<String?>(
+                    value: null,
+                    label: 'All Status',
+                  ),
+                  ..._statuses.map(
+                    (s) => AppDropdownItem<String?>(value: s, label: s),
+                  ),
+                ];
+                final categoryOptions = [
+                  const AppDropdownItem<String?>(
+                    value: null,
+                    label: 'All Categories',
+                  ),
+                  ..._categories.map(
+                    (c) => AppDropdownItem<String?>(value: c, label: c),
+                  ),
+                ];
+
+                return AlertDialog(
+                  title: const Text('Export Visit Schedule'),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (loadingTechnicians)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Loading technicians...',
+                                  style: TextStyle(
+                                    color: Theme.of(context).hintColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (technicianLoadFailed)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'Unable to load technicians for filtering.',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          )
+                        else ...[
+                          Text(
+                            'Download an Excel report of scheduled visits for the selected month.',
+                            style: TextStyle(
+                              color: Theme.of(context).hintColor,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppDropdownField<int?>(
+                                  label: 'Month',
+                                  value: month,
+                                  items: monthOptions,
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setLocalState(() => month = value);
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: AppDropdownField<int?>(
+                                  label: 'Year',
+                                  value: year,
+                                  items: yearOptions,
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setLocalState(() => year = value);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          AppDropdownField<int?>(
+                            label: 'Day (optional)',
+                            value: day,
+                            items: dayOptions,
+                            allowNull: true,
+                            nullLabel: 'All Days (full month)',
+                            onChanged: (value) =>
+                                setLocalState(() => day = value),
+                          ),
+                          const SizedBox(height: 12),
+                          AppDropdownField<int?>(
+                            label: 'Technician (optional)',
+                            value: technicianId,
+                            items: techOptions,
+                            allowNull: true,
+                            nullLabel: 'All Technicians',
+                            onChanged: (value) =>
+                                setLocalState(() => technicianId = value),
+                          ),
+                          const SizedBox(height: 12),
+                          AppDropdownField<String?>(
+                            label: 'Status (optional)',
+                            value: status,
+                            items: statusOptions,
+                            allowNull: true,
+                            nullLabel: 'All Status',
+                            onChanged: (value) =>
+                                setLocalState(() => status = value),
+                          ),
+                          const SizedBox(height: 12),
+                          AppDropdownField<String?>(
+                            label: 'Category (optional)',
+                            value: category,
+                            items: categoryOptions,
+                            allowNull: true,
+                            nullLabel: 'All Categories',
+                            onChanged: (value) =>
+                                setLocalState(() => category = value),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: exporting
+                          ? null
+                          : () => Navigator.of(dialogContext).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed:
+                          (exporting ||
+                              loadingTechnicians ||
+                              technicianLoadFailed)
+                          ? null
+                          : exportNow,
+                      child: exporting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Download Excel'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> _downloadVisitScheduleExcel({
+    required int month,
+    required int year,
+    int? day,
+    int? technicianId,
+    String? status,
+    String? category,
+  }) async {
+    final dio = ref.read(dioProvider);
+    try {
+      final params = <String, dynamic>{'month': month, 'year': year};
+      if (day != null) params['day'] = day;
+      if (technicianId != null) params['technician_id'] = technicianId;
+      if (status != null && status.trim().isNotEmpty) {
+        params['status'] = status.trim();
+      }
+      if (category != null && category.trim().isNotEmpty) {
+        params['category'] = category.trim();
+      }
+
+      final res = await dio.get(
+        'reports/visit-schedule/excel',
+        queryParameters: params,
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      final bytes = res.data;
+      if (bytes is! List) {
+        throw Exception('Invalid Excel response from server.');
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final fileName =
+          'visit-schedule-$year-${month.toString().padLeft(2, '0')}.xlsx';
+      final file = File('${tempDir.path}/$fileName');
+      await file.writeAsBytes(List<int>.from(bytes), flush: true);
+
+      final opened = await OpenFile.open(file.path);
+      if (opened.type != ResultType.done) {
+        throw Exception(opened.message);
+      }
+
+      if (!mounted) return false;
+      AppToast.show(
+        context,
+        message: 'Excel downloaded!',
+        type: AppToastType.success,
+      );
+      return true;
+    } on DioException catch (e) {
+      if (!mounted) return false;
+      AppToast.show(
+        context,
+        message: e.response?.data is Map
+            ? (e.response?.data['message']?.toString() ?? 'Export failed')
+            : 'Export failed',
+        type: AppToastType.error,
+      );
+      return false;
+    } catch (e) {
+      if (!mounted) return false;
+      AppToast.show(context, message: e.toString(), type: AppToastType.error);
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authProvider).valueOrNull?.user?.role ?? '';
     final canRaise = !['technician', 'labour'].contains(role);
+    final isAdmin = role.toLowerCase() == 'admin';
 
     final state = ref.watch(jobsProvider);
     return RefreshIndicator(
@@ -128,12 +467,33 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                       ],
                     ),
                   ),
-                  if (canRaise) ...[
+                  if (canRaise || isAdmin) ...[
                     const SizedBox(width: 12),
-                    AppButton(
-                      label: '+ Raise Job',
-                      size: AppButtonSize.sm,
-                      onPressed: () => context.push('/jobs/new'),
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.end,
+                          children: [
+                            if (isAdmin)
+                              AppButton(
+                                label: 'Export Excel',
+                                size: AppButtonSize.sm,
+                                variant: AppButtonVariant.secondary,
+                                leading: const Icon(Icons.download_outlined),
+                                onPressed: () => _openExportDialog(context),
+                              ),
+                            if (canRaise)
+                              AppButton(
+                                label: '+ Raise Job',
+                                size: AppButtonSize.sm,
+                                onPressed: () => context.push('/jobs/new'),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ],
@@ -189,6 +549,11 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                           value: counts['Closed'] ?? 0,
                           color: AppColors.emerald500,
                         ),
+                        _StatPill(
+                          label: 'Cancelled',
+                          value: counts['Cancelled'] ?? 0,
+                          color: AppColors.red500,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -212,6 +577,8 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                         onTap: (id) => context.go('/jobs/$id'),
                         onAdvance: (job) =>
                             _advanceOrClose(context, ref, job, canRaise),
+                        onCancel: (job) =>
+                            _confirmCancelJob(context, ref, job, canRaise),
                         onDelete: (job) =>
                             _confirmDeleteJob(context, ref, job, canRaise),
                       )
@@ -222,6 +589,8 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                         onTap: (id) => context.go('/jobs/$id'),
                         onAdvance: (job) =>
                             _advanceOrClose(context, ref, job, canRaise),
+                        onCancel: (job) =>
+                            _confirmCancelJob(context, ref, job, canRaise),
                         onDelete: (job) =>
                             _confirmDeleteJob(context, ref, job, canRaise),
                       ),
@@ -296,6 +665,86 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     AppToast.show(
       context,
       message: ok ? 'Job deleted' : 'Failed to delete job',
+      type: ok ? AppToastType.success : AppToastType.error,
+    );
+  }
+
+  Future<void> _confirmCancelJob(
+    BuildContext context,
+    WidgetRef ref,
+    Job job,
+    bool canRaise,
+  ) async {
+    if (!canRaise) {
+      AppToast.show(
+        context,
+        message: 'You do not have permission to cancel visits.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+    if (job.status == 'Closed' || job.status == 'Cancelled') {
+      AppToast.show(
+        context,
+        message: 'This visit cannot be cancelled.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Cancel Visit'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'The visit will be marked as cancelled and the client will be notified.',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Cancel reason',
+                    hintText: 'e.g. Client requested reschedule',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Keep Visit'),
+            ),
+            FilledButton.tonal(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Cancel Visit'),
+            ),
+          ],
+        );
+      },
+    );
+    final reason = reasonController.text.trim();
+    reasonController.dispose();
+    if (confirmed != true || !context.mounted) return;
+
+    final ok = await ref
+        .read(jobsProvider.notifier)
+        .cancelJob(job.id, reason: reason);
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: ok ? 'Visit cancelled' : 'Failed to cancel visit',
       type: ok ? AppToastType.success : AppToastType.error,
     );
   }
@@ -471,6 +920,7 @@ class _KanbanAllView extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onCancel,
     required this.onDelete,
   });
 
@@ -478,6 +928,7 @@ class _KanbanAllView extends StatelessWidget {
   final bool canRaise;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
+  final ValueChanged<Job> onCancel;
   final ValueChanged<Job> onDelete;
 
   @override
@@ -491,6 +942,7 @@ class _KanbanAllView extends StatelessWidget {
             canRaise: canRaise,
             onTap: onTap,
             onAdvance: onAdvance,
+            onCancel: onCancel,
             onDelete: onDelete,
           ),
           const SizedBox(height: 16),
@@ -507,6 +959,7 @@ class _StatusSection extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onCancel,
     required this.onDelete,
   });
 
@@ -515,6 +968,7 @@ class _StatusSection extends StatelessWidget {
   final bool canRaise;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
+  final ValueChanged<Job> onCancel;
   final ValueChanged<Job> onDelete;
 
   @override
@@ -544,6 +998,7 @@ class _StatusSection extends StatelessWidget {
                   canRaise: canRaise,
                   onTap: () => onTap(job.id),
                   onAdvance: () => onAdvance(job),
+                  onCancel: () => onCancel(job),
                   onLongPress: () => onDelete(job),
                 ),
                 const SizedBox(height: 12),
@@ -561,6 +1016,7 @@ class _FilteredListView extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onCancel,
     required this.onDelete,
   });
 
@@ -568,6 +1024,7 @@ class _FilteredListView extends StatelessWidget {
   final bool canRaise;
   final ValueChanged<String> onTap;
   final ValueChanged<Job> onAdvance;
+  final ValueChanged<Job> onCancel;
   final ValueChanged<Job> onDelete;
 
   @override
@@ -580,6 +1037,7 @@ class _FilteredListView extends StatelessWidget {
             canRaise: canRaise,
             onTap: () => onTap(job.id),
             onAdvance: () => onAdvance(job),
+            onCancel: () => onCancel(job),
             onLongPress: () => onDelete(job),
           ),
           const SizedBox(height: 12),
@@ -595,6 +1053,7 @@ class _JobCardVertical extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onCancel,
     required this.onLongPress,
   });
 
@@ -602,6 +1061,7 @@ class _JobCardVertical extends StatelessWidget {
   final bool canRaise;
   final VoidCallback onTap;
   final VoidCallback onAdvance;
+  final VoidCallback onCancel;
   final VoidCallback onLongPress;
 
   @override
@@ -665,34 +1125,48 @@ class _JobCardVertical extends StatelessWidget {
             ),
             _MetaRow(
               icon: Icons.engineering_outlined,
-              text: job.technicianName.isNotEmpty
-                  ? job.technicianName
+              text: job.technicianDisplayName.isNotEmpty
+                  ? job.technicianDisplayName
                   : 'Unassigned',
             ),
             _MetaRow(
               icon: Icons.calendar_today_outlined,
-              text: _shortDate(job.scheduledDate) ?? '—',
+              text: _jobScheduleText(job) ?? '—',
             ),
             if (job.amount > 0) ...[
               const SizedBox(height: 6),
+              Text(
+                '₹${job.amount.toStringAsFixed(0)}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+            if (canRaise &&
+                job.status != 'Closed' &&
+                job.status != 'Cancelled') ...[
+              const SizedBox(height: 4),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    '₹${job.amount.toStringAsFixed(0)}',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const Spacer(),
-                  if (canRaise && job.status != 'Closed')
-                    IconButton(
-                      tooltip: 'Advance status',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: onAdvance,
-                      icon: const Icon(
-                        Icons.arrow_forward,
-                        size: 18,
-                        color: AppColors.blue600,
-                      ),
+                  IconButton(
+                    tooltip: 'Advance status',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onAdvance,
+                    icon: const Icon(
+                      Icons.arrow_forward,
+                      size: 18,
+                      color: AppColors.blue600,
                     ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cancel visit',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onCancel,
+                    icon: const Icon(
+                      Icons.cancel_outlined,
+                      size: 18,
+                      color: AppColors.red500,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -709,6 +1183,7 @@ class _JobCardHorizontal extends StatelessWidget {
     required this.canRaise,
     required this.onTap,
     required this.onAdvance,
+    required this.onCancel,
     required this.onLongPress,
   });
 
@@ -716,6 +1191,7 @@ class _JobCardHorizontal extends StatelessWidget {
   final bool canRaise;
   final VoidCallback onTap;
   final VoidCallback onAdvance;
+  final VoidCallback onCancel;
   final VoidCallback onLongPress;
 
   @override
@@ -806,17 +1282,34 @@ class _JobCardHorizontal extends StatelessWidget {
                   '₹${job.amount.toStringAsFixed(0)}',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                if (canRaise && job.status != 'Closed') ...[
+                if (canRaise &&
+                    job.status != 'Closed' &&
+                    job.status != 'Cancelled') ...[
                   const SizedBox(height: 4),
-                  IconButton(
-                    tooltip: 'Advance status',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onAdvance,
-                    icon: const Icon(
-                      Icons.arrow_forward,
-                      size: 18,
-                      color: AppColors.blue600,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Advance status',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: onAdvance,
+                        icon: const Icon(
+                          Icons.arrow_forward,
+                          size: 18,
+                          color: AppColors.blue600,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cancel visit',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: onCancel,
+                        icon: const Icon(
+                          Icons.cancel_outlined,
+                          size: 18,
+                          color: AppColors.red500,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],
@@ -894,6 +1387,15 @@ String? _shortDate(String? iso) {
   return v.length >= 10 ? v.substring(0, 10) : v;
 }
 
+String? _jobScheduleText(Job job) {
+  final start = _shortDate(job.startDate);
+  final end = _shortDate(job.endDate);
+  if (start != null && end != null) return '$start → $end';
+  if (start != null) return start;
+  if (end != null) return end;
+  return _shortDate(job.scheduledDate);
+}
+
 class _RaiseJobSheet extends StatefulWidget {
   const _RaiseJobSheet({
     required this.dio,
@@ -915,16 +1417,19 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
   final _description = TextEditingController();
 
   bool _loading = false;
+  String _dateMode = 'single';
   DateTime? _scheduledDate;
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   int? _clientId;
-  int? _techId;
+  final List<int> _techIds = [];
   String? _amcId;
   String _priority = _priorities[1];
   String _category = _categories.first;
 
   List<({int id, String name})> _clients = const [];
-  List<({int id, String name})> _techs = const [];
+  List<({int id, String name, String phone})> _techs = const [];
   List<AmcContract> _amcContracts = const [];
   bool _fetching = true;
 
@@ -961,7 +1466,9 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
       final amcContracts = await amcRepo.fetchContracts(limit: 200);
 
       _clients = [for (final c in clients) (id: c.id, name: c.name)];
-      _techs = [for (final t in techs) (id: t.id, name: t.name)];
+      _techs = [
+        for (final t in techs) (id: t.id, name: t.name, phone: t.phone),
+      ];
       _amcContracts = amcContracts;
       if (_clients.isNotEmpty) _clientId ??= _clients.first.id;
     } catch (_) {
@@ -982,21 +1489,54 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
       return;
     }
 
+    if (_dateMode == 'range') {
+      if (_startDate == null || _endDate == null) {
+        AppToast.show(
+          context,
+          message: 'Start date and end date are required for a date range.',
+          type: AppToastType.error,
+        );
+        return;
+      }
+      if (_endDate!.isBefore(_startDate!)) {
+        AppToast.show(
+          context,
+          message: 'End date must be on or after the start date.',
+          type: AppToastType.error,
+        );
+        return;
+      }
+    }
+
     setState(() => _loading = true);
     final payload = <String, dynamic>{
       'title': _title.text.trim(),
       'client_id': _clientId,
       'priority': _priority,
       'category': _category,
-      if (_techId != null) 'technician_id': _techId,
+      if (_techIds.isNotEmpty) 'technician_ids': _techIds,
       if (_amcId != null && _amcId!.trim().isNotEmpty) 'amc_id': _amcId,
       if (_description.text.trim().isNotEmpty)
         'description': _description.text.trim(),
-      if (_scheduledDate != null)
-        'scheduled_date': _scheduledDate!.toIso8601String().substring(0, 10),
       if (num.tryParse(_amount.text.trim()) != null)
         'amount': num.parse(_amount.text.trim()),
     };
+
+    if (_dateMode == 'single') {
+      if (_scheduledDate != null) {
+        payload['scheduled_date'] = _scheduledDate!.toIso8601String().substring(
+          0,
+          10,
+        );
+      }
+    } else {
+      if (_startDate != null) {
+        payload['start_date'] = _startDate!.toIso8601String().substring(0, 10);
+      }
+      if (_endDate != null) {
+        payload['end_date'] = _endDate!.toIso8601String().substring(0, 10);
+      }
+    }
 
     await widget.onSubmit(payload);
     if (!mounted) return;
@@ -1082,17 +1622,16 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
                 },
               ),
               const SizedBox(height: 12),
-              _searchableDropdownInt(
-                label: 'Assign Technician',
-                value: _techId,
-                allowNull: true,
+              _multiTechnicianPicker(
+                label: 'Assign Technicians',
+                selectedIds: _techIds,
                 items: _techs,
                 enabled: !_loading,
-                onChanged: (v) {
-                  if (_techId != v) {
-                    setState(() => _techId = v);
-                  }
-                },
+                onChanged: (ids) => setState(() {
+                  _techIds
+                    ..clear()
+                    ..addAll(ids);
+                }),
               ),
               const SizedBox(height: 12),
               Row(
@@ -1119,7 +1658,18 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
                 ],
               ),
               const SizedBox(height: 12),
-              _datePicker(context),
+              _dateModeToggle(),
+              const SizedBox(height: 10),
+              if (_dateMode == 'single')
+                _datePicker(
+                  context,
+                  label: 'Scheduled Date',
+                  value: _scheduledDate,
+                  hint: 'Select date',
+                  onPicked: (picked) => setState(() => _scheduledDate = picked),
+                )
+              else
+                _dateRangePicker(context),
               const SizedBox(height: 12),
               _field(
                 'Amount (₹)',
@@ -1240,6 +1790,22 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     );
   }
 
+  Widget _multiTechnicianPicker({
+    required String label,
+    required List<({int id, String name, String phone})> items,
+    required List<int> selectedIds,
+    required bool enabled,
+    required ValueChanged<List<int>> onChanged,
+  }) {
+    return _MultiTechnicianPicker(
+      label: label,
+      items: items,
+      selectedIds: selectedIds,
+      enabled: enabled,
+      onChanged: onChanged,
+    );
+  }
+
   Widget _searchableDropdownAmc({
     required String label,
     required String? value,
@@ -1322,14 +1888,95 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
 
   static String _shortDate(String v) => v.length >= 10 ? v.substring(0, 10) : v;
 
-  Widget _datePicker(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _dateModeToggle() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Scheduled Date',
+          'Date',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: _ModeButton(
+                label: 'Single',
+                selected: _dateMode == 'single',
+                onTap: () => setState(() {
+                  _dateMode = 'single';
+                  _startDate = null;
+                  _endDate = null;
+                }),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _ModeButton(
+                label: 'Date Range',
+                selected: _dateMode == 'range',
+                onTap: () => setState(() {
+                  _dateMode = 'range';
+                  _scheduledDate = null;
+                }),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _dateRangePicker(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _datePicker(
+                context,
+                label: 'From Date',
+                value: _startDate,
+                hint: 'Select start date',
+                onPicked: (picked) => setState(() => _startDate = picked),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _datePicker(
+                context,
+                label: 'To Date',
+                value: _endDate,
+                hint: 'Select end date',
+                onPicked: (picked) => setState(() => _endDate = picked),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Select the full visit date range, from the first day to the last day.',
+          style: TextStyle(color: Theme.of(context).hintColor, fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  Widget _datePicker(
+    BuildContext context, {
+    required String label,
+    required DateTime? value,
+    required ValueChanged<DateTime?> onPicked,
+    String hint = 'Select date',
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         ),
         const SizedBox(height: 6),
         InkWell(
@@ -1339,11 +1986,11 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
               : () async {
                   final picked = await showDatePicker(
                     context: context,
-                    initialDate: _scheduledDate ?? DateTime.now(),
+                    initialDate: value ?? DateTime.now(),
                     firstDate: DateTime(2000),
                     lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
                   );
-                  if (picked != null) setState(() => _scheduledDate = picked);
+                  if (picked != null) onPicked(picked);
                 },
           child: Container(
             width: double.infinity,
@@ -1364,17 +2011,316 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _scheduledDate != null
-                      ? _scheduledDate!.toIso8601String().substring(0, 10)
-                      : 'Select date',
+                  value != null
+                      ? value.toIso8601String().substring(0, 10)
+                      : hint,
                   style: TextStyle(
-                    color: _scheduledDate != null ? null : AppColors.gray400,
+                    color: value != null ? null : AppColors.gray400,
                   ),
                 ),
               ],
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: selected
+              ? (isDark ? const Color(0xFF1D4ED8) : AppColors.blue600)
+              : (isDark ? const Color(0xFF111827) : AppColors.gray100),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected ? Colors.white : Theme.of(context).hintColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MultiTechnicianPicker extends StatefulWidget {
+  const _MultiTechnicianPicker({
+    required this.label,
+    required this.items,
+    required this.selectedIds,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final String label;
+  final List<({int id, String name, String phone})> items;
+  final List<int> selectedIds;
+  final bool enabled;
+  final ValueChanged<List<int>> onChanged;
+
+  @override
+  State<_MultiTechnicianPicker> createState() => _MultiTechnicianPickerState();
+}
+
+class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  List<({int id, String name, String phone})> get _filteredItems {
+    final query = _query.trim().toLowerCase();
+    final selected = widget.selectedIds.map((id) => id.toString()).toSet();
+    return widget.items
+        .where((item) {
+          if (selected.contains(item.id.toString())) return false;
+          if (query.isEmpty) return true;
+          return item.name.toLowerCase().contains(query) ||
+              item.phone.toLowerCase().contains(query);
+        })
+        .toList(growable: false);
+  }
+
+  void _add(int id) {
+    if (!widget.enabled || widget.selectedIds.contains(id)) return;
+    widget.onChanged([...widget.selectedIds, id]);
+    _controller.clear();
+    setState(() => _query = '');
+    _focusNode.requestFocus();
+  }
+
+  void _remove(int id) {
+    if (!widget.enabled) return;
+    widget.onChanged(
+      widget.selectedIds.where((selected) => selected != id).toList(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = Theme.of(context).colorScheme.surface;
+    final selectedItems = widget.items
+        .where((item) => widget.selectedIds.contains(item.id))
+        .toList(growable: false);
+    final filtered = _filteredItems;
+    final showList = _focusNode.hasFocus || _query.trim().isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        if (selectedItems.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tech in selectedItems)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.engineering_outlined,
+                        size: 14,
+                        color: AppColors.blue600,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tech.name,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.blue600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: widget.enabled ? () => _remove(tech.id) : null,
+                        child: const Padding(
+                          padding: EdgeInsets.all(2),
+                          child: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: AppColors.blue600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+        TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          enabled: widget.enabled,
+          onChanged: (value) => setState(() => _query = value),
+          onTapOutside: (_) => _focusNode.unfocus(),
+          decoration: InputDecoration(
+            hintText: widget.selectedIds.isEmpty
+                ? 'Search and select technicians...'
+                : 'Add more technicians...',
+            prefixIcon: const Icon(Icons.search, size: 18),
+            suffixIcon: _controller.text.trim().isNotEmpty && widget.enabled
+                ? IconButton(
+                    tooltip: 'Clear',
+                    onPressed: () {
+                      _controller.clear();
+                      setState(() => _query = '');
+                      _focusNode.requestFocus();
+                    },
+                    icon: const Icon(Icons.close, size: 18),
+                  )
+                : null,
+          ),
+        ),
+        if (showList) ...[
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 220),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF111827) : surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+              ),
+            ),
+            child: filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      widget.items.isEmpty
+                          ? 'No technicians available'
+                          : 'No more technicians to add',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Theme.of(context).hintColor),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(8),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, index) => const SizedBox(height: 4),
+                    itemBuilder: (context, index) {
+                      final tech = filtered[index];
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: widget.enabled ? () => _add(tech.id) : null,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDBEAFE),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.engineering_outlined,
+                                  size: 18,
+                                  color: AppColors.blue600,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tech.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (tech.phone.trim().isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        tech.phone,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Theme.of(context).hintColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ],
     );
   }

@@ -5,7 +5,7 @@ import {
   Plus, ShieldCheck, Calendar, RefreshCw, AlertTriangle,
   X, Building2, Clock,
   Loader2, Pencil, Trash2, Package, MapPin, Search, CheckCircle,
-  MoreVertical, Eye, Mail,
+  MoreVertical, Eye, Mail, Download,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -283,6 +283,7 @@ const EMPTY_FORM = {
   service_date_1: "", service_date_2: "", service_date_3: "",
   service_date_4: "", service_date_5: "", service_date_6: "",
   breakdown_visit_count: "",
+  pumps: [],
 };
 
 export default function AMC() {
@@ -307,6 +308,12 @@ export default function AMC() {
 
   const [emailModal, setEmailModal]   = useState({ open: false, amcId: null, clientEmail: "" });
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  const [exportOpen, setExportOpen]         = useState(false);
+  const [exporting, setExporting]           = useState(false);
+  const [exportStatus, setExportStatus]     = useState("");
+  const [exportYear, setExportYear]         = useState("");
+  const [exportClientId, setExportClientId] = useState("");
 
   // Debounce search — wait 400ms after the user stops typing before fetching
   useEffect(() => {
@@ -407,6 +414,7 @@ export default function AMC() {
       service_date_5: amc.service_date_5?.slice(0, 10) || "",
       service_date_6: amc.service_date_6?.slice(0, 10) || "",
       breakdown_visit_count: amc.breakdown_visit_count || "",
+      pumps: (amc.pumps || []).map(p => ({ serial_number: p.serial_number || "", model_number: p.model_number || "" })),
     });
     setEditId(amc.id);
     setModalOpen(true);
@@ -436,6 +444,9 @@ export default function AMC() {
         per_pump_price: form.per_pump_price ? parseFloat(form.per_pump_price) : undefined,
         total_price: form.total_price ? parseFloat(form.total_price) : undefined,
         gst_percent: form.gst_percent ? parseFloat(form.gst_percent) : undefined,
+        pumps: form.pumps
+          .filter(p => p.serial_number.trim() || p.model_number.trim())
+          .map(p => ({ serial_number: p.serial_number.trim(), model_number: p.model_number.trim() })),
       };
 
       // Include whichever service dates are filled in
@@ -505,9 +516,39 @@ export default function AMC() {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const params = {};
+      if (exportStatus)   params.status    = exportStatus;
+      if (exportYear)     params.year      = exportYear;
+      if (exportClientId) params.client_id = exportClientId;
+      const res = await axios.get(`${API_BASE_URL}/amc/export/excel`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params,
+        responseType: "blob",
+      });
+      const parts = ["AMC_Report", exportYear, exportStatus].filter(Boolean).join("_");
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a   = document.createElement("a");
+      a.href     = url;
+      a.download = `${parts}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      showToast("Excel downloaded!");
+      setExportOpen(false);
+    } catch (err) {
+      showToast(err.response?.data?.message || "Export failed", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const canEdit    = !["technician", "labour"].includes(currentUser?.role);
   const totalValue = contracts.reduce((s, a) => s + Number(a.value || 0), 0);
   const STATUS_TABS = ["All", "Active", "Expiring Soon", "Expired"];
+  const currentYear = new Date().getFullYear();
 
   return (
     <PageTransition>
@@ -515,7 +556,10 @@ export default function AMC() {
         <SectionHeader
           title="AMC Contracts"
           subtitle={`Total portfolio: ₹${(totalValue / 100000).toFixed(1)}L`}
-          action={canEdit && <Button onClick={openAdd}><Plus size={16} /> New AMC</Button>}
+          action={<div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setExportOpen(true)}><Download size={15} /> Export</Button>
+            {canEdit && <Button onClick={openAdd}><Plus size={16} /> New AMC</Button>}
+          </div>}
         />
 
         {/* Summary tiles */}
@@ -717,6 +761,48 @@ export default function AMC() {
               )}
 
               <Input label="Services Covered (comma-separated)" value={form.services_raw} onChange={f("services_raw")} placeholder="HVAC Servicing, Filter Replacement, Emergency Support" />
+
+              {/* Pumps */}
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pumps</p>
+                  <button type="button"
+                    onClick={() => setForm(p => ({ ...p, pumps: [...p.pumps, { serial_number: "", model_number: "" }] }))}
+                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 transition">
+                    <Plus size={13} /> Add Pump
+                  </button>
+                </div>
+                {form.pumps.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-1">No pumps — click Add Pump to register one</p>
+                ) : (
+                  <div className="space-y-2">
+                    {form.pumps.map((pump, i) => (
+                      <div key={i} className="flex gap-2 items-end">
+                        <Input
+                          label={i === 0 ? "Serial Number" : ""}
+                          value={pump.serial_number}
+                          placeholder="VVD/5530"
+                          className="flex-1"
+                          onChange={e => setForm(p => ({ ...p, pumps: p.pumps.map((pu, j) => j === i ? { ...pu, serial_number: e.target.value } : pu) }))}
+                        />
+                        <Input
+                          label={i === 0 ? "Model" : ""}
+                          value={pump.model_number}
+                          placeholder="CRI 5HP"
+                          className="flex-1"
+                          onChange={e => setForm(p => ({ ...p, pumps: p.pumps.map((pu, j) => j === i ? { ...pu, model_number: e.target.value } : pu) }))}
+                        />
+                        <button type="button"
+                          onClick={() => setForm(p => ({ ...p, pumps: p.pumps.filter((_, j) => j !== i) }))}
+                          className={`p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition flex-shrink-0 ${i === 0 ? "mb-0" : "mb-0"}`}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <DatePicker label="Last Service Date" value={form.last_service_date} onChange={f("last_service_date")} />
@@ -815,6 +901,35 @@ export default function AMC() {
               >
                 Skip
               </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Export Excel Modal */}
+        <Modal isOpen={exportOpen} onClose={() => setExportOpen(false)} title="Export AMC Report" size="sm">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Download an Excel report of AMC contracts with optional filters.</p>
+            <div className="space-y-3">
+              <Select label="Status" value={exportStatus} onChange={e => setExportStatus(e.target.value)}
+                options={[
+                  { value: "", label: "All Statuses" },
+                  { value: "Active", label: "Active" },
+                  { value: "Expiring Soon", label: "Expiring Soon" },
+                  { value: "Expired", label: "Expired" },
+                ]} />
+              <Select label="Year (contract start year)" value={exportYear} onChange={e => setExportYear(e.target.value)}
+                options={[
+                  { value: "", label: "All Years" },
+                  ...[currentYear - 1, currentYear, currentYear + 1].map(y => ({ value: y, label: String(y) })),
+                ]} />
+              <Select label="Client" value={exportClientId} onChange={e => setExportClientId(e.target.value)} searchable
+                options={[{ value: "", label: "All Clients" }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button className="flex-1" onClick={handleExport} disabled={exporting}>
+                {exporting ? <><Loader2 size={15} className="animate-spin" /> Exporting…</> : <><Download size={15} /> Download Excel</>}
+              </Button>
+              <Button variant="secondary" onClick={() => setExportOpen(false)}>Cancel</Button>
             </div>
           </div>
         </Modal>

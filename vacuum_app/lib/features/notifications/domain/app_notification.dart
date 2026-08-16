@@ -43,7 +43,11 @@ class AppNotification {
   }
 }
 
-({String title, Color color, IconData icon}) notificationMeta(String event) {
+({String title, Color color, IconData icon}) notificationMeta(
+  String event, [
+  Map<String, dynamic>? data,
+]) {
+  String s(Object? v) => v == null ? '' : v.toString();
   switch (event) {
     case 'job_raised':
       return (
@@ -52,6 +56,13 @@ class AppNotification {
         icon: Icons.work_outline,
       );
     case 'job_status':
+      if (s(data?['status']).toLowerCase() == 'cancelled') {
+        return (
+          title: 'Visit Cancelled',
+          color: AppColors.red500,
+          icon: Icons.cancel_outlined,
+        );
+      }
       return (
         title: 'Job Status Updated',
         color: AppColors.amber500,
@@ -81,6 +92,12 @@ class AppNotification {
         color: AppColors.blue600,
         icon: Icons.verified_user_outlined,
       );
+    case 'amc_service_upcoming':
+      return (
+        title: 'AMC Service Upcoming',
+        color: AppColors.amber500,
+        icon: Icons.event_available_outlined,
+      );
     default:
       return (
         title: 'Notification',
@@ -100,6 +117,9 @@ String formatNotificationMessage(String event, Map<String, dynamic> data) {
       final status = s(data['status']).isEmpty
           ? 'new status'
           : s(data['status']);
+      if (status.toLowerCase() == 'cancelled') {
+        return '$id visit was cancelled';
+      }
       return '$id moved to "$status"';
     case 'report_submitted':
       return '${s(data['entity_id']).isEmpty ? 'A report' : s(data['entity_id'])} submitted for review';
@@ -113,6 +133,8 @@ String formatNotificationMessage(String event, Map<String, dynamic> data) {
       return '${s(data['entity_id']).isEmpty ? 'An AMC' : s(data['entity_id'])} is expiring soon';
     case 'amc_created':
       return '${s(data['entity_id']).isEmpty ? 'A new AMC' : s(data['entity_id'])} contract was created';
+    case 'amc_service_upcoming':
+      return '${s(data['entity_id']).isEmpty ? 'AMC' : s(data['entity_id'])} service is coming up soon';
     default:
       final msg = s(data['message']);
       return msg.isEmpty ? 'New notification' : msg;

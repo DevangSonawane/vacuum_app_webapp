@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Star, UserCog, Phone, Mail, Search,
   Loader2, Eye, EyeOff, Upload, FileText, X, CheckCircle,
-  MoreVertical, ChevronLeft, ChevronRight,
+  MoreVertical, ChevronLeft, ChevronRight, KeyRound,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -134,6 +134,11 @@ export default function Technicians() {
   const [ratingValue, setRatingValue]       = useState(0);
   const [ratingReview, setRatingReview]     = useState("");
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
+
+  const [pwdModal, setPwdModal]       = useState({ open: false, techId: null, techName: "" });
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPwd, setShowNewPwd]   = useState(false);
+  const [changingPwd, setChangingPwd] = useState(false);
 
   useEffect(() => { fetchTechnicians(); }, []);
 
@@ -350,6 +355,33 @@ export default function Technicians() {
     }
   };
 
+  const openPwdModal = (tech) => {
+    setMenuOpen(null);
+    setPwdModal({ open: true, techId: tech.id, techName: tech.name });
+    setNewPassword("");
+    setShowNewPwd(false);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+    setChangingPwd(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(
+        `${API_BASE_URL}/technicians/${pwdModal.techId}/password`,
+        { new_password: newPassword },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      showToast("Password updated successfully!");
+      setPwdModal({ open: false, techId: null, techName: "" });
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update password", "error");
+    } finally {
+      setChangingPwd(false);
+    }
+  };
+
   const canEdit = currentUser?.role !== "technician";
 
   return (
@@ -425,6 +457,7 @@ export default function Technicians() {
                                     { label: "View", icon: Eye, onClick: () => { setMenuOpen(null); navigate(`/technicians/${tech.id}`); } },
                                     { label: "Rate", icon: Star, onClick: () => openRating(tech) },
                                     { label: "Edit", icon: Pencil, onClick: () => openEdit(tech) },
+                                    { label: "Set Password", icon: KeyRound, onClick: () => openPwdModal(tech) },
                                     { label: "Delete", icon: Trash2, danger: true, onClick: () => { setMenuOpen(null); setDeleteId(tech.id); } },
                                   ]}
                                 />
@@ -659,6 +692,46 @@ export default function Technicians() {
                 {ratingSubmitting ? "Submitting…" : "Submit Rating"}
               </Button>
               <Button variant="secondary" onClick={() => setRatingOpen(false)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Set Password modal */}
+        <Modal isOpen={pwdModal.open} onClose={() => !changingPwd && setPwdModal({ open: false, techId: null, techName: "" })} title={`Set Password — ${pwdModal.techName}`} size="sm">
+          <form onSubmit={handleChangePassword} className="space-y-5">
+            <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl px-4 py-3">
+              <KeyRound size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                No old password required. The new password will be set immediately via the technician's linked user account.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                New Password <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPwd ? "text" : "password"}
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2.5 pr-11 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                />
+                <button type="button" onClick={() => setShowNewPwd(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
+                  {showNewPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">Minimum 6 characters</p>
+            </div>
+            <div className="flex gap-3">
+              <Button type="submit" className="flex-1" disabled={changingPwd}>
+                {changingPwd ? "Updating…" : "Update Password"}
+              </Button>
+              <Button variant="secondary" onClick={() => setPwdModal({ open: false, techId: null, techName: "" })} disabled={changingPwd}>
+                Cancel
+              </Button>
             </div>
           </form>
         </Modal>

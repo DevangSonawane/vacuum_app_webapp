@@ -10,10 +10,13 @@ class Job {
     required this.amount,
     required this.raisedDate,
     required this.scheduledDate,
+    required this.startDate,
+    required this.endDate,
     required this.closedDate,
     required this.description,
     this.clientId,
     this.technicianId,
+    this.technicians = const [],
     this.images = const [],
     this.reports = const [],
   });
@@ -28,12 +31,24 @@ class Job {
   final num amount;
   final String? raisedDate;
   final String? scheduledDate;
+  final String? startDate;
+  final String? endDate;
   final String? closedDate;
   final String description;
   final int? clientId;
   final int? technicianId;
+  final List<JobTechnician> technicians;
   final List<JobImage> images;
   final List<JobReport> reports;
+
+  String get technicianDisplayName {
+    final names = technicians
+        .map((t) => t.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
+    if (names.isNotEmpty) return names.join(', ');
+    return technicianName.trim();
+  }
 
   static Job fromJson(Map<String, dynamic> json) {
     String s(Object? v) => v == null ? '' : v.toString();
@@ -51,10 +66,20 @@ class Job {
       amount: n(json['amount']),
       raisedDate: json['raised_date']?.toString(),
       scheduledDate: json['scheduled_date']?.toString(),
+      startDate: json['start_date']?.toString(),
+      endDate: json['end_date']?.toString(),
       closedDate: json['closed_date']?.toString(),
       description: s(json['description']),
       clientId: (json['client_id'] as num?)?.toInt(),
       technicianId: (json['technician_id'] as num?)?.toInt(),
+      technicians: l(json['technicians'])
+          .whereType<Map>()
+          .map(
+            (e) => JobTechnician.fromJson(
+              e.map((k, v) => MapEntry(k.toString(), v)),
+            ),
+          )
+          .toList(),
       images: l(json['images'])
           .whereType<Map>()
           .map(
@@ -69,6 +94,21 @@ class Job {
                 JobReport.fromJson(e.map((k, v) => MapEntry(k.toString(), v))),
           )
           .toList(),
+    );
+  }
+}
+
+class JobTechnician {
+  const JobTechnician({required this.id, required this.name});
+
+  final int id;
+  final String name;
+
+  static JobTechnician fromJson(Map<String, dynamic> json) {
+    String s(Object? v) => v == null ? '' : v.toString();
+    return JobTechnician(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: s(json['name']),
     );
   }
 }

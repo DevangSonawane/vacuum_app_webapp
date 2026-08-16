@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ShieldCheck, Calendar, Clock, DollarSign,
   Package, RefreshCw, MoreVertical, Pencil, Trash2,
-  Loader2, AlertTriangle, Eye, Mail, Bell,
+  Loader2, AlertTriangle, Eye, Mail, Bell, Plus, X,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -128,6 +128,7 @@ export default function AMCDetail() {
       total_price: amc.total_price || "",
       gst_percent: amc.gst_percent || "",
       value: amc.value || "",
+      pumps: (amc.pumps || []).map(p => ({ serial_number: p.serial_number || "", model_number: p.model_number || "" })),
     });
     setEditOpen(true);
   };
@@ -179,6 +180,9 @@ export default function AMCDetail() {
         per_pump_price: editForm.per_pump_price ? parseFloat(editForm.per_pump_price) : undefined,
         total_price: editForm.total_price ? parseFloat(editForm.total_price) : undefined,
         gst_percent: editForm.gst_percent ? parseFloat(editForm.gst_percent) : undefined,
+        pumps: (editForm.pumps || [])
+          .filter(p => p.serial_number.trim() || p.model_number.trim())
+          .map(p => ({ serial_number: p.serial_number.trim(), model_number: p.model_number.trim() })),
       };
 
       if (editForm.end_date) payload.end_date = editForm.end_date;
@@ -484,6 +488,32 @@ export default function AMCDetail() {
           </Card>
         )}
 
+        {/* Pumps */}
+        {amc.pumps?.length > 0 && (
+          <Card className="overflow-hidden">
+            <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800/80 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                Pumps ({amc.pumps.length})
+              </p>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {amc.pumps.map((pump, i) => (
+                  <div key={pump.id ?? i} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl px-4 py-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                      <Package size={14} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-mono font-bold text-gray-700 dark:text-gray-200 truncate">{pump.serial_number || "—"}</p>
+                      <p className="text-xs text-gray-400 truncate">{pump.model_number || "—"}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Email reminders info */}
         <div className="bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30 p-4 space-y-2">
           <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
@@ -561,6 +591,46 @@ export default function AMCDetail() {
                   onChange={ef("services_raw")}
                   placeholder="HVAC Servicing, Filter Replacement, Emergency Support"
                 />
+              </div>
+              {/* Pumps editor */}
+              <div className="col-span-2 rounded-xl border border-gray-100 dark:border-gray-700 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pumps</p>
+                  <button type="button"
+                    onClick={() => setEditForm(p => ({ ...p, pumps: [...(p.pumps || []), { serial_number: "", model_number: "" }] }))}
+                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 transition">
+                    <Plus size={13} /> Add Pump
+                  </button>
+                </div>
+                {!editForm.pumps?.length ? (
+                  <p className="text-xs text-gray-400 text-center py-1">No pumps — click Add Pump to register one</p>
+                ) : (
+                  <div className="space-y-2">
+                    {editForm.pumps.map((pump, i) => (
+                      <div key={i} className="flex gap-2 items-end">
+                        <Input
+                          label={i === 0 ? "Serial Number" : ""}
+                          value={pump.serial_number}
+                          placeholder="VVD/5530"
+                          className="flex-1"
+                          onChange={e => setEditForm(p => ({ ...p, pumps: p.pumps.map((pu, j) => j === i ? { ...pu, serial_number: e.target.value } : pu) }))}
+                        />
+                        <Input
+                          label={i === 0 ? "Model" : ""}
+                          value={pump.model_number}
+                          placeholder="CRI 5HP"
+                          className="flex-1"
+                          onChange={e => setEditForm(p => ({ ...p, pumps: p.pumps.map((pu, j) => j === i ? { ...pu, model_number: e.target.value } : pu) }))}
+                        />
+                        <button type="button"
+                          onClick={() => setEditForm(p => ({ ...p, pumps: p.pumps.filter((_, j) => j !== i) }))}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition flex-shrink-0">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <Input
                 label="Visit Count"

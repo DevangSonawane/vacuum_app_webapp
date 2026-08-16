@@ -1083,6 +1083,87 @@ class _AmcCard extends StatelessWidget {
               ],
             ),
           ],
+          if (contract.pumps.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF111827)
+                    : AppColors.gray50,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pumps (${contract.pumps.length})',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.gray500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  for (var i = 0; i < contract.pumps.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0F2FE),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.precision_manufacturing_outlined,
+                            size: 16,
+                            color: AppColors.blue600,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                contract.pumps[i].serialNumber.isEmpty
+                                    ? '—'
+                                    : contract.pumps[i].serialNumber,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                contract.pumps[i].modelNumber.isEmpty
+                                    ? '—'
+                                    : contract.pumps[i].modelNumber,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Theme.of(context).hintColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           if ((contract.nextServiceDate ?? '').isNotEmpty) ...[
             const SizedBox(height: 10),
             Row(
@@ -1423,6 +1504,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
   final _totalPrice = TextEditingController();
   final _gstPercent = TextEditingController();
   final List<DateTime?> _serviceDates = List<DateTime?>.filled(6, null);
+  final List<_PumpEntry> _pumps = [];
 
   DateTime? _start;
   DateTime? _end;
@@ -1466,6 +1548,21 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
       _serviceDates[3] = _parse(e.serviceDate4);
       _serviceDates[4] = _parse(e.serviceDate5);
       _serviceDates[5] = _parse(e.serviceDate6);
+      _pumps.addAll(
+        e.pumps.isEmpty
+            ? const []
+            : e.pumps
+                  .map(
+                    (pump) => _PumpEntry(
+                      serial: pump.serialNumber,
+                      model: pump.modelNumber,
+                    ),
+                  )
+                  .toList(),
+      );
+    }
+    if (_pumps.isEmpty) {
+      _pumps.add(_PumpEntry());
     }
     _loadClients();
   }
@@ -1482,6 +1579,9 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     _perPumpPrice.dispose();
     _totalPrice.dispose();
     _gstPercent.dispose();
+    for (final pump in _pumps) {
+      pump.dispose();
+    }
     super.dispose();
   }
 
@@ -1545,6 +1645,20 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     _value.text = value == 0 ? '' : value.toStringAsFixed(0);
   }
 
+  void _addPump() {
+    setState(() => _pumps.add(_PumpEntry()));
+  }
+
+  void _removePump(int index) {
+    if (_pumps.length == 1) {
+      setState(() => _pumps.first.clear());
+      return;
+    }
+    setState(() {
+      _pumps.removeAt(index).dispose();
+    });
+  }
+
   Future<void> _loadClients() async {
     setState(() => _fetching = true);
     try {
@@ -1595,6 +1709,19 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     }
 
     setState(() => _loading = true);
+    final pumps = _pumps
+        .where(
+          (pump) =>
+              pump.serial.text.trim().isNotEmpty ||
+              pump.model.text.trim().isNotEmpty,
+        )
+        .map(
+          (pump) => {
+            'serial_number': pump.serial.text.trim(),
+            'model_number': pump.model.text.trim(),
+          },
+        )
+        .toList(growable: false);
     final payload = <String, dynamic>{
       'client_id': _clientId,
       'title': _title.text.trim(),
@@ -1620,6 +1747,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList(),
+      'pumps': pumps,
       if (_nextService != null)
         'next_service_date': _nextService!.toIso8601String().substring(0, 10),
       if (_lastService != null)
@@ -1694,7 +1822,7 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
               if (!_isEdit) ...[
                 _InfoBanner(
                   text:
-                      'On creation — confirmation email sent to client automatically.',
+                      'On creation, confirmation email is sent to the client automatically. AMC service reminders are then sent to the client and admin 30, 15, and 7 days before each scheduled visit.',
                 ),
                 const SizedBox(height: 12),
                 _clientSelector(),
@@ -1769,6 +1897,8 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _pumpEntriesSection(),
               const SizedBox(height: 12),
               _serviceDatesSection(),
               const SizedBox(height: 12),
@@ -2038,6 +2168,119 @@ class _AmcFormSheetState extends State<_AmcFormSheet> {
     );
   }
 
+  Widget _pumpEntriesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Pumps',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _loading ? null : _addPump,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add Pump'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Column(
+          children: [
+            for (var i = 0; i < _pumps.length; i++) ...[
+              _pumpRow(i),
+              if (i + 1 < _pumps.length) const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _pumpRow(int index) {
+    final pump = _pumps[index];
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF0F172A)
+            : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF1F2937)
+              : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(
+                'Pump ${index + 1}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Remove pump',
+                onPressed: _loading ? null : () => _removePump(index),
+                icon: const Icon(Icons.close, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _pumpField(
+                  label: 'Pump Serial Number',
+                  controller: pump.serial,
+                  hint: 'VVD/5530',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _pumpField(
+                  label: 'Model Number',
+                  controller: pump.model,
+                  hint: 'CRI 5HP',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pumpField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          enabled: !_loading,
+          decoration: InputDecoration(hintText: hint),
+        ),
+      ],
+    );
+  }
+
   Widget _field(
     String label,
     TextEditingController ctrl, {
@@ -2136,6 +2379,25 @@ class _ClientChoice {
 
   final int id;
   final String name;
+}
+
+class _PumpEntry {
+  _PumpEntry({String serial = '', String model = ''})
+    : serial = TextEditingController(text: serial),
+      model = TextEditingController(text: model);
+
+  final TextEditingController serial;
+  final TextEditingController model;
+
+  void clear() {
+    serial.clear();
+    model.clear();
+  }
+
+  void dispose() {
+    serial.dispose();
+    model.dispose();
+  }
 }
 
 class _ReadOnlyField extends StatelessWidget {

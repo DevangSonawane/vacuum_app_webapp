@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/network/api_client.dart';
@@ -78,6 +80,8 @@ class _ServiceReportWizard extends StatefulWidget {
 }
 
 class _ServiceReportWizardState extends State<_ServiceReportWizard> {
+  final _picker = ImagePicker();
+
   static const _steps = [
     (id: 1, label: 'Client Info', icon: Icons.assignment_outlined),
     (id: 2, label: 'Checklist', icon: Icons.checklist_outlined),
@@ -322,6 +326,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   final List<_IssueRow> _issues = [_IssueRow.empty(sr: 1)];
   final List<_SpareRow> _spares = _defaultSpares.map((e) => e.copy()).toList();
 
+  final List<_PhotoAttachment> _photos = [];
   final List<({String path, String name})> _technicalReports = [];
 
   @override
@@ -564,6 +569,49 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
     );
   });
 
+  Future<void> _addPhotos(List<XFile> files) async {
+    if (files.isEmpty) return;
+
+    final added = <_PhotoAttachment>[];
+    for (final file in files) {
+      try {
+        final bytes = await file.readAsBytes();
+        added.add(_PhotoAttachment(file: file, name: file.name, bytes: bytes));
+      } catch (_) {
+        // Skip files that cannot be read on the current platform.
+      }
+    }
+
+    if (added.isEmpty) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Unable to load the selected photos.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _photos.addAll(added));
+  }
+
+  Future<void> _pickPhotos() async {
+    final result = await _picker.pickMultiImage(imageQuality: 85);
+    await _addPhotos(result);
+  }
+
+  Future<void> _capturePhoto() async {
+    final photo = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (photo == null) return;
+    await _addPhotos([photo]);
+  }
+
+  void _removePhoto(int index) => setState(() => _photos.removeAt(index));
+
   Future<void> _submit() async {
     if (_loading) return;
     if (!_validateStep()) return;
@@ -616,7 +664,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
         ],
       };
 
-      await widget.onSubmit(payload, const [], _technicalReports);
+      await widget.onSubmit(payload, [
+        for (final photo in _photos) (path: photo.file.path, name: photo.name),
+      ], _technicalReports);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -1216,6 +1266,110 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
           ),
           const SizedBox(height: 16),
           Text(
+            'Service Photos',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: 'Add Photos',
+                  variant: AppButtonVariant.secondary,
+                  leading: const Icon(Icons.photo_library_outlined),
+                  onPressed: _loading ? null : _pickPhotos,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AppButton(
+                  label: 'Camera',
+                  variant: AppButtonVariant.secondary,
+                  leading: const Icon(Icons.camera_alt_outlined),
+                  onPressed: _loading ? null : _capturePhoto,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_photos.isNotEmpty)
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Attached photos',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 10),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                    itemCount: _photos.length,
+                    itemBuilder: (context, i) {
+                      final photo = _photos[i];
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(
+                              photo.bytes,
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Theme.of(
+                                      context,
+                                    ).dividerColor.withValues(alpha: 0.08),
+                                    alignment: Alignment.center,
+                                    child: const Icon(
+                                      Icons.broken_image_outlined,
+                                      size: 30,
+                                    ),
+                                  ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: InkWell(
+                              onTap: _loading ? null : () => _removePhoto(i),
+                              borderRadius: BorderRadius.circular(999),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            )
+          else
+            Text(
+              'No photos selected yet.',
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
+          const SizedBox(height: 16),
+          Text(
             'Technical Reports',
             style: Theme.of(context).textTheme.titleMedium,
           ),
@@ -1287,6 +1441,18 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       ),
     );
   }
+}
+
+class _PhotoAttachment {
+  const _PhotoAttachment({
+    required this.file,
+    required this.name,
+    required this.bytes,
+  });
+
+  final XFile file;
+  final String name;
+  final Uint8List bytes;
 }
 
 class _SearchableDropdownInt extends StatefulWidget {

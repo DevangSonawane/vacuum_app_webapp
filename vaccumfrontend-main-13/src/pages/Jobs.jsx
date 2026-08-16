@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion"; // motion used as motio
 import {
   Plus, Briefcase, ArrowRight, Calendar, User, X,
   CheckCircle, Loader2, Upload, MoreVertical, Eye,
-  Camera, ShieldCheck, Download, Building2, MapPin, Search, UserCog, Trash2, AlertTriangle,
+  Camera, ShieldCheck, Download, Building2, MapPin, Search, UserCog, Trash2, AlertTriangle, XCircle,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -15,9 +16,9 @@ import {
 
 const API_BASE_URL = "https://api.vdtil.com/api";
 
-const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed"];
+const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed", "Cancelled"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];
-const CATEGORIES = ["Service", "AMC Visit", "Breakdown", "Installation & Commissioning", "Inspection", "Workshop"];
+const CATEGORIES = ["Service", "AMC Visit", "Breakdown", "Installation & Commissioning", "Inspection", "Workshop", "Trial", "Office", "Office Visit", "Vendor Visit", "Trial Pump Installation"];
 
 const STATUS_FLOW    = { Raised: "Assigned", Assigned: "In Progress", "In Progress": "Closed" };
 const ITEMS_PER_PAGE = 15;
@@ -27,6 +28,7 @@ const STATUS_DOT = {
   Assigned:      "bg-blue-500",
   "In Progress": "bg-amber-500",
   Closed:        "bg-emerald-500",
+  Cancelled:     "bg-gray-400",
 };
 const PRIORITY_COLORS = {
   Low:      "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
@@ -36,9 +38,9 @@ const PRIORITY_COLORS = {
 };
 
 const EMPTY_FORM = {
-  title: "", client_id: "", technician_id: "",
-  priority: "Medium", category: "Maintenance",
-  description: "", scheduled_date: "", amount: "",
+  title: "", client_id: "", technician_ids: [],
+  priority: "Medium", category: "Service",
+  description: "", date_mode: "single", scheduled_date: "", start_date: "", end_date: "", amount: "",
   amc_id: "",
 };
 
@@ -171,6 +173,234 @@ function ActionMenu({ items, onClose }) {
   );
 }
 
+function MultiTechPicker({ technicians, value, onChange }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef();
+  const inputRef = useRef();
+
+  useEffect(() => {
+    const handler = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selectedIds = value.map(String);
+  const selected = technicians.filter(t => selectedIds.includes(String(t.id)));
+  const q = query.toLowerCase();
+  const filtered = technicians.filter(t =>
+    !selectedIds.includes(String(t.id)) &&
+    (q === "" || t.name?.toLowerCase().includes(q) || t.phone?.includes(query))
+  );
+
+  const add = (t) => {
+    onChange([...value, String(t.id)]);
+    setQuery("");
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+  const remove = (id) => onChange(value.filter(v => String(v) !== String(id)));
+
+  return (
+    <div className="relative col-span-2" ref={containerRef}>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        Assign Technicians
+      </label>
+
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-1.5">
+          {selected.map(t => (
+            <span key={t.id} className="inline-flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full font-medium">
+              {t.name}
+              <button type="button" onMouseDown={e => { e.preventDefault(); remove(t.id); }} className="hover:text-blue-900 dark:hover:text-blue-100 ml-0.5">
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder={value.length > 0 ? "Add more technicians…" : "Search and select technicians…"}
+          className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+        />
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.1 }}
+            className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="max-h-52 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-gray-400 text-center">
+                  {technicians.length === 0 ? "No technicians available" : "No more to add"}
+                </p>
+              ) : (
+                filtered.map(t => (
+                  <div
+                    key={t.id}
+                    onMouseDown={e => { e.preventDefault(); add(t); }}
+                    className="px-4 py-2.5 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2.5 transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                      <UserCog size={13} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{t.name}</p>
+                      {t.specialization && <p className="text-xs text-gray-400 truncate">{t.specialization}</p>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAY_NAMES   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }) {
+  const now = new Date();
+  const [view, setView]   = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const [open, setOpen]   = useState(false);
+  const [phase, setPhase] = useState("start");
+  const [hover, setHover] = useState(null);
+  const containerRef = useRef();
+
+  useEffect(() => {
+    const handler = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const openAs = (p) => {
+    setPhase(p);
+    if (p === "start" && startDate) { const d = new Date(startDate); setView({ year: d.getFullYear(), month: d.getMonth() }); }
+    else if (p === "end" && (endDate || startDate)) { const d = new Date(endDate || startDate); setView({ year: d.getFullYear(), month: d.getMonth() }); }
+    setOpen(true);
+  };
+
+  const { year, month } = view;
+  const toISO = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  const handleDay = (d) => {
+    const iso = toISO(year, month, d);
+    if (phase === "start") {
+      onStartChange(iso); onEndChange(""); setPhase("end");
+    } else {
+      if (iso < startDate) { onStartChange(iso); onEndChange(startDate); }
+      else { onEndChange(iso); }
+      setOpen(false); setPhase("start"); setHover(null);
+    }
+  };
+
+  const clear = (e) => { e.stopPropagation(); onStartChange(""); onEndChange(""); setPhase("start"); setHover(null); setOpen(false); };
+  const prevMonth = () => setView(v => v.month === 0 ? { year: v.year - 1, month: 11 } : { ...v, month: v.month - 1 });
+  const nextMonth = () => setView(v => v.month === 11 ? { year: v.year + 1, month: 0  } : { ...v, month: v.month + 1 });
+
+  const firstDay    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+  return (
+    <div className="relative" ref={containerRef}>
+      {/* START / END trigger fields */}
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => openAs("start")}
+          className={`flex-1 px-3 py-2.5 rounded-xl border text-left transition-all ${open && phase === "start" ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800" : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"}`}>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block">Start</span>
+          <span className={`text-sm ${startDate ? "text-gray-900 dark:text-white font-medium" : "text-gray-400"}`}>{startDate || "Pick date"}</span>
+        </button>
+        <ArrowRight size={13} className="text-gray-300 dark:text-gray-600 flex-shrink-0" />
+        <button type="button" onClick={() => openAs("end")}
+          className={`flex-1 px-3 py-2.5 rounded-xl border text-left transition-all ${open && phase === "end" ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800" : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"}`}>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block">End</span>
+          <span className={`text-sm ${endDate ? "text-gray-900 dark:text-white font-medium" : "text-gray-400"}`}>{endDate || "Pick date"}</span>
+        </button>
+        {(startDate || endDate) && (
+          <button type="button" onClick={clear} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Popup calendar */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            className="absolute z-[110] left-0 right-0 mt-1.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl p-4"
+          >
+            <p className="text-xs text-center font-semibold text-blue-500 dark:text-blue-400 mb-3">
+              {phase === "start" ? "Select start date" : "Now select end date"}
+            </p>
+
+            <div className="flex items-center justify-between mb-2">
+              <button type="button" onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition">
+                <ChevronLeft size={15} />
+              </button>
+              <span className="text-sm font-bold text-gray-800 dark:text-white">{MONTH_NAMES[month]} {year}</span>
+              <button type="button" onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition">
+                <ChevronRight size={15} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 mb-1">
+              {DAY_NAMES.map(n => <div key={n} className="text-center text-[10px] font-bold text-gray-400 py-1">{n}</div>)}
+            </div>
+
+            <div className="grid grid-cols-7">
+              {cells.map((d, i) => {
+                if (!d) return <div key={`e${i}`} />;
+                const iso     = toISO(year, month, d);
+                const isStart = iso === startDate;
+                const isEnd   = iso === endDate;
+                const eff     = endDate || (phase === "end" && hover ? hover : null);
+                const lo      = startDate && eff ? Math.min(startDate, eff) : null;
+                const hi      = startDate && eff ? Math.max(startDate, eff) : null;
+                const inRange = lo && hi && iso > lo && iso < hi;
+                return (
+                  <button key={d} type="button"
+                    onClick={() => handleDay(d)}
+                    onMouseEnter={() => phase === "end" && startDate && setHover(iso)}
+                    onMouseLeave={() => setHover(null)}
+                    className={`h-8 w-full text-xs font-medium transition-all ${
+                      isStart || isEnd
+                        ? "bg-blue-600 text-white font-bold rounded-lg"
+                        : inRange
+                        ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    }`}
+                  >{d}</button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Jobs() {
   const { currentUser } = useApp();
   const navigate = useNavigate();
@@ -194,9 +424,13 @@ export default function Jobs() {
   const [closing, setClosing]           = useState(false);
   const fileRef = useRef();
 
-  const [deleteJob, setDeleteJob] = useState(null);
-  const [deleting, setDeleting]   = useState(false);
-  const [page, setPage]           = useState(1);
+  const [deleteJob, setDeleteJob]   = useState(null);
+  const [deleting, setDeleting]     = useState(false);
+  const [cancelModal, setCancelModal] = useState(false);
+  const [cancelJob, setCancelJob]   = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [page, setPage]             = useState(1);
 
   // Export
   const [exportOpen, setExportOpen]       = useState(false);
@@ -207,6 +441,7 @@ export default function Jobs() {
   const [exportTechId, setExportTechId]   = useState("");
   const [exportStatus, setExportStatus]   = useState("");
   const [exportCategory, setExportCategory] = useState("");
+  const [exportDay, setExportDay]         = useState("");
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchJobs(); fetchClients(); fetchTechnicians(); fetchAmcContracts(); }, []);
@@ -259,15 +494,23 @@ export default function Jobs() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (form.date_mode === "range" && form.start_date && !form.end_date) {
+      showToast("End date is required when using a date range", "error"); return;
+    }
     setSubmitting(true);
     try {
       const token = localStorage.getItem("token");
       const payload = { title: form.title.trim(), client_id: parseInt(form.client_id), priority: form.priority, category: form.category };
-      if (form.technician_id)  payload.technician_id  = parseInt(form.technician_id);
-      if (form.description)    payload.description    = form.description.trim();
-      if (form.scheduled_date) payload.scheduled_date = form.scheduled_date;
-      if (form.amount)         payload.amount         = parseFloat(form.amount);
-      if (form.amc_id)         payload.amc_id         = form.amc_id;
+      if (form.technician_ids.length > 0) payload.technician_ids = form.technician_ids.map(Number);
+      if (form.description) payload.description = form.description.trim();
+      if (form.amount)      payload.amount      = parseFloat(form.amount);
+      if (form.amc_id)      payload.amc_id      = form.amc_id;
+      if (form.date_mode === "single") {
+        if (form.scheduled_date) payload.scheduled_date = form.scheduled_date;
+      } else {
+        if (form.start_date) payload.start_date = form.start_date;
+        if (form.end_date)   payload.end_date   = form.end_date;
+      }
 
       await axios.post(`${API_BASE_URL}/jobs`, payload, { headers: { Authorization: `Bearer ${token}` } });
       showToast("Visit scheduled!");
@@ -320,7 +563,7 @@ export default function Jobs() {
       const fd = new FormData();
       fd.append("images", imgObj.file);
       const uploadRes = await axios.post(`${API_BASE_URL}/upload?entity_type=job&entity_id=${closingJob.id}`, fd, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const uploaded = uploadRes.data.data?.[0];
       if (!uploaded) throw new Error("Upload response empty");
@@ -358,6 +601,7 @@ export default function Jobs() {
     try {
       const token = localStorage.getItem("token");
       const params = { month: exportMonth, year: exportYear };
+      if (exportDay)      params.day           = exportDay;
       if (exportTechId)   params.technician_id = exportTechId;
       if (exportStatus)   params.status        = exportStatus;
       if (exportCategory) params.category      = exportCategory;
@@ -383,8 +627,27 @@ export default function Jobs() {
     }
   };
 
-  const canRaise = !["technician", "labour"].includes(currentUser?.role);
-  const isAdmin  = currentUser?.role?.toLowerCase() === "admin";
+  const handleCancelJob = async () => {
+    if (!cancelJob) return;
+    setCancelling(true);
+    try {
+      const token = localStorage.getItem("token");
+      const body = { status: "Cancelled" };
+      if (cancelReason.trim()) body.cancel_reason = cancelReason.trim();
+      await axios.patch(`${API_BASE_URL}/jobs/${cancelJob.id}/status`, body, { headers: { Authorization: `Bearer ${token}` } });
+      showToast("Job cancelled");
+      setCancelModal(false); setCancelJob(null); setCancelReason("");
+      fetchJobs();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to cancel job", "error");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const canRaise  = !["technician", "labour"].includes(currentUser?.role);
+  const isAdmin   = currentUser?.role?.toLowerCase() === "admin";
+  const canCancel = ["admin", "manager"].includes(currentUser?.role?.toLowerCase());
 
   const handleDelete = (job) => {
     setMenuOpen(null);
@@ -518,7 +781,11 @@ export default function Jobs() {
                                       icon: job.status === "In Progress" ? Camera : ArrowRight,
                                       onClick: () => advanceStatus(job),
                                     }] : []),
-                                    ...(isAdmin && ["Raised", "Assigned"].includes(job.status) ? [{
+                                    ...(canCancel && ["Raised", "Assigned"].includes(job.status) ? [{
+                                      label: "Cancel Job", icon: XCircle, danger: true,
+                                      onClick: () => { setMenuOpen(null); setCancelJob(job); setCancelReason(""); setCancelModal(true); },
+                                    }] : []),
+                                    ...(isAdmin && job.status !== "In Progress" ? [{
                                       label: "Delete", icon: Trash2, danger: true,
                                       onClick: () => handleDelete(job),
                                     }] : []),
@@ -533,8 +800,20 @@ export default function Jobs() {
                       {/* Meta row */}
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                         {job.client_name && <span className="flex items-center gap-1.5"><User size={11} className="flex-shrink-0" />{job.client_name}</span>}
-                        {job.technician_name && <span className="flex items-center gap-1.5"><User size={11} className="text-blue-400 flex-shrink-0" />{job.technician_name}</span>}
-                        {job.scheduled_date && <span className="flex items-center gap-1.5"><Calendar size={11} className="flex-shrink-0" />{job.scheduled_date.slice(0, 10)}</span>}
+                        {(job.technicians?.length > 0 || job.technician_name) && (
+                          <span className="flex items-center gap-1.5">
+                            <User size={11} className="text-blue-400 flex-shrink-0" />
+                            {job.technicians?.length > 0 ? job.technicians.map(t => t.name).join(", ") : job.technician_name}
+                          </span>
+                        )}
+                        {(job.scheduled_date || job.start_date) && (
+                          <span className="flex items-center gap-1.5">
+                            <Calendar size={11} className="flex-shrink-0" />
+                            {job.start_date
+                              ? `${job.start_date.slice(0, 10)} → ${job.end_date?.slice(0, 10) ?? ""}`
+                              : job.scheduled_date.slice(0, 10)}
+                          </span>
+                        )}
                         {job.amc_id && (
                           <span className="flex items-center gap-1.5 text-purple-500 font-medium">
                             <ShieldCheck size={11} className="flex-shrink-0" />{job.amc_title || "AMC"}
@@ -617,15 +896,45 @@ export default function Jobs() {
                 label="Client" required placeholder="Search clients..."
                 icon={Building2} subField="address"
               />
-              <AutocompleteInput
-                items={technicians} value={form.technician_id}
-                onChange={(id) => setForm(p => ({ ...p, technician_id: id }))}
-                label="Assign Technician" placeholder="Search technicians..."
-                icon={UserCog} subField="specialization"
+              <MultiTechPicker
+                technicians={technicians}
+                value={form.technician_ids}
+                onChange={(ids) => setForm(p => ({ ...p, technician_ids: ids }))}
               />
               <Select label="Priority" value={form.priority} onChange={f("priority")} options={PRIORITIES} />
               <Select label="Category" value={form.category} onChange={f("category")} options={CATEGORIES} />
-              <DatePicker label="Scheduled Date" value={form.scheduled_date} onChange={f("scheduled_date")} />
+
+              {/* Date mode toggle */}
+              <div className="col-span-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
+                  <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-0.5">
+                    {[{ id: "single", label: "Single" }, { id: "range", label: "Date Range" }].map(m => (
+                      <button key={m.id} type="button"
+                        onClick={() => setForm(p => ({ ...p, date_mode: m.id, scheduled_date: "", start_date: "", end_date: "" }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                          form.date_mode === m.id
+                            ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm"
+                            : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {form.date_mode === "single" ? (
+                  <DatePicker label="Scheduled Date" value={form.scheduled_date} onChange={f("scheduled_date")} />
+                ) : (
+                  <DateRangePicker
+                    startDate={form.start_date}
+                    endDate={form.end_date}
+                    onStartChange={(d) => setForm(p => ({ ...p, start_date: d }))}
+                    onEndChange={(d) => setForm(p => ({ ...p, end_date: d }))}
+                  />
+                )}
+              </div>
+
               <Input label="Amount (₹)" type="number" value={form.amount} onChange={f("amount")} />
               <div className="col-span-2">
                 <Select label="Linked AMC Contract" placeholder="— Not linked —" value={form.amc_id}
@@ -727,6 +1036,8 @@ export default function Jobs() {
                 ]} />
               <Select label="Year" value={exportYear} onChange={e => setExportYear(Number(e.target.value))}
                 options={[exportYear - 1, exportYear, exportYear + 1].map(y => ({ value: y, label: String(y) }))} />
+              <Select label="Day (optional)" value={exportDay} onChange={e => setExportDay(e.target.value)} className="col-span-2"
+                options={[{ value: "", label: "All Days (full month)" }, ...Array.from({ length: 31 }, (_, i) => ({ value: i + 1, label: `Day ${i + 1}` }))]} />
               <Select label="Technician" value={exportTechId} onChange={e => setExportTechId(e.target.value)} searchable
                 options={[{ value: "", label: "All Technicians" }, ...technicians.map(t => ({ value: t.id, label: t.name }))]} />
               <Select label="Status" value={exportStatus} onChange={e => setExportStatus(e.target.value)}
@@ -739,6 +1050,52 @@ export default function Jobs() {
                 {exporting ? <><Loader2 size={15} className="animate-spin" /> Exporting…</> : <><Download size={15} /> Download Excel</>}
               </Button>
               <Button variant="secondary" onClick={() => setExportOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Cancel Job Modal */}
+        <Modal isOpen={cancelModal} onClose={() => { if (!cancelling) { setCancelModal(false); setCancelJob(null); setCancelReason(""); } }} title="Cancel Job" size="sm">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl px-4 py-3">
+              <XCircle size={18} className="text-orange-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-orange-700 dark:text-orange-300">Job will be marked as Cancelled</p>
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Allowed from Raised or Assigned status only.</p>
+              </div>
+            </div>
+            {cancelJob && (
+              <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl px-4 py-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                  <Briefcase size={16} className="text-orange-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-blue-500">{cancelJob.id}</p>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{cancelJob.title}</p>
+                </div>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Cancel Reason <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="e.g. Client rescheduled to next month"
+                rows={3}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition"
+              />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="secondary" className="flex-1" onClick={() => { setCancelModal(false); setCancelJob(null); setCancelReason(""); }} disabled={cancelling}>Keep Job</Button>
+              <Button
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                onClick={handleCancelJob}
+                disabled={cancelling}
+              >
+                {cancelling ? <><Loader2 size={15} className="animate-spin" /> Cancelling…</> : <><XCircle size={15} /> Confirm Cancel</>}
+              </Button>
             </div>
           </div>
         </Modal>

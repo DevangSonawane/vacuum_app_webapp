@@ -153,6 +153,9 @@ class AmcNotifier extends AsyncNotifier<AmcState> {
         contract.totalPrice?.toString() ?? '',
         contract.gstPercent?.toString() ?? '',
         contract.services.join(' '),
+        contract.pumps
+            .map((pump) => '${pump.serialNumber} ${pump.modelNumber}')
+            .join(' '),
       ].any((value) => value.toLowerCase().contains(query));
     }).toList();
     return state.copyWith(items: filtered);

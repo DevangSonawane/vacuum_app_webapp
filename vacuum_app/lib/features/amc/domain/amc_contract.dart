@@ -19,6 +19,7 @@ class AmcContract {
     required this.serviceDate4,
     required this.serviceDate5,
     required this.serviceDate6,
+    required this.pumps,
     this.daysLeft,
     this.poNumber,
     this.visitCount,
@@ -48,6 +49,7 @@ class AmcContract {
   final String? serviceDate4;
   final String? serviceDate5;
   final String? serviceDate6;
+  final List<AmcPump> pumps;
   final int? daysLeft; // json: days_left
   final String? poNumber; // json: po_number
   final int? visitCount; // json: visit_count
@@ -101,6 +103,12 @@ class AmcContract {
       serviceDate4: json['service_date_4']?.toString(),
       serviceDate5: json['service_date_5']?.toString(),
       serviceDate6: json['service_date_6']?.toString(),
+      pumps: l(json['pumps'])
+          .whereType<Map>()
+          .map(
+            (e) => AmcPump.fromJson(e.map((k, v) => MapEntry(k.toString(), v))),
+          )
+          .toList(),
       daysLeft: iOrNull(json['days_left']),
       poNumber: (json['po_number'] as Object?)?.toString(),
       visitCount: iOrNull(json['visit_count']),
@@ -109,6 +117,27 @@ class AmcContract {
       perPumpPrice: nOrNull(json['per_pump_price']),
       totalPrice: nOrNull(json['total_price']),
       gstPercent: nOrNull(json['gst_percent']),
+    );
+  }
+}
+
+class AmcPump {
+  const AmcPump({
+    required this.id,
+    required this.serialNumber,
+    required this.modelNumber,
+  });
+
+  final String? id;
+  final String serialNumber;
+  final String modelNumber;
+
+  static AmcPump fromJson(Map<String, dynamic> json) {
+    String s(Object? v) => v == null ? '' : v.toString();
+    return AmcPump(
+      id: s(json['id']).isEmpty ? null : s(json['id']),
+      serialNumber: s(json['serial_number']),
+      modelNumber: s(json['model_number']),
     );
   }
 }

@@ -125,7 +125,7 @@ export default function JobDetail() {
       const uploadRes = await axios.post(
         `${API_BASE_URL}/upload?entity_type=job&entity_id=${id}`,
         fd,
-        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const up = uploadRes.data.data?.[0];
       if (!up) throw new Error("Empty upload");
@@ -248,6 +248,29 @@ export default function JobDetail() {
           </div>
         </Card>
 
+        {/* Mobile-only action bar — appears right below pipeline so users don't scroll far */}
+        {canAct && (
+          <div className="lg:hidden">
+            {job.status === "Closed" ? (
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3 text-emerald-700 dark:text-emerald-300">
+                <CheckCircle size={17} />
+                <span className="text-sm font-semibold">Job Completed</span>
+                {job.closed_date && <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-1">· {job.closed_date.slice(0, 10)}</span>}
+              </div>
+            ) : job.status === "In Progress" ? (
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={() => { setVerifyImages([]); setCloseModal(true); }}>
+                <Camera size={16} /> Close with Verification
+              </Button>
+            ) : nextStatus ? (
+              <Button className="w-full" onClick={advanceStatus} disabled={advancing}>
+                {advancing
+                  ? <><Loader2 size={15} className="animate-spin" /> Updating…</>
+                  : <>Advance to {nextStatus} <ArrowRight size={15} /></>}
+              </Button>
+            ) : null}
+          </div>
+        )}
+
         {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -260,11 +283,23 @@ export default function JobDetail() {
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { icon: Building2, label: "Client",         value: job.client_name     || "—" },
-                  { icon: User,      label: "Technician",     value: job.technician_name || "Not Assigned" },
+                  {
+                    icon: User,
+                    label: job.technicians?.length > 1 ? "Technicians" : "Technician",
+                    value: job.technicians?.length > 0
+                      ? job.technicians.map(t => t.name).join(", ")
+                      : (job.technician_name || "Not Assigned"),
+                  },
                   { icon: DollarSign,label: "Amount",         value: `₹${Number(job.amount || 0).toLocaleString()}` },
                   { icon: Tag,       label: "Category",       value: job.category        || "—" },
                   { icon: Calendar,  label: "Raised",         value: job.raised_date     ? job.raised_date.slice(0, 10)     : "—" },
-                  { icon: Calendar,  label: "Scheduled",      value: job.scheduled_date  ? job.scheduled_date.slice(0, 10)  : "—" },
+                  {
+                    icon: Calendar,
+                    label: job.start_date ? "Date Range" : "Scheduled",
+                    value: job.start_date
+                      ? `${job.start_date.slice(0, 10)} → ${job.end_date?.slice(0, 10) ?? ""}`
+                      : (job.scheduled_date ? job.scheduled_date.slice(0, 10) : "—"),
+                  },
                   { icon: Calendar,  label: "Closed",         value: job.closed_date     ? job.closed_date.slice(0, 10)     : "—" },
                   { icon: AlertCircle,label: "Priority",      value: job.priority        || "—" },
                 ].map(item => (
@@ -289,21 +324,27 @@ export default function JobDetail() {
               </Card>
             )}
 
-            {/* Verification Photos */}
+            {/* Attached Photos */}
             <Card className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                  Verification Photos {job.images?.length > 0 && `(${job.images.length})`}
+                  Attached Photos {job.images?.length > 0 && `(${job.images.length})`}
                 </p>
               </div>
               {job.images?.length > 0 ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {job.images.map(img => (
-                    <a key={img.id} href={img.file_url} target="_blank" rel="noopener noreferrer" className="group">
-                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition ring-0 group-hover:ring-2 group-hover:ring-blue-500">
-                        <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
+                    <a key={img.id} href={img.file_url} target="_blank" rel="noopener noreferrer" className="group block">
+                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 ring-0 group-hover:ring-2 group-hover:ring-blue-500 transition">
+                        <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover group-hover:opacity-90 transition" />
                       </div>
-                      <p className="text-[10px] text-gray-400 truncate mt-1">{img.file_name}</p>
+                      <p className="text-[10px] text-gray-700 dark:text-gray-300 font-medium truncate mt-1.5 leading-tight">{img.file_name}</p>
+                      {img.uploaded_at && (
+                        <p className="text-[9px] text-gray-400 truncate mt-0.5">
+                          {new Date(img.uploaded_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          {img.file_size_bytes && ` · ${(img.file_size_bytes / 1024).toFixed(0)} KB`}
+                        </p>
+                      )}
                     </a>
                   ))}
                 </div>
@@ -373,9 +414,9 @@ export default function JobDetail() {
               </div>
             </Card>
 
-            {/* Action card */}
+            {/* Action card — desktop only (mobile shows button above the grid) */}
             {canAct && job.status !== "Closed" && (
-              <Card className="p-5">
+              <Card className="hidden lg:block p-5">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Actions</p>
                 {job.status === "In Progress" ? (
                   <Button
@@ -396,7 +437,7 @@ export default function JobDetail() {
             )}
 
             {job.status === "Closed" && (
-              <Card className="p-5 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+              <Card className="hidden lg:block p-5 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
                 <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
                   <CheckCircle size={18} />
                   <p className="font-semibold text-sm">Job Completed</p>

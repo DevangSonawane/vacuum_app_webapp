@@ -124,6 +124,16 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
     }
   }
 
+  Future<bool> cancelJob(String id, {String? reason}) async {
+    try {
+      await _repo.cancel(id, reason: reason);
+      await refresh();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> deleteJob(String id) async {
     try {
       await _repo.delete(id);
@@ -169,7 +179,7 @@ class JobsNotifier extends AsyncNotifier<JobsState> {
         job.priority,
         job.category,
         job.clientName,
-        job.technicianName,
+        job.technicianDisplayName,
         job.description,
       ].any((value) => value.toLowerCase().contains(query));
     }).toList();

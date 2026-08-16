@@ -11,13 +11,22 @@ class TechniciansRepository {
   final Dio _dio;
 
   Future<String> login({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
-    final res = await _dio.post(
-      'technicians/login',
-      data: {'email': email.trim(), 'password': password},
-    );
+    final trimmed = identifier.trim();
+    final payload = <String, dynamic>{'password': password};
+
+    if (trimmed.contains('@')) {
+      payload['email'] = trimmed;
+    } else {
+      final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+      payload['phone_number'] = digits.startsWith('91')
+          ? '+$digits'
+          : '+91$digits';
+    }
+
+    final res = await _dio.post('technicians/login', data: payload);
     final data = res.data;
     if (data is String) return data;
     if (data is Map && data['token'] != null) return data['token'].toString();

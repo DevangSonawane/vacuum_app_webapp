@@ -96,6 +96,7 @@ class EmailNotificationTriggers {
     required this.jobCompleted,
     required this.reportApproved,
     required this.amcRenewal,
+    required this.amcServiceReminder,
     required this.quotationSent,
   });
 
@@ -104,6 +105,7 @@ class EmailNotificationTriggers {
   final bool jobCompleted;
   final bool reportApproved;
   final bool amcRenewal;
+  final bool amcServiceReminder;
   final bool quotationSent;
 
   EmailNotificationTriggers copyWith({
@@ -112,6 +114,7 @@ class EmailNotificationTriggers {
     bool? jobCompleted,
     bool? reportApproved,
     bool? amcRenewal,
+    bool? amcServiceReminder,
     bool? quotationSent,
   }) {
     return EmailNotificationTriggers(
@@ -120,6 +123,7 @@ class EmailNotificationTriggers {
       jobCompleted: jobCompleted ?? this.jobCompleted,
       reportApproved: reportApproved ?? this.reportApproved,
       amcRenewal: amcRenewal ?? this.amcRenewal,
+      amcServiceReminder: amcServiceReminder ?? this.amcServiceReminder,
       quotationSent: quotationSent ?? this.quotationSent,
     );
   }
@@ -130,6 +134,7 @@ class EmailNotificationTriggers {
     'jobCompleted': jobCompleted,
     'reportApproved': reportApproved,
     'amcRenewal': amcRenewal,
+    'amcServiceReminder': amcServiceReminder,
     'quotationSent': quotationSent,
   };
 
@@ -141,6 +146,7 @@ class EmailNotificationTriggers {
       jobCompleted: b(json['jobCompleted']),
       reportApproved: b(json['reportApproved']),
       amcRenewal: b(json['amcRenewal']),
+      amcServiceReminder: b(json['amcServiceReminder']),
       quotationSent: b(json['quotationSent']),
     );
   }
@@ -151,6 +157,7 @@ class EmailNotificationTriggers {
     jobCompleted: true,
     reportApproved: true,
     amcRenewal: true,
+    amcServiceReminder: true,
     quotationSent: true,
   );
 }

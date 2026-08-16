@@ -21,6 +21,7 @@ import Jobs           from "./pages/Jobs";
 import JobDetail      from "./pages/JobDetail";
 import Reports        from "./pages/Reports";
 import ReportDetail   from "./pages/ReportDetail";
+import EditReport     from "./pages/EditReport";
 import Quotations       from "./pages/Quotations";
 import QuotationDetail  from "./pages/QuotationDetail";
 import AMC            from "./pages/AMC";
@@ -118,6 +119,7 @@ function AppContent() {
         <Route path="/reports/create" element={<PL><CreateReport /></PL>} />
         <Route path="/reports"     element={<PL><Reports /></PL>} />
         <Route path="/reports/:id" element={<PL><ReportDetail /></PL>} />
+        <Route path="/reports/:id/edit" element={<PL><EditReport /></PL>} />
 
         {/* Other modules */}
         <Route path="/quotations"     element={<PL><Quotations /></PL>} />

@@ -7,10 +7,7 @@ class JobsRepository {
 
   final Dio _dio;
 
-  Future<List<Job>> fetchJobs({
-    String status = '',
-    int? userId,
-  }) async {
+  Future<List<Job>> fetchJobs({String status = '', int? userId}) async {
     final path = userId != null ? 'jobs/by-user/$userId' : 'jobs';
     final response = await _dio.get(
       path,
@@ -43,6 +40,14 @@ class JobsRepository {
 
   Future<void> advanceStatus(String id, String newStatus) =>
       _dio.patch('jobs/$id/status', data: {'status': newStatus});
+
+  Future<void> cancel(String id, {String? reason}) async {
+    final payload = <String, dynamic>{'status': 'Cancelled'};
+    if (reason != null && reason.trim().isNotEmpty) {
+      payload['cancel_reason'] = reason.trim();
+    }
+    await _dio.patch('jobs/$id/status', data: payload);
+  }
 
   Future<String?> uploadImage(
     String jobId,

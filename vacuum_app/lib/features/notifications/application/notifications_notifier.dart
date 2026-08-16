@@ -31,6 +31,7 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     'report_reviewed',
     'amc_expiring',
     'amc_created',
+    'amc_service_upcoming',
     'notification',
   };
 
@@ -189,8 +190,8 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
 
     final current = state.valueOrNull ?? NotificationsState.empty;
 
-    final meta = notificationMeta(event);
     final data = _asMap(msg['data']);
+    final meta = notificationMeta(event, data);
     final title = (data['title'] ?? '').toString().trim();
     final message = (data['message'] ?? '').toString().trim();
     final entityType = (data['entity_type'] as Object?)?.toString();
