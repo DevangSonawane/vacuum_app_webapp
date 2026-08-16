@@ -62,9 +62,7 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
 
   Future<void> search(String query) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => _fetch(page: 1, query: query.trim()),
-    );
+    state = await AsyncValue.guard(() => _fetch(page: 1, query: query.trim()));
   }
 
   Future<bool> createUser(Map<String, dynamic> payload) async {
@@ -107,6 +105,26 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
     }
   }
 
+  Future<bool> reactivate(int id) async {
+    try {
+      await _repo.reactivateUser(id);
+      await refresh();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> permanentlyDelete(int id) async {
+    try {
+      await _repo.permanentlyDeleteUser(id);
+      await refresh();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<AppUser?> fetchById(int id) async {
     try {
       return await _repo.fetchById(id);
@@ -114,5 +132,4 @@ class UsersNotifier extends AsyncNotifier<UsersState> {
       return null;
     }
   }
-
 }

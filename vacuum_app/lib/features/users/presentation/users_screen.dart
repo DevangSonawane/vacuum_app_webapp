@@ -174,9 +174,11 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                     ? null
                     : () => ref.read(usersProvider.notifier).nextPage(),
                 onEdit: (u) => _openUserSheet(context, ref, u),
-                onChangePassword: (u) =>
-                    _openPasswordSheet(context, ref, u),
+                onChangePassword: (u) => _openPasswordSheet(context, ref, u),
                 onDeactivate: (u) => _confirmDeactivate(context, ref, u),
+                onReactivate: (u) => _confirmReactivate(context, ref, u),
+                onPermanentDelete: (u) =>
+                    _confirmPermanentDelete(context, ref, u),
               ),
             ),
           ],
@@ -203,6 +205,53 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     AppToast.show(
       context,
       message: ok ? 'User deactivated' : 'Operation failed',
+      type: ok ? AppToastType.success : AppToastType.error,
+    );
+  }
+
+  Future<void> _confirmReactivate(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Reactivate user',
+      body: 'Reactivate ${user.fullName}? They will regain access.',
+      confirmLabel: 'Reactivate',
+      confirmVariant: AppButtonVariant.primary,
+    );
+    if (!confirmed || !context.mounted) return;
+    final ok = await ref.read(usersProvider.notifier).reactivate(user.id);
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: ok ? 'User reactivated' : 'Operation failed',
+      type: ok ? AppToastType.success : AppToastType.error,
+    );
+  }
+
+  Future<void> _confirmPermanentDelete(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Delete user permanently',
+      body:
+          'Permanently delete ${user.fullName}? This removes them from the database and cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmVariant: AppButtonVariant.danger,
+    );
+    if (!confirmed || !context.mounted) return;
+    final ok = await ref
+        .read(usersProvider.notifier)
+        .permanentlyDelete(user.id);
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: ok ? 'User permanently deleted' : 'Operation failed',
       type: ok ? AppToastType.success : AppToastType.error,
     );
   }
@@ -315,6 +364,8 @@ class _UsersPremiumTable extends StatelessWidget {
     required this.onEdit,
     required this.onChangePassword,
     required this.onDeactivate,
+    required this.onReactivate,
+    required this.onPermanentDelete,
   });
 
   final UsersState data;
@@ -325,6 +376,8 @@ class _UsersPremiumTable extends StatelessWidget {
   final ValueChanged<AppUser> onEdit;
   final ValueChanged<AppUser> onChangePassword;
   final ValueChanged<AppUser> onDeactivate;
+  final ValueChanged<AppUser> onReactivate;
+  final ValueChanged<AppUser> onPermanentDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -436,6 +489,8 @@ class _UsersPremiumTable extends StatelessWidget {
                       onEdit: onEdit,
                       onChangePassword: onChangePassword,
                       onDeactivate: onDeactivate,
+                      onReactivate: onReactivate,
+                      onPermanentDelete: onPermanentDelete,
                     ),
                 ],
               ),
@@ -527,6 +582,8 @@ class _UsersPremiumTable extends StatelessWidget {
     required ValueChanged<AppUser> onEdit,
     required ValueChanged<AppUser> onChangePassword,
     required ValueChanged<AppUser> onDeactivate,
+    required ValueChanged<AppUser> onReactivate,
+    required ValueChanged<AppUser> onPermanentDelete,
   }) {
     final roleColors = _roleColors(user.role);
     final statusColors = user.isActive
@@ -643,10 +700,19 @@ class _UsersPremiumTable extends StatelessWidget {
                 switch (action) {
                   case _UserAction.edit:
                     onEdit(user);
+                    break;
                   case _UserAction.changePassword:
                     onChangePassword(user);
+                    break;
                   case _UserAction.deactivate:
                     onDeactivate(user);
+                    break;
+                  case _UserAction.reactivate:
+                    onReactivate(user);
+                    break;
+                  case _UserAction.permanentDelete:
+                    onPermanentDelete(user);
+                    break;
                 }
               },
               itemBuilder: (context) => [
@@ -681,6 +747,27 @@ class _UsersPremiumTable extends StatelessWidget {
                     ],
                   ),
                 ),
+                PopupMenuItem(
+                  value: _UserAction.reactivate,
+                  enabled: !user.isActive,
+                  child: Row(
+                    children: const [
+                      Icon(Icons.restart_alt_outlined, size: 18),
+                      SizedBox(width: 10),
+                      Text('Reactivate'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _UserAction.permanentDelete,
+                  child: Row(
+                    children: const [
+                      Icon(Icons.delete_forever_outlined, size: 18),
+                      SizedBox(width: 10),
+                      Text('Permanently Delete'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -701,7 +788,13 @@ class _UsersPremiumTable extends StatelessWidget {
   }
 }
 
-enum _UserAction { edit, changePassword, deactivate }
+enum _UserAction {
+  edit,
+  changePassword,
+  deactivate,
+  reactivate,
+  permanentDelete,
+}
 
 class _UserFormSheet extends StatefulWidget {
   const _UserFormSheet({
@@ -937,7 +1030,9 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.12),
                             ),
                           ),
                           child: Row(
@@ -1006,10 +1101,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
 }
 
 class _ChangePasswordSheet extends StatefulWidget {
-  const _ChangePasswordSheet({
-    required this.user,
-    required this.onSubmit,
-  });
+  const _ChangePasswordSheet({required this.user, required this.onSubmit});
 
   final AppUser user;
   final Future<void> Function(String password) onSubmit;
@@ -1149,7 +1241,9 @@ class _UsersSkeleton extends StatelessWidget {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
@@ -1158,7 +1252,9 @@ class _UsersSkeleton extends StatelessWidget {
                           child: Container(
                             height: 16,
                             decoration: BoxDecoration(
-                              color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),

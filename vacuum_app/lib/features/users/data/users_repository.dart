@@ -7,10 +7,7 @@ class UsersRepository {
 
   final Dio _dio;
 
-  Future<UsersPage> fetchUsers({
-    required int page,
-    String search = '',
-  }) async {
+  Future<UsersPage> fetchUsers({required int page, String search = ''}) async {
     final response = await _dio.get(
       'users',
       queryParameters: {
@@ -41,10 +38,7 @@ class UsersRepository {
   }
 
   Future<void> setPassword(int id, String newPassword) async {
-    await _dio.put(
-      'users/$id/password',
-      data: {'new_password': newPassword},
-    );
+    await _dio.put('users/$id/password', data: {'new_password': newPassword});
   }
 
   Future<void> createUser(Map<String, dynamic> payload) async {
@@ -59,6 +53,14 @@ class UsersRepository {
 
   Future<void> deactivateUser(int id) async {
     await _dio.delete('users/$id');
+  }
+
+  Future<void> reactivateUser(int id) async {
+    await _dio.put('users/$id/reactivate');
+  }
+
+  Future<void> permanentlyDeleteUser(int id) async {
+    await _dio.delete('users/$id/permanent');
   }
 
   static Map<String, dynamic> _asMap(dynamic value) {
