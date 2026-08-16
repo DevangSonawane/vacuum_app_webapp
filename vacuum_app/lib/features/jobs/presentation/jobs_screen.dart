@@ -883,8 +883,8 @@ class _FilterTabs extends StatelessWidget {
                         ? const Color(0xFF111827)
                         : const Color(0xFFF9FAFB));
               final borderColor = selected
-                  ? accent.withValues(alpha: 0.45)
-                  : Theme.of(context).dividerColor.withValues(alpha: 0.12);
+                  ? accent.withValues(alpha: 0.28)
+                  : AppColors.gray200;
 
               return InkWell(
                 borderRadius: BorderRadius.circular(999),
@@ -939,10 +939,9 @@ class _FilterTabs extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: accent.withValues(
-                              alpha: isDark ? 0.22 : 0.12,
-                            ),
+                            color: AppColors.gray100,
                             borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: AppColors.gray200),
                           ),
                           child: Text(
                             '${counts[t] ?? 0}',
@@ -1319,7 +1318,9 @@ class _JobCardHorizontal extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -2486,7 +2487,9 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
                       color: isDark ? const Color(0xFF111827) : surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
                       ),
                     ),
                     child: Column(
@@ -2548,7 +2551,8 @@ class _MultiTechnicianPickerState extends State<_MultiTechnicianPicker> {
                                           vertical: 11,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: Theme.of(context).dividerColor.withValues(alpha: 0.12)
+                                          color: Theme.of(context).dividerColor
+                                              .withValues(alpha: 0.12)
                                               .withValues(alpha: 0.04),
                                           borderRadius: BorderRadius.circular(
                                             14,

@@ -338,8 +338,8 @@ class _FilterChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected
-                ? (isDark ? AppColors.gray700 : const Color(0xFFBFDBFE))
-                : Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                ? (isDark ? AppColors.gray200 : const Color(0xFFBFDBFE))
+                : AppColors.gray200,
           ),
         ),
         child: Text(

@@ -258,11 +258,7 @@ class _FilterTabs extends StatelessWidget {
                     color: value == t
                         ? (isDark ? AppColors.gray800 : const Color(0xFFDBEAFE))
                         : Colors.transparent,
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).dividerColor.withValues(alpha: 0.12),
-                    ),
+                    border: Border.all(color: AppColors.gray200),
                   ),
                   child: Row(
                     children: [
@@ -284,10 +280,9 @@ class _FilterTabs extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).dividerColor.withValues(alpha: 0.12),
+                            color: AppColors.gray100,
                             borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: AppColors.gray200),
                           ),
                           child: Text(
                             '${counts[t] ?? 0}',
