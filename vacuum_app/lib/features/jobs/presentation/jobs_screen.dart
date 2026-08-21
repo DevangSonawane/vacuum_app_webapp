@@ -25,6 +25,7 @@ import '../../auth/application/auth_notifier.dart';
 import '../../amc/data/amc_repository.dart';
 import '../../amc/domain/amc_contract.dart';
 import '../../clients/data/clients_repository.dart';
+import '../data/jobs_repository.dart';
 import '../../technicians/data/technicians_repository.dart';
 import '../../technicians/domain/technician.dart';
 import '../application/jobs_notifier.dart';
@@ -1589,6 +1590,70 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     super.dispose();
   }
 
+  List<String> _datesToCheck() {
+    if (_dateMode == 'single') {
+      final scheduled = _scheduledDate;
+      if (scheduled == null) return const [];
+      return [_dateKey(scheduled)];
+    }
+
+    final start = _startDate;
+    final end = _endDate;
+    if (start == null || end == null) return const [];
+
+    final dates = <String>[];
+    var current = DateUtils.dateOnly(start);
+    final last = DateUtils.dateOnly(end);
+    while (!current.isAfter(last)) {
+      dates.add(_dateKey(current));
+      current = current.add(const Duration(days: 1));
+    }
+    return dates;
+  }
+
+  static String _dateKey(DateTime date) => date.toIso8601String().substring(0, 10);
+
+  String _formatAvailabilityMessage(
+    String date,
+    List<TechnicianAvailability> unavailable,
+  ) {
+    if (unavailable.isEmpty) return 'Technician unavailable on $date.';
+    if (unavailable.length == 1) {
+      final name = unavailable.first.technicianName.trim().isEmpty
+          ? 'Selected technician'
+          : unavailable.first.technicianName.trim();
+      return '$name is already booked on $date.';
+    }
+    return '${unavailable.length} selected technicians are already booked on $date.';
+  }
+
+  Future<String?> _checkTechnicianAvailability() async {
+    if (_techIds.isEmpty) return null;
+
+    final dates = _datesToCheck();
+    if (dates.isEmpty) return null;
+
+    debugPrint(
+      '[Jobs] checking technician availability for techIds=$_techIds dates=$dates',
+    );
+
+    final repo = JobsRepository(dio: widget.dio);
+    for (final date in dates) {
+      final result = await repo.checkTechnicianAvailability(
+        technicianIds: _techIds,
+        date: date,
+      );
+      final unavailable = result.technicians
+          .where((tech) => !tech.isAvailable)
+          .toList(growable: false);
+      if (unavailable.isNotEmpty) {
+        return _formatAvailabilityMessage(date, unavailable);
+      }
+    }
+
+    return null;
+  }
+
   Future<void> _fetchDropdowns() async {
     setState(() => _fetching = true);
     try {
@@ -1662,38 +1727,64 @@ class _RaiseJobSheetState extends State<_RaiseJobSheet> {
     }
 
     setState(() => _loading = true);
-    final payload = <String, dynamic>{
-      'title': _title.text.trim(),
-      'client_id': _clientId,
-      'priority': _priority,
-      'category': _category,
-      if (_techIds.isNotEmpty) 'technician_ids': _techIds,
-      if (_amcId != null && _amcId!.trim().isNotEmpty) 'amc_id': _amcId,
-      if (_description.text.trim().isNotEmpty)
-        'description': _description.text.trim(),
-      if (num.tryParse(_amount.text.trim()) != null)
-        'amount': num.parse(_amount.text.trim()),
-    };
-
-    if (_dateMode == 'single') {
-      if (_scheduledDate != null) {
-        payload['scheduled_date'] = _scheduledDate!.toIso8601String().substring(
-          0,
-          10,
+    try {
+      String? availabilityMessage;
+      try {
+        availabilityMessage = await _checkTechnicianAvailability();
+      } catch (error) {
+        if (!mounted) return;
+        AppToast.show(
+          context,
+          message: friendlyErrorMessage(
+            error,
+            fallback: 'Unable to verify technician availability right now.',
+          ),
+          type: AppToastType.error,
         );
+        return;
       }
-    } else {
-      if (_startDate != null) {
-        payload['start_date'] = _startDate!.toIso8601String().substring(0, 10);
-      }
-      if (_endDate != null) {
-        payload['end_date'] = _endDate!.toIso8601String().substring(0, 10);
-      }
-    }
 
-    await widget.onSubmit(payload);
-    if (!mounted) return;
-    setState(() => _loading = false);
+      if (availabilityMessage != null) {
+        if (!mounted) return;
+        AppToast.show(
+          context,
+          message: availabilityMessage,
+          type: AppToastType.error,
+          duration: const Duration(seconds: 7),
+        );
+        return;
+      }
+
+      final payload = <String, dynamic>{
+        'title': _title.text.trim(),
+        'client_id': _clientId,
+        'priority': _priority,
+        'category': _category,
+        if (_techIds.isNotEmpty) 'technician_ids': _techIds,
+        if (_amcId != null && _amcId!.trim().isNotEmpty) 'amc_id': _amcId,
+        if (_description.text.trim().isNotEmpty)
+          'description': _description.text.trim(),
+        if (num.tryParse(_amount.text.trim()) != null)
+          'amount': num.parse(_amount.text.trim()),
+      };
+
+      if (_dateMode == 'single') {
+        if (_scheduledDate != null) {
+          payload['scheduled_date'] = _dateKey(_scheduledDate!);
+        }
+      } else {
+        if (_startDate != null) {
+          payload['start_date'] = _dateKey(_startDate!);
+        }
+        if (_endDate != null) {
+          payload['end_date'] = _dateKey(_endDate!);
+        }
+      }
+
+      await widget.onSubmit(payload);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

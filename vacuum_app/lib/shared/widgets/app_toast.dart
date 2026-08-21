@@ -9,6 +9,7 @@ class AppToast {
     BuildContext context, {
     required String message,
     AppToastType type = AppToastType.info,
+    Duration duration = const Duration(seconds: 3),
   }) {
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
@@ -23,7 +24,7 @@ class AppToast {
     );
 
     overlay.insert(entry);
-    Future<void>.delayed(const Duration(seconds: 3)).then((_) {
+    Future<void>.delayed(duration).then((_) {
       if (entry.mounted) entry.remove();
     });
   }

@@ -587,6 +587,7 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
       } else {
         _syncJobSelection();
       }
+      await _ensureSelectedClientLoaded();
       if (mounted) setState(() => _fetching = false);
     }
   }
@@ -761,6 +762,29 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
 
     if ((jobId ?? '').isNotEmpty) {
       _applyJob(jobId!);
+    }
+  }
+
+  Future<void> _ensureSelectedClientLoaded() async {
+    final id = _clientId;
+    if (id == null || _findClient(id) != null) return;
+    try {
+      final client = await ClientsRepository(dio: widget.dio).fetchById(id);
+      if (!mounted) return;
+      setState(() {
+        _clients = [
+          ..._clients,
+          (
+            id: client.id,
+            name: client.name,
+            email: client.email,
+            contactPerson: client.contactPerson,
+            address: client.address,
+          ),
+        ];
+      });
+    } catch (_) {
+      // Ignore. The search field still works even if the preload misses it.
     }
   }
 
@@ -1046,7 +1070,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                       child: LinearProgressIndicator(
                         minHeight: 8,
                         value: _step / _steps.length,
-                        backgroundColor: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                        backgroundColor: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
                         valueColor: const AlwaysStoppedAnimation(
                           AppColors.blue600,
                         ),
@@ -1157,7 +1183,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                   decoration: BoxDecoration(
                     color: _step > _steps[i].id
                         ? (isDark ? const Color(0xFF34D399) : doneFg)
-                        : Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                        : Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -1268,32 +1296,47 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
   }
 
   Widget _dropdownClient() {
-    return _SearchableDropdownInt(
+    return _AsyncSearchableClientDropdown(
       label: 'Client',
       value: _clientId,
-      allowNull: true,
-      nullLabel: 'Select client...',
       enabled: !_loading,
-      items: [for (final c in _clients) (value: c.id, label: c.name)],
-      onChanged: (v) {
-        final selected = _findClient(v);
+      initialItems: _clients,
+      searchClients: (query) async {
+        final repo = ClientsRepository(dio: widget.dio);
+        final clients = await repo.fetchClients(
+          limit: query.trim().isEmpty ? 100 : 50,
+          search: query.trim(),
+          type: '',
+        );
+        return [
+          for (final c in clients)
+            (
+              id: c.id,
+              name: c.name,
+              email: c.email,
+              contactPerson: c.contactPerson,
+              address: c.address,
+            ),
+        ];
+      },
+      onChanged: (client) {
         setState(() {
-          _clientId = v;
-          _clientName = selected?.name ?? _clientName;
-          if (selected != null) {
-            if (selected.email.trim().isNotEmpty) {
-              _clientEmail.text = selected.email.trim();
+          _clientId = client?.id;
+          _clientName = client?.name ?? _clientName;
+          if (client != null) {
+            if (client.email.trim().isNotEmpty) {
+              _clientEmail.text = client.email.trim();
             }
             if (_companyName.text.trim().isEmpty &&
-                selected.name.trim().isNotEmpty) {
-              _companyName.text = selected.name.trim();
+                client.name.trim().isNotEmpty) {
+              _companyName.text = client.name.trim();
             }
             if (_contactPerson.text.trim().isEmpty &&
-                selected.contactPerson.trim().isNotEmpty) {
-              _contactPerson.text = selected.contactPerson.trim();
+                client.contactPerson.trim().isNotEmpty) {
+              _contactPerson.text = client.contactPerson.trim();
             }
-            if (selected.address.trim().isNotEmpty) {
-              _location.text = selected.address.trim();
+            if (client.address.trim().isNotEmpty) {
+              _location.text = client.address.trim();
             }
           }
         });
@@ -1698,7 +1741,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                                color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                                color: Theme.of(
+                                  context,
+                                ).dividerColor.withValues(alpha: 0.12),
                                 alignment: Alignment.center,
                                 child: const Icon(
                                   Icons.broken_image_outlined,
@@ -1747,7 +1792,9 @@ class _ServiceReportWizardState extends State<_ServiceReportWizard> {
                               gaplessPlayback: true,
                               errorBuilder: (context, error, stackTrace) =>
                                   Container(
-                                    color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                                    color: Theme.of(
+                                      context,
+                                    ).dividerColor.withValues(alpha: 0.12),
                                     alignment: Alignment.center,
                                     child: const Icon(
                                       Icons.broken_image_outlined,
@@ -2062,6 +2109,354 @@ class _SearchableDropdownIntState extends State<_SearchableDropdownInt> {
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AsyncSearchableClientDropdown extends StatefulWidget {
+  const _AsyncSearchableClientDropdown({
+    required this.label,
+    required this.value,
+    required this.initialItems,
+    required this.enabled,
+    required this.searchClients,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int? value;
+  final List<
+    ({int id, String name, String email, String contactPerson, String address})
+  >
+  initialItems;
+  final bool enabled;
+  final Future<
+    List<
+      ({
+        int id,
+        String name,
+        String email,
+        String contactPerson,
+        String address,
+      })
+    >
+  >
+  Function(String query)
+  searchClients;
+  final ValueChanged<
+    ({int id, String name, String email, String contactPerson, String address})?
+  >
+  onChanged;
+
+  @override
+  State<_AsyncSearchableClientDropdown> createState() =>
+      _AsyncSearchableClientDropdownState();
+}
+
+class _AsyncSearchableClientDropdownState
+    extends State<_AsyncSearchableClientDropdown> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  List<
+    ({int id, String name, String email, String contactPerson, String address})
+  >
+  _items = const [];
+  Timer? _debounce;
+  bool _open = false;
+  bool _loading = false;
+  bool _suppress = false;
+  int _requestToken = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = widget.initialItems;
+    _controller = TextEditingController(text: _selectedLabel(widget.value));
+    _focusNode = FocusNode();
+    _controller.addListener(_handleTextChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AsyncSearchableClientDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      final label = _selectedLabel(widget.value);
+      if (label.isNotEmpty && _controller.text != label) {
+        _suppress = true;
+        _controller.text = label;
+        _controller.selection = TextSelection.collapsed(offset: label.length);
+        _suppress = false;
+      }
+    }
+    if (_controller.text.trim().isEmpty &&
+        oldWidget.initialItems != widget.initialItems) {
+      _items = widget.initialItems;
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.removeListener(_handleTextChange);
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleTextChange() {
+    if (_suppress || !mounted) return;
+    final query = _controller.text.trim();
+    if (query.isEmpty) {
+      widget.onChanged(null);
+      setState(() {
+        _items = widget.initialItems;
+        _loading = false;
+        _open = true;
+      });
+      return;
+    }
+
+    widget.onChanged(null);
+    setState(() => _open = true);
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      unawaited(_searchClients(query));
+    });
+  }
+
+  String _selectedLabel(int? value) {
+    if (value == null) return '';
+    for (final item in [...widget.initialItems, ..._items]) {
+      if (item.id == value) return item.name;
+    }
+    return '';
+  }
+
+  Future<void> _searchClients(String query) async {
+    final token = ++_requestToken;
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      final results = await widget.searchClients(query);
+      if (!mounted || token != _requestToken) return;
+      setState(() {
+        _items = results;
+        _loading = false;
+        _open = true;
+      });
+    } catch (_) {
+      if (!mounted || token != _requestToken) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  void _selectClient(
+    ({int id, String name, String email, String contactPerson, String address})
+    client,
+  ) {
+    _debounce?.cancel();
+    widget.onChanged(client);
+    _suppress = true;
+    _controller.text = client.name;
+    _controller.selection = TextSelection.collapsed(offset: client.name.length);
+    _suppress = false;
+    setState(() {
+      _open = false;
+      _loading = false;
+    });
+    _focusNode.unfocus();
+  }
+
+  void _clear() {
+    _debounce?.cancel();
+    _suppress = true;
+    _controller.clear();
+    _suppress = false;
+    widget.onChanged(null);
+    setState(() {
+      _items = widget.initialItems;
+      _open = true;
+      _loading = false;
+    });
+    _focusNode.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final divider = Theme.of(context).dividerColor.withValues(alpha: 0.12);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final query = _controller.text.trim().toLowerCase();
+    final visibleItems = query.isEmpty
+        ? _items
+        : _items
+              .where((item) => item.name.toLowerCase().contains(query))
+              .toList(growable: false);
+
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: divider),
+    );
+    final focusedBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(width: 2),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          enabled: widget.enabled,
+          onTap: () => setState(() => _open = true),
+          onSubmitted: (_) => _focusNode.unfocus(),
+          decoration: InputDecoration(
+            hintText: 'Type to search clients',
+            isDense: false,
+            filled: true,
+            fillColor: isDark
+                ? const Color(0xFF0B1220)
+                : const Color(0xFFF9FAFB),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
+            border: baseBorder,
+            enabledBorder: baseBorder,
+            focusedBorder: focusedBorder,
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_loading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (_controller.text.trim().isNotEmpty && widget.enabled)
+                  IconButton(
+                    tooltip: 'Clear',
+                    onPressed: _clear,
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+                const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 280),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: divider),
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _loading
+                                ? 'Searching clients...'
+                                : visibleItems.isEmpty
+                                ? 'No matches'
+                                : '${visibleItems.length} client${visibleItems.length == 1 ? '' : 's'}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            _focusNode.unfocus();
+                            setState(() => _open = false);
+                          },
+                          child: const Text('Done'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: _loading && visibleItems.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : visibleItems.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                _controller.text.trim().isEmpty
+                                    ? 'Start typing a client name'
+                                    : 'No clients found for this search',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Theme.of(context).hintColor,
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(8),
+                            itemCount: visibleItems.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 4),
+                            itemBuilder: (context, index) {
+                              final item = visibleItems[index];
+                              final meta = [
+                                item.contactPerson.trim(),
+                                item.email.trim(),
+                              ].where((v) => v.isNotEmpty).join(' • ');
+                              return ListTile(
+                                dense: true,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                title: Text(
+                                  item.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: meta.isEmpty
+                                    ? null
+                                    : Text(
+                                        meta,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                onTap: () => _selectClient(item),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          crossFadeState: _open
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 180),
+          sizeCurve: Curves.easeOut,
         ),
       ],
     );
@@ -2670,7 +3065,9 @@ class _ChecklistRow extends StatelessWidget {
                             ? const Color(0xFF0B1220)
                             : Colors.white,
                         side: BorderSide(
-                          color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.12),
                         ),
                         checkmarkColor: Colors.white,
                       ),
