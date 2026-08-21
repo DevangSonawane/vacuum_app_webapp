@@ -403,8 +403,9 @@ class _ClientsGrid extends StatelessWidget {
         crossAxisCount: cols,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        // Single-column cards need extra height for the header, chips, and details.
-        childAspectRatio: cols == 1 ? 1.05 : 1.18,
+        // Give the cards a little more vertical room so the summary layout
+        // stays readable without clipping the detail chips.
+        childAspectRatio: cols == 1 ? 0.92 : 1.10,
       ),
       itemCount: items.length,
       itemBuilder: (context, i) => _ClientCard(
@@ -440,153 +441,195 @@ class _ClientCard extends StatelessWidget {
     return AppCard(
       hover: true,
       onTap: onTap,
+      padding: EdgeInsets.zero,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(
-                    colors: [AppColors.blue500, AppColors.blue600],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.apartment_outlined,
-                  color: Colors.white,
-                ),
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [typeColors.$1, typeColors.$2],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      client.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.blue500, AppColors.blue600],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.apartment_outlined,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      client.contactPerson,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Theme.of(context).hintColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (canEdit)
-                PopupMenuButton<_ClientCardAction>(
-                  tooltip: 'Actions',
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  onSelected: (value) {
-                    switch (value) {
-                      case _ClientCardAction.edit:
-                        onEdit();
-                        break;
-                      case _ClientCardAction.delete:
-                        onDelete();
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: _ClientCardAction.edit,
-                      child: Row(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.edit_outlined, size: 16),
-                          SizedBox(width: 8),
-                          Text('Edit'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: _ClientCardAction.delete,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_outline,
-                            size: 16,
-                            color: AppColors.red500,
-                          ),
-                          SizedBox(width: 8),
                           Text(
-                            'Delete',
-                            style: TextStyle(color: AppColors.red500),
+                            client.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            client.contactPerson,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Theme.of(context).hintColor,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    if (canEdit)
+                      PopupMenuButton<_ClientCardAction>(
+                        tooltip: 'Actions',
+                        icon: const Icon(Icons.more_vert, size: 20),
+                        onSelected: (value) {
+                          switch (value) {
+                            case _ClientCardAction.edit:
+                              onEdit();
+                              break;
+                            case _ClientCardAction.delete:
+                              onDelete();
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: _ClientCardAction.edit,
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined, size: 16),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: _ClientCardAction.delete,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: AppColors.red500,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(color: AppColors.red500),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              StatusBadge(label: client.status),
-              _TypeChip(label: client.type, colors: typeColors),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (client.contractValue > 0)
-            _InfoRow(
-              icon: Icons.payments_outlined,
-              text: fmtRevenue(client.contractValue),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    StatusBadge(label: client.status),
+                    _TypeChip(label: client.type, colors: typeColors),
+                  ],
+                ),
+                if (_hasExtraDetails) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (client.email.isNotEmpty)
+                        _DetailChip(
+                          icon: Icons.mail_outline,
+                          text: client.email,
+                        ),
+                      if (client.phone.isNotEmpty)
+                        _DetailChip(
+                          icon: Icons.phone_outlined,
+                          text: client.phone,
+                        ),
+                      if (client.address.isNotEmpty)
+                        _DetailChip(
+                          icon: Icons.location_on_outlined,
+                          text: client.address,
+                          maxWidth: 260,
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Divider(
+                  height: 1,
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.10),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MetricTile(
+                        icon: Icons.payments_outlined,
+                        label: 'Contract',
+                        value: fmtRevenue(client.contractValue),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _MetricTile(
+                        icon: Icons.calendar_today_outlined,
+                        label: 'Joined',
+                        value:
+                            client.joinDate != null &&
+                                client.joinDate!.length >= 10
+                            ? client.joinDate!.substring(0, 10)
+                            : '—',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          if (client.contractValue > 0) const SizedBox(height: 4),
-          if (client.email.isNotEmpty)
-            _InfoRow(icon: Icons.mail_outline, text: client.email),
-          if (client.phone.isNotEmpty)
-            _InfoRow(icon: Icons.phone_outlined, text: client.phone),
-          if (client.address.isNotEmpty)
-            _InfoRow(icon: Icons.location_on_outlined, text: client.address),
-          const SizedBox(height: 10),
-          Divider(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  fmtRevenue(client.contractValue),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-              Text(
-                client.joinDate != null && client.joinDate!.length >= 10
-                    ? client.joinDate!.substring(0, 10)
-                    : '—',
-                style: TextStyle(
-                  color: Theme.of(context).hintColor,
-                  fontSize: 12,
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
+
+  bool get _hasExtraDetails =>
+      client.email.isNotEmpty ||
+      client.phone.isNotEmpty ||
+      client.address.isNotEmpty;
 }
 
 enum _ClientCardAction { edit, delete }
@@ -612,6 +655,124 @@ class _TypeChip extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+}
+
+class _DetailChip extends StatelessWidget {
+  const _DetailChip({
+    required this.icon,
+    required this.text,
+    this.maxWidth = 190,
+  });
+
+  final IconData icon;
+  final String text;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.gray800
+              : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: AppColors.gray500),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.gray500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.gray800
+            : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.blue500.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 14, color: AppColors.blue600),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Theme.of(context).hintColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -663,34 +824,6 @@ class _StatPill extends StatelessWidget {
               color: color,
               fontSize: 12,
               fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 12, color: AppColors.gray400),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: const TextStyle(fontSize: 12, color: AppColors.gray500),
             ),
           ),
         ],
